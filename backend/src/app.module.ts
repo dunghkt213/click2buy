@@ -1,11 +1,40 @@
 import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { UserModule } from './user/user.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
-    MongooseModule.forRoot(
-      'mongodb://click2buy:click2buy@cluster0-shard-00-00.avgeqq9.mongodb.net:27017,cluster0-shard-00-01.avgeqq9.mongodb.net:27017,cluster0-shard-00-02.avgeqq9.mongodb.net:27017/click2buy?ssl=true&replicaSet=atlas-xxxx-shard-0&authSource=admin&retryWrites=true&w=majority',
-    ),
+    // Load biến môi trường từ file .env
+    ConfigModule.forRoot({
+      envFilePath: '.env',
+      isGlobal: true,
+    }),
+
+    // Kết nối MongoDB với ConfigService (best practice)
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('DB_URI'),
+        connectionFactory: (connection) => {
+          console.log('✅ MongoDB connected:', connection.name);
+          connection.on('error', (err) => {
+            console.error('❌ MongoDB connection error:', err);
+          });
+          connection.on('disconnected', () => {
+            console.warn('⚠️ MongoDB disconnected');
+          });
+          return connection;
+        },
+      }),
+    }),
+
+    UserModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
