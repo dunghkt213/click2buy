@@ -10,6 +10,7 @@ import { NotificationSidebar } from './components/NotificationSidebar';
 import { WishlistSidebar } from './components/WishlistSidebar';
 import { PromotionSidebar } from './components/PromotionSidebar';
 import { SupportSidebar } from './components/SupportSidebar';
+import { CheckoutModal } from './components/CheckoutModal';
 import { useCart, useWishlist, useNotifications } from './hooks';
 import { FilterState, Promotion, FAQItem, SupportTicket, User } from './types';
 import { 
@@ -30,6 +31,7 @@ export default function App() {
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isPromotionOpen, setIsPromotionOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   // Custom hooks
   const {
@@ -38,7 +40,13 @@ export default function App() {
     removeFromCart,
     updateQuantity,
     getTotalItems,
-    getTotalPrice
+    getTotalPrice,
+    getSelectedTotalPrice,
+    getSelectedItems,
+    toggleSelectItem,
+    selectAllItems,
+    deselectAllItems,
+    clearCart
   } = useCart(initialCartItems);
 
   const {
@@ -113,6 +121,16 @@ export default function App() {
     setSupportTickets(prev => [newTicket, ...prev]);
   };
 
+  // Checkout functions
+  const handleCheckout = (checkoutData: any) => {
+    console.log('Checkout data:', checkoutData);
+    // Here you would typically send the data to your backend
+    alert('Đặt hàng thành công! Cảm ơn bạn đã mua sắm tại ShopMart.');
+    // Remove only selected items after successful checkout
+    const selectedItemIds = getSelectedItems().map(item => item.id);
+    selectedItemIds.forEach(id => removeFromCart(id));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header 
@@ -164,7 +182,17 @@ export default function App() {
         items={cartItems}
         onUpdateQuantity={updateQuantity}
         onRemoveItem={removeFromCart}
-        totalPrice={getTotalPrice()}
+        onToggleSelectItem={toggleSelectItem}
+        onSelectAllItems={selectAllItems}
+        onDeselectAllItems={deselectAllItems}
+        selectedTotalPrice={getSelectedTotalPrice()}
+        selectedItems={getSelectedItems()}
+        onCheckout={() => {
+          if (getSelectedItems().length > 0) {
+            setIsCartOpen(false);
+            setIsCheckoutOpen(true);
+          }
+        }}
       />
 
       <NotificationSidebar
@@ -199,6 +227,14 @@ export default function App() {
         faqs={faqs}
         tickets={supportTickets}
         onSubmitTicket={handleSubmitTicket}
+      />
+
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        items={getSelectedItems()}
+        totalPrice={getSelectedTotalPrice()}
+        onCheckout={handleCheckout}
       />
     </div>
   );

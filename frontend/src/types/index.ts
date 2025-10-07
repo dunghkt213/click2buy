@@ -17,6 +17,7 @@ export interface Product {
 
 export interface CartItem extends Product {
   quantity: number;
+  selected?: boolean;
 }
 
 // Filter types
@@ -87,3 +88,48 @@ export interface SupportTicket {
   createdAt: string;
   lastUpdate: string;
 }
+
+// Checkout types
+export interface Address {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  ward: string;
+  district: string;
+  city: string;
+  isDefault: boolean;
+}
+
+export interface PaymentMethod {
+  id: string;
+  type: 'bank' | 'zalopay' | 'momo' | 'shopeepay' | 'credit-card' | 'cod';
+  name: string;
+  description: string;
+  icon: string;
+  isRecommended?: boolean;
+  discount?: number;
+}
+
+export interface ShippingMethod {
+  id: string;
+  name: string;
+  description: string;
+  estimatedTime: string;
+  price: number;
+  isRecommended?: boolean;
+}
+
+export interface CheckoutData {
+  shippingAddress: Address;
+  paymentMethod: PaymentMethod;
+  shippingMethod: ShippingMethod;
+  items: CartItem[];
+  subtotal: number;
+  shippingFee: number;
+  discount: number;
+  voucher?: string;
+  total: number;
+  note?: string;
+}
+
