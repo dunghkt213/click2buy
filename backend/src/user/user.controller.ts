@@ -3,7 +3,6 @@ import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
-import { LoginDto } from './dto/login.dto';
 
 @Controller('users')
 export class UserController {
@@ -37,11 +36,5 @@ export class UserController {
   @Delete(':id')
   deactivate(@Param('id') id: string) {
     return this.userService.deactivate(id);
-  }
-
-  // (tuỳ chọn) demo login
-  @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.userService.verifyLogin(dto.email, dto.password);
   }
 }
