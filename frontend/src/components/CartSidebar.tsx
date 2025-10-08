@@ -1,24 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { ScrollArea } from './ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Checkbox } from './ui/checkbox';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { 
   ShoppingBag, 
   Minus, 
   Plus, 
   Trash2, 
-  Gift, 
-  Truck, 
-  CreditCard, 
-  Smartphone,
-  Clock,
   Shield,
   Star,
-  ArrowRight
+  ArrowRight,
+  Truck
 } from 'lucide-react';
 import { CartItem } from '../types';
 import { formatPrice } from '../lib/utils';
@@ -29,7 +25,12 @@ interface CartSidebarProps {
   items: CartItem[];
   onUpdateQuantity: (id: string, quantity: number) => void;
   onRemoveItem: (id: string) => void;
-  totalPrice: number;
+  onToggleSelectItem: (id: string) => void;
+  onSelectAllItems: () => void;
+  onDeselectAllItems: () => void;
+  selectedTotalPrice: number;
+  selectedItems: CartItem[];
+  onCheckout: () => void;
 }
 
 export function CartSidebar({
@@ -38,15 +39,20 @@ export function CartSidebar({
   items,
   onUpdateQuantity,
   onRemoveItem,
-  totalPrice
+  onToggleSelectItem,
+  onSelectAllItems,
+  onDeselectAllItems,
+  selectedTotalPrice,
+  selectedItems,
+  onCheckout
 }: CartSidebarProps) {
-  const [paymentMethod, setPaymentMethod] = useState('credit-card');
-  const [deliveryMethod, setDeliveryMethod] = useState('standard');
-
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const shippingFee = totalPrice >= 1000000 ? 0 : 30000;
-  const discount = totalPrice >= 2000000 ? totalPrice * 0.05 : 0;
-  const finalTotal = totalPrice + shippingFee - discount;
+  const selectedItemsCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
+  const allSelected = items.length > 0 && items.every(item => item.selected);
+  const someSelected = items.some(item => item.selected);
+  const shippingFee = selectedTotalPrice >= 1000000 ? 0 : 30000;
+  const discount = selectedTotalPrice >= 2000000 ? selectedTotalPrice * 0.05 : 0;
+  const finalTotal = selectedTotalPrice + shippingFee - discount;
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -92,14 +98,35 @@ export function CartSidebar({
           </div>
         ) : (
           <>
+            {/* Select All Checkbox */}
+            <div className="px-6 py-3 border-b border-border bg-muted/20">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={() => allSelected ? onDeselectAllItems() : onSelectAllItems()}
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                />
+                <span className="text-sm font-medium">
+                  Chọn tất cả ({items.length} sản phẩm)
+                </span>
+                {someSelected && !allSelected && (
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedItems.length} đã chọn
+                  </Badge>
+                )}
+              </div>
+            </div>
+
             {/* Cart Items */}
-            <ScrollArea className="flex-1 overflow-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+            <ScrollArea className="flex-1 overflow-auto" style={{ maxHeight: 'calc(100vh - 380px)' }}>
               <div className="px-6">
                 <div className="space-y-4 py-4">
                   {items.map((item) => (
                     <div 
                       key={item.id} 
-                      className="group relative bg-card border border-border rounded-xl p-4 transition-all duration-200 hover:shadow-md hover:border-primary/20"
+                      className={`group relative bg-card border rounded-xl p-4 transition-all duration-200 hover:shadow-md ${
+                        item.selected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/20'
+                      }`}
                     >
                       {/* Sale badge */}
                       {item.isSale && (
@@ -109,6 +136,15 @@ export function CartSidebar({
                       )}
                       
                       <div className="flex gap-4">
+                        {/* Checkbox */}
+                        <div className="flex items-start pt-1">
+                          <Checkbox
+                            checked={item.selected || false}
+                            onCheckedChange={() => onToggleSelectItem(item.id)}
+                            className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          />
+                        </div>
+
                         <div className="relative w-20 h-20 bg-muted/20 rounded-xl overflow-hidden flex-shrink-0">
                           <ImageWithFallback
                             src={item.image}
@@ -184,85 +220,13 @@ export function CartSidebar({
             </ScrollArea>
 
             {/* Cart Summary */}
-            <div className="bg-muted/30 border-t border-border p-6 space-y-6">
-              {/* Benefits */}
+            <div className="bg-muted/30 border-t border-border p-3 space-y-2 text-sm">
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                  <Shield className="w-4 h-4 text-green-600" />
-                  <span className="text-xs text-green-700 dark:text-green-300 font-medium">
-                    Bảo hành chính hãng
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                  <Truck className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-                    Giao hàng nhanh
-                  </span>
-                </div>
               </div>
-
-              {/* Payment & Delivery Options */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Thanh toán</label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="credit-card">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="w-4 h-4" />
-                          <span>Thẻ tín dụng</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="zalopay">
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4" />
-                          <span>ZaloPay</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="cash-on-delivery">
-                        <div className="flex items-center gap-2">
-                          <Truck className="w-4 h-4" />
-                          <span>Tiền mặt</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Giao hàng</label>
-                  <Select value={deliveryMethod} onValueChange={setDeliveryMethod}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">
-                        <div className="flex items-center gap-2">
-                          <Truck className="w-4 h-4" />
-                          <span>Tiêu chuẩn</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="express">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          <span>Nhanh</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Price Summary */}
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span>Tạm tính ({totalItems} sản phẩm)</span>
-                  <span>{formatPrice(totalPrice)}</span>
+                  <span>Tạm tính ({selectedItemsCount} sản phẩm đã chọn)</span>
+                  <span>{formatPrice(selectedTotalPrice)}</span>
                 </div>
                 
                 <div className="flex justify-between text-sm">
@@ -283,26 +247,20 @@ export function CartSidebar({
                 
                 <div className="flex justify-between font-semibold">
                   <span>Tổng cộng</span>
-                  <span className="text-lg">{formatPrice(finalTotal)}</span>
+                  <span className="text-lg text-primary">{formatPrice(finalTotal)}</span>
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="space-y-3">
-                <Button className="w-full h-12 text-base gap-2">
+                <Button 
+                    className="w-full h-10 text-sm gap-2" 
+                    onClick={onCheckout}
+                    disabled={selectedItems.length === 0}
+                  >
                   <div className="flex items-center justify-between w-full">
                     <span className="flex items-center gap-2">
-                      {paymentMethod.includes('cash') || paymentMethod === 'cash-on-delivery' ? (
-                        <>
-                          <Truck className="w-4 h-4" />
-                          Đặt hàng
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="w-4 h-4" />
-                          Thanh toán
-                        </>
-                      )}
+                      Mua hàng ({selectedItems.length})
                     </span>
                     <span className="flex items-center gap-1">
                       {formatPrice(finalTotal)}
@@ -310,7 +268,7 @@ export function CartSidebar({
                     </span>
                   </div>
                 </Button>
-                <Button variant="outline" className="w-full h-10" onClick={onClose}>
+                  <Button variant="outline" className="w-full h-9 text-xs" onClick={onClose}>
                   Tiếp tục mua sắm
                 </Button>
               </div>

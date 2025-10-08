@@ -42,3 +42,10 @@ export const formatRelativeTime = (time: string): string => {
 export const generateTicketId = (count: number): string => {
   return `TK${String(count + 1).padStart(3, '0')}`;
 };
+
+/**
+ * Utility function to merge class names
+ */
+export function cn(...inputs: (string | undefined | null | boolean)[]): string {
+  return inputs.filter(Boolean).join(' ');
+}

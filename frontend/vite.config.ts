@@ -14,11 +14,27 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './'),
+      '@': path.resolve(__dirname, './src'), // Thường trỏ đến ./src thay vì ./
     },
   },
   server: {
     port: 3000,
     open: true,
+    watch: {
+      // Giảm tần suất watch để tránh lock file trên Windows
+      usePolling: false,
+      interval: 1000
+    }
   },
+  // QUAN TRỌNG: Thêm cacheDir để tránh xung đột permission
+  cacheDir: './.vite-cache',
+  // Tối ưu build để tránh memory issues
+  build: {
+    sourcemap: false,
+    rollupOptions: {
+      maxParallelFileOps: 5
+    }
+  },
+  // Clear screen khi dev    
+  clearScreen: false
 })

@@ -14,7 +14,7 @@ export const useCart = (initialItems: CartItem[] = []) => {
             : item
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, quantity: 1, selected: true }];
     });
   };
 
@@ -42,6 +42,32 @@ export const useCart = (initialItems: CartItem[] = []) => {
     return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
   };
 
+  const getSelectedTotalPrice = () => {
+    return cartItems
+      .filter(item => item.selected)
+      .reduce((total, item) => total + item.price * item.quantity, 0);
+  };
+
+  const getSelectedItems = () => {
+    return cartItems.filter(item => item.selected);
+  };
+
+  const toggleSelectItem = (productId: string) => {
+    setCartItems(prev =>
+      prev.map(item =>
+        item.id === productId ? { ...item, selected: !item.selected } : item
+      )
+    );
+  };
+
+  const selectAllItems = () => {
+    setCartItems(prev => prev.map(item => ({ ...item, selected: true })));
+  };
+
+  const deselectAllItems = () => {
+    setCartItems(prev => prev.map(item => ({ ...item, selected: false })));
+  };
+
   const clearCart = () => {
     setCartItems([]);
   };
@@ -53,6 +79,11 @@ export const useCart = (initialItems: CartItem[] = []) => {
     updateQuantity,
     getTotalItems,
     getTotalPrice,
+    getSelectedTotalPrice,
+    getSelectedItems,
+    toggleSelectItem,
+    selectAllItems,
+    deselectAllItems,
     clearCart
   };
 };
