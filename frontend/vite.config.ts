@@ -35,6 +35,6 @@ export default defineConfig({
       maxParallelFileOps: 5
     }
   },
-  // Clear screen khi dev
+  // Clear screen khi dev    
   clearScreen: false
 })

@@ -220,24 +220,9 @@ export function CartSidebar({
             </ScrollArea>
 
             {/* Cart Summary */}
-            <div className="bg-muted/30 border-t border-border p-6 space-y-4">
-              {/* Benefits */}
+            <div className="bg-muted/30 border-t border-border p-3 space-y-2 text-sm">
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                  <Shield className="w-4 h-4 text-green-600" />
-                  <span className="text-xs text-green-700 dark:text-green-300 font-medium">
-                    Bảo hành chính hãng
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                  <Truck className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-                    Giao hàng nhanh
-                  </span>
-                </div>
               </div>
-
-              {/* Price Summary */}
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span>Tạm tính ({selectedItemsCount} sản phẩm đã chọn)</span>
@@ -269,10 +254,10 @@ export function CartSidebar({
               {/* Action Buttons */}
               <div className="space-y-3">
                 <Button 
-                  className="w-full h-12 text-base gap-2" 
-                  onClick={onCheckout}
-                  disabled={selectedItems.length === 0}
-                >
+                    className="w-full h-10 text-sm gap-2" 
+                    onClick={onCheckout}
+                    disabled={selectedItems.length === 0}
+                  >
                   <div className="flex items-center justify-between w-full">
                     <span className="flex items-center gap-2">
                       Mua hàng ({selectedItems.length})
@@ -283,7 +268,7 @@ export function CartSidebar({
                     </span>
                   </div>
                 </Button>
-                <Button variant="outline" className="w-full h-10" onClick={onClose}>
+                  <Button variant="outline" className="w-full h-9 text-xs" onClick={onClose}>
                   Tiếp tục mua sắm
                 </Button>
               </div>
