@@ -32,4 +32,8 @@ export class ProductController {
   remove(@Param('id') id: string) {
     return this.productService.remove(id);
   }
+  @Post('search')
+  search(@Body() body: QueryProductDto) {
+    return this.productService.findAll(body);
+  }
 }

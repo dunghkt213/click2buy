@@ -21,7 +21,6 @@ export class ProductService {
 
   async findAll(query: QueryProductDto): Promise<{ items: ProductDocument[]; total: number }> {
     const filters: any = {};
-
     if (query.text) filters.$text = { $search: query.text };
     if (query.brand) filters.brand = new RegExp(query.brand, 'i');
     if (query.categoryId) filters.categoryIds = query.categoryId;
