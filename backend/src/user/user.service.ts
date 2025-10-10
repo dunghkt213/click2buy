@@ -137,7 +137,7 @@ export class UserService  {
 
   // user.service.ts
 async findWithPassword(email: string) {
-  return this.userModel.findOne({ email: email.toLowerCase().trim() }).lean().exec();
+  return this.userModel.findOne({ email: email.toLowerCase().trim() }).select('+passwordHash').lean().exec();
 }
 
 }
