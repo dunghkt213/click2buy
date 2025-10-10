@@ -13,7 +13,6 @@ export class AuthService {
   async validateUser(email: string, password: string) {
     const user = await this.userService.findWithPassword(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
-
     if (!user || !user.passwordHash) {
     throw new UnauthorizedException('Invalid credentials');
     }
@@ -25,13 +24,13 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const payload = { sub: user._id, email: user.email, role: user.role };
     return {
       accessToken: this.jwtService.sign(payload),
     };
   }
 
-    async register(dto: CreateUserDto) {
+    async register(dto: CreateUserDto ) {
     const existing = await this.userService.findByEmail(dto.email).catch(() => null);
     if (existing) throw new BadRequestException('Email đã được sử dụng');
 
