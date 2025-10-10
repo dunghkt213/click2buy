@@ -33,7 +33,8 @@ export class UserService  {
   async create(dto: CreateUserDto): Promise<UserDto> {
     // Kiểm tra trùng username/email (đề phòng trước khi đụng unique index)
     const existed = await this.userModel.exists({
-      $or: [{ email: dto.email.toLowerCase() }, { username: dto.username.toLowerCase() }],
+      $or: [{ email: dto.email.toLowerCase() }, 
+        { username: dto.username.toLowerCase() }],
     });
     if (existed) throw new BadRequestException('Email hoặc username đã tồn tại');
 
@@ -52,7 +53,9 @@ export class UserService  {
     return this.toUserDto(user);
   }
 
-  async findAll(q: QueryUserDto): Promise<{ items: UserDto[]; total: number; page: number; limit: number; totalPages: number; }> {
+  async findAll(q: QueryUserDto): Promise<{ items: UserDto[]; total: number; 
+    page: number; limit: number; totalPages: number; }> {
+
     const page = Math.max(parseInt(q.page || '1', 10), 1);
     const limit = Math.max(parseInt(q.limit || '10', 10), 1);
     const skip = (page - 1) * limit;
@@ -120,25 +123,21 @@ export class UserService  {
     return { deactivated: true };
   }
 
-  // Xóa cứng (thận trọng)
+  // Xóa cứng 
   async hardDelete(id: string): Promise<{ deleted: true }> {
     const res = await this.userModel.findByIdAndDelete(id).exec();
     if (!res) throw new NotFoundException('User không tồn tại');
     return { deleted: true };
   }
 
-  // (Tuỳ chọn) Đăng nhập demo: kiểm tra mật khẩu, cập nhật lastLogin
-  async verifyLogin(email: string, password: string): Promise<UserDto> {
-    // cần +passwordHash vì mặc định select: false
-    const user = await this.userModel.findOne({ email: email.toLowerCase() }).select('+passwordHash').exec();
-    if (!user) throw new NotFoundException('Sai email hoặc mật khẩu');
-
-    const ok = await bcrypt.compare(password, (user as any).passwordHash);
-    if (!ok) throw new BadRequestException('Sai email hoặc mật khẩu');
-
-    user.lastLogin = new Date();
-    await user.save();
-
-    return this.toUserDto(user);
+  async findByEmail(email: string): Promise<UserDto | null> {
+  const doc = await this.userModel.findOne({ email: email.toLowerCase().trim() }).exec();
+  return doc ? this.toUserDto(doc) : null;
   }
+
+  // user.service.ts
+async findWithPassword(email: string) {
+  return this.userModel.findOne({ email: email.toLowerCase().trim() }).select('+passwordHash').lean().exec();
+}
+
 }
