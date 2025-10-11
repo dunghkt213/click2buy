@@ -1,11 +1,7 @@
 import { Prop, Schema } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { createMongoSchema } from 'src/common/utils/mongo-schema.util';
-import { User } from 'src/user/schemas/user.schema';
+import { createMongoSchema } from '../../common/utils/mongo-schema.util';
 
-/**
- * Kiểu document cho Review
- */
 export type ReviewDocument = Review & Document;
 
 /**
@@ -13,7 +9,7 @@ export type ReviewDocument = Review & Document;
  */
 @Schema({ timestamps: true, collection: 'reviews' })
 export class Review {
-  @Prop({ type: Types.ObjectId, required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref:'Product'  ,required: true, index: true })
   productId: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
