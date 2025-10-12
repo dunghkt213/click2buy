@@ -6,6 +6,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ProductModule } from './product/product.model';
 import { AuthModule } from './auth/auth.module';
+import { ReviewModule } from './review/review.module';
+import { CartModule } from './cart/cart.module';
 @Module({
   imports: [
     // Load biến môi trường từ file .env
@@ -33,7 +35,7 @@ import { AuthModule } from './auth/auth.module';
       }),
     }),
 
-    UserModule , ProductModule , AuthModule
+    UserModule , ProductModule , AuthModule, ReviewModule, CartModule
   ],
   controllers: [AppController],
   providers: [AppService],
