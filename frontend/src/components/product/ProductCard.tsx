@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { 
-  Star, 
-  Heart, 
-  ShoppingCart, 
+import {
   Eye,
+  Heart,
   Share2,
+  ShoppingCart,
+  Star,
   Zap
 } from 'lucide-react';
-import { Product } from '../types';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { formatPrice, calculateDiscount } from '../lib/utils';
+import { useState } from 'react';
+import { Product } from 'types';
+import { calculateDiscount, formatPrice } from "../../lib/utils";
+import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
 
 interface ProductCardProps {
   product: Product;
@@ -201,7 +201,7 @@ export function ProductCard({ product, onAddToCart, viewMode = 'grid' }: Product
             isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
           }`}>
             <Button
-              className="w-full gap-2 bg-white/90 backdrop-blur-sm text-foreground hover:bg-white"
+              className="w-full gap-2 bg-black/90 backdrop-blur-sm text-foreground hover:bg-black"
               onClick={() => onAddToCart(product)}
               disabled={!product.inStock}
             >

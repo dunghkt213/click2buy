@@ -1,16 +1,15 @@
-import React from 'react';
-import { Button } from './ui/button';
-import { Card } from './ui/card';
-import { 
-  Shirt, 
-  Zap, 
-  Home, 
-  BookOpen, 
-  Dumbbell, 
-  Sparkles,
+import {
   Baby,
-  Car
+  BookOpen,
+  Car,
+  Dumbbell,
+  Home,
+  Shirt,
+  Sparkles,
+  Zap
 } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
 
 interface CategoriesProps {
   onCategorySelect: (category: string) => void;

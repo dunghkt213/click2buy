@@ -1,22 +1,19 @@
-import React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { ScrollArea } from './ui/scroll-area';
-import { 
-  Bell,
-  Package,
-  Truck,
-  Tag,
-  Star,
-  Gift,
+import {
   AlertCircle,
+  Bell,
   CheckCircle,
   Clock,
+  Package,
+  Star,
+  Tag,
+  Truck,
   X
 } from 'lucide-react';
-import { Notification } from '../types';
+import { Notification } from 'types';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { ScrollArea } from '../ui/scroll-area';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
 
 interface NotificationSidebarProps {
   isOpen: boolean;

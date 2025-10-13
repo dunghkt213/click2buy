@@ -1,7 +1,7 @@
 import React from 'react';
-import { ProductCard } from './ProductCard';
-import { Product, FilterState } from '../types';
-import { Button } from './ui/button';
+import { ProductCard } from './ProductCard'
+import { Product, FilterState } from '../../types';
+import { Button } from '../ui/button';
 import { Grid, List, Filter } from 'lucide-react';
 
 interface ProductGridProps {

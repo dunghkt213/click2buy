@@ -1,4 +1,4 @@
-import { CartItem, Notification, Promotion, FAQItem, SupportTicket, User } from '../types';
+import { CartItem, FAQItem, Notification, Promotion, SupportTicket, User } from '../types';
 
 export const initialCartItems: CartItem[] = [
   {
@@ -246,7 +246,7 @@ export const initialFAQs: FAQItem[] = [
   {
     id: '2',
     question: 'Chính sách đổi trả như thế nào?',
-    answer: 'ShopMart hỗ trợ đổi trả trong vòng 30 ngày với điều kiện sản phẩm còn nguyên tem, chưa qua sử dụng.',
+    answer: 'Click2buy hỗ trợ đổi trả trong vòng 30 ngày với điều kiện sản phẩm còn nguyên tem, chưa qua sử dụng.',
     category: 'Đổi trả',
     isPopular: true
   },

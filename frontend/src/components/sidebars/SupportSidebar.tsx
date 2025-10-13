@@ -1,33 +1,31 @@
-import React, { useState } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { ScrollArea } from './ui/scroll-area';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { 
+import {
+  BookOpen,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  Headphones,
   HelpCircle,
+  Mail,
+  MapPin,
   MessageSquare,
   Phone,
-  Mail,
-  Clock,
-  MapPin,
-  Send,
+  RotateCcw,
   Search,
-  ChevronRight,
-  CheckCircle,
-  AlertCircle,
-  Users,
-  BookOpen,
-  Headphones,
+  Send,
   Shield,
   Truck,
-  CreditCard,
-  RotateCcw
+  Users
 } from 'lucide-react';
-import { FAQItem, SupportTicket } from '../types';
+import { useState } from 'react';
+import { FAQItem, SupportTicket } from 'types';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { ScrollArea } from '../ui/scroll-area';
+import { Separator } from '../ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Textarea } from '../ui/textarea';
 
 interface SupportSidebarProps {
   isOpen: boolean;
@@ -253,7 +251,7 @@ export function SupportSidebar({
                         <Mail className="w-5 h-5 text-purple-600" />
                         <div className="text-left">
                           <p className="font-medium">Gửi email</p>
-                          <p className="text-sm text-muted-foreground">support@shopmart.vn</p>
+                          <p className="text-sm text-muted-foreground">support@click2buy.vn</p>
                         </div>
                       </Button>
                     </div>
@@ -323,11 +321,11 @@ export function SupportSidebar({
                       Địa chỉ liên hệ
                     </h3>
                     <div className="p-4 bg-muted/50 rounded-xl">
-                      <p className="font-medium">ShopMart Việt Nam</p>
+                      <p className="font-medium">Click2buy Việt Nam</p>
                       <p className="text-sm text-muted-foreground mt-1">
                         123 Nguyen Van A 144 Xuan Thuy<br />
                         Cầu Giấy, Hà Nội<br />
-                        Email: support@shopmart.vn<br />
+                        Email: support@click2buy.vn<br />
                         Hotline: 1900-1234
                       </p>
                     </div>

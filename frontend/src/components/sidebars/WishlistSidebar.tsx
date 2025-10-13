@@ -1,20 +1,25 @@
-import React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { ScrollArea } from './ui/scroll-area';
-import { 
+import {
+  Eye,
   Heart,
-  ShoppingCart,
-  Trash2,
-  Star,
   Share2,
-  Eye
-} from 'lucide-react';
-import { Product } from '../types';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { formatPrice } from '../lib/utils';
+  ShoppingCart,
+  Star,
+  Trash2,
+} from "lucide-react";
+import { Product } from "types";
+import { formatPrice } from "../../lib/utils";
+import { ImageWithFallback } from "../figma/ImageWithFallback";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { ScrollArea } from "../ui/scroll-area";
+import { Separator } from "../ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 
 interface WishlistSidebarProps {
   isOpen: boolean;
@@ -31,12 +36,12 @@ export function WishlistSidebar({
   items,
   onRemoveItem,
   onAddToCart,
-  onViewProduct
+  onViewProduct,
 }: WishlistSidebarProps) {
   const shareWishlist = () => {
     if (navigator.share) {
       navigator.share({
-        title: 'Danh sách yêu thích của tôi - ShopMart',
+        title: "Danh sách yêu thích của tôi - Click2buy",
         text: `Xem ${items.length} sản phẩm trong danh sách yêu thích của tôi`,
         url: window.location.href,
       });
@@ -75,7 +80,10 @@ export function WishlistSidebar({
                     >
                       <Share2 className="w-4 h-4" />
                     </Button>
-                    <Badge variant="secondary" className="bg-primary/10 text-primary">
+                    <Badge
+                      variant="secondary"
+                      className="bg-primary/10 text-primary"
+                    >
                       {items.length}
                     </Badge>
                   </>
@@ -91,9 +99,12 @@ export function WishlistSidebar({
               <Heart className="w-16 h-16 text-primary/60" />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold">Danh sách yêu thích trống</h3>
+              <h3 className="text-lg font-semibold">
+                Danh sách yêu thích trống
+              </h3>
               <p className="text-muted-foreground text-sm max-w-[280px]">
-                Thêm sản phẩm yêu thích để dễ dàng tìm lại và mua sắm sau này
+                Thêm sản phẩm yêu thích để dễ dàng tìm lại và
+                mua sắm sau này
               </p>
             </div>
             <Button onClick={onClose} className="px-8">
@@ -106,8 +117,8 @@ export function WishlistSidebar({
             <ScrollArea className="flex-1 px-6 min-h-0">
               <div className="space-y-4 py-4">
                 {items.map((item) => (
-                  <div 
-                    key={item.id} 
+                  <div
+                    key={item.id}
                     className="group relative bg-card border border-border rounded-xl p-4 transition-all duration-200 hover:shadow-md hover:border-primary/20"
                   >
                     {/* Sale badge */}
@@ -116,7 +127,7 @@ export function WishlistSidebar({
                         SALE
                       </Badge>
                     )}
-                    
+
                     <div className="flex gap-4">
                       <div className="relative w-20 h-20 bg-muted/20 rounded-xl overflow-hidden flex-shrink-0">
                         <ImageWithFallback
@@ -133,11 +144,15 @@ export function WishlistSidebar({
                               {item.name}
                             </h4>
                             <div className="flex items-center gap-2 mt-1">
-                              <p className="text-xs text-muted-foreground">{item.brand}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {item.brand}
+                              </p>
                               {item.rating > 0 && (
                                 <div className="flex items-center gap-1">
                                   <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                  <span className="text-xs text-muted-foreground">{item.rating}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {item.rating}
+                                  </span>
                                 </div>
                               )}
                             </div>
@@ -146,7 +161,9 @@ export function WishlistSidebar({
                             variant="ghost"
                             size="sm"
                             className="w-8 h-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                            onClick={() => onRemoveItem(item.id)}
+                            onClick={() =>
+                              onRemoveItem(item.id)
+                            }
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -159,11 +176,17 @@ export function WishlistSidebar({
                             </div>
                             {item.originalPrice && (
                               <div className="text-xs text-muted-foreground line-through">
-                                {formatPrice(item.originalPrice)}
+                                {formatPrice(
+                                  item.originalPrice,
+                                )}
                               </div>
                             )}
-                            <div className={`text-xs ${item.inStock ? 'text-green-600' : 'text-red-600'}`}>
-                              {item.inStock ? 'Còn hàng' : 'Hết hàng'}
+                            <div
+                              className={`text-xs ${item.inStock ? "text-green-600" : "text-red-600"}`}
+                            >
+                              {item.inStock
+                                ? "Còn hàng"
+                                : "Hết hàng"}
                             </div>
                           </div>
 
@@ -171,7 +194,9 @@ export function WishlistSidebar({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => onViewProduct(item.id)}
+                              onClick={() =>
+                                onViewProduct(item.id)
+                              }
                               className="w-8 h-8 p-0"
                             >
                               <Eye className="w-4 h-4" />
@@ -198,19 +223,24 @@ export function WishlistSidebar({
             <div className="bg-muted/30 border-t border-border p-6 space-y-4">
               {/* Quick actions */}
               <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="gap-2"
                   onClick={() => {
-                    items.filter(item => item.inStock).forEach(item => onAddToCart(item));
+                    items
+                      .filter((item) => item.inStock)
+                      .forEach((item) => onAddToCart(item));
                   }}
-                  disabled={items.filter(item => item.inStock).length === 0}
+                  disabled={
+                    items.filter((item) => item.inStock)
+                      .length === 0
+                  }
                 >
                   <ShoppingCart className="w-4 h-4" />
                   Thêm tất cả
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="gap-2"
                   onClick={shareWishlist}
                 >
@@ -221,7 +251,11 @@ export function WishlistSidebar({
 
               <Separator />
 
-              <Button variant="outline" className="w-full" onClick={onClose}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={onClose}
+              >
                 Tiếp tục mua sắm
               </Button>
             </div>

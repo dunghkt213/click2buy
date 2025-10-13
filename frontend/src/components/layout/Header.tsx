@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { Button } from '../ui/button.tsx';
-import { Input } from '../ui/input.tsx';
-import { Badge } from '../ui/badge.tsx';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Badge } from '../ui/badge';
 import { 
   Search, 
   ShoppingCart, 
-  User, 
   Heart, 
   Menu,
   Bell
 } from 'lucide-react';
-import { AccountDropdown } from '../AccountDropdown.tsx';
+import { AccountDropdown } from '../shared/AccountDropdown';
+import { User } from '../../types';
 
 interface HeaderProps {
   cartItemsCount: number;
@@ -23,15 +23,9 @@ interface HeaderProps {
   onPromotionClick: () => void;
   onSupportClick: () => void;
   isLoggedIn: boolean;
-  user?: {
-    id: string;
-    name: string;
-    email: string;
-    avatar?: string;
-    membershipLevel: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
-    points: number;
-  };
+  user?: User;
   onLogin: () => void;
+  onRegister: () => void;
   onLogout: () => void;
   onProfileClick: () => void;
   onOrdersClick: () => void;
@@ -50,6 +44,7 @@ export function Header({
   isLoggedIn,
   user,
   onLogin,
+  onRegister,
   onLogout,
   onProfileClick,
   onOrdersClick
@@ -151,6 +146,7 @@ export function Header({
               user={user}
               isLoggedIn={isLoggedIn}
               onLogin={onLogin}
+              onRegister={onRegister}
               onLogout={onLogout}
               onProfileClick={onProfileClick}
               onOrdersClick={onOrdersClick}

@@ -1,20 +1,18 @@
-import React from 'react';
+import {
+  CreditCard,
+  Facebook,
+  Instagram,
+  Mail,
+  MapPin,
+  Phone,
+  RotateCcw,
+  Shield,
+  Truck,
+  Twitter,
+  Youtube
+} from 'lucide-react';
 import { Button } from '../ui/button.tsx';
 import { Input } from '../ui/input.tsx';
-import { Separator } from '../ui/separator.tsx';
-import { 
-  Facebook, 
-  Instagram, 
-  Twitter, 
-  Youtube,
-  Mail,
-  Phone,
-  MapPin,
-  CreditCard,
-  Truck,
-  Shield,
-  RotateCcw
-} from 'lucide-react';
 
 export function Footer() {
   const footerSections = [
@@ -113,7 +111,7 @@ export function Footer() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-4 h-4 bg-primary-foreground rounded-sm"></div>
               </div>
-              <span className="text-xl font-semibold">ShopMart</span>
+              <span className="text-xl font-semibold">Click2buy</span>
             </div>
             
             <p className="text-muted-foreground text-sm leading-relaxed">
@@ -133,7 +131,7 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Mail className="w-4 h-4 text-muted-foreground" />
-                <span>support@shopmart.vn</span>
+                <span>support@click2buy.vn</span>
               </div>
             </div>
 
@@ -201,7 +199,7 @@ export function Footer() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-4">
-              <span>© 2024 ShopMart. Tất cả quyền được bảo lưu.</span>
+              <span>© 2024 Click2buy. Tất cả quyền được bảo lưu.</span>
             </div>
             
             <div className="flex items-center gap-4">

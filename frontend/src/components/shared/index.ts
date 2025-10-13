@@ -1,3 +1,4 @@
 // Re-export shared components
-export { Categories } from '../Categories';
-export { AccountDropdown } from '../AccountDropdown';
+export { AccountDropdown } from '../shared/AccountDropdown';
+export { Categories } from '../shared/Categories';
+

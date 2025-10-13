@@ -6,10 +6,10 @@ import {
   DropdownMenuLabel, 
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
-} from './ui/dropdown-menu';
-import { Button } from './ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Badge } from './ui/badge';
+} from '../ui/dropdown-menu';
+import { Button } from '../ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Badge } from '../ui/badge';
 import { 
   User as UserIcon, 
   Settings, 
@@ -25,12 +25,13 @@ import {
   Shield,
   Users
 } from 'lucide-react';
-import { User } from '../types';
+import { User } from 'types';
 
 interface AccountDropdownProps {
   user?: User;
   isLoggedIn: boolean;
   onLogin: () => void;
+  onRegister: () => void;
   onLogout: () => void;
   onProfileClick: () => void;
   onOrdersClick: () => void;
@@ -43,6 +44,7 @@ export function AccountDropdown({
   user,
   isLoggedIn,
   onLogin,
+  onRegister,
   onLogout,
   onProfileClick,
   onOrdersClick,
@@ -80,7 +82,7 @@ export function AccountDropdown({
             <UserIcon className="w-4 h-4 mr-2" />
             Đăng nhập
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onLogin}>
+          <DropdownMenuItem onClick={onRegister}>
             <Users className="w-4 h-4 mr-2" />
             Đăng ký
           </DropdownMenuItem>

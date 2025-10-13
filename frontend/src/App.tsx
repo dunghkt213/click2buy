@@ -1,27 +1,40 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+// Layout Components
+import { Footer } from './components/layout/Footer';
 import { Header } from './components/layout/Header';
 import { Hero } from './components/layout/Hero';
-import { Footer } from './components/layout/Footer';
-import { Categories } from './components/Categories';
-import { ProductGrid } from './components/ProductGrid';
-import { CartSidebar } from './components/CartSidebar';
-import { FilterSidebar } from './components/FilterSidebar';
-import { NotificationSidebar } from './components/NotificationSidebar';
-import { WishlistSidebar } from './components/WishlistSidebar';
-import { PromotionSidebar } from './components/PromotionSidebar';
-import { SupportSidebar } from './components/SupportSidebar';
-import { CheckoutModal } from './components/CheckoutModal';
-import { useCart, useWishlist, useNotifications } from './hooks';
-import { FilterState, Promotion, FAQItem, SupportTicket, User } from './types';
-import { 
-  initialCartItems, 
-  initialNotifications, 
-  initialPromotions, 
-  initialFAQs, 
-  initialSupportTickets,
-  initialUser 
+
+// Shared Components  
+import {Categories} from './components/shared';
+import { CheckoutModal } from './components/modal';
+import {ProductGrid} from './components/product';
+
+// Sidebar Components
+import {
+  CartSidebar,
+  FilterSidebar,
+  NotificationSidebar,
+  PromotionSidebar,
+  SupportSidebar,
+  WishlistSidebar
+} from './components/sidebars';
+
+// Auth Components
+import { AuthModal } from './components/auth';
+
+// Hooks
+import { useCart, useNotifications, useWishlist } from './hooks';
+
+// Types & Data
+import {
+  initialCartItems,
+  initialFAQs,
+  initialNotifications,
+  initialPromotions,
+  initialSupportTickets
 } from './data/mockData';
 import { generateTicketId } from './lib/utils';
+import { FAQItem, FilterState, Promotion, SupportTicket, User } from './types';
 
 export default function App() {
   // Sidebar states
@@ -32,6 +45,8 @@ export default function App() {
   const [isPromotionOpen, setIsPromotionOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
 
   // Custom hooks
   const {
@@ -67,8 +82,8 @@ export default function App() {
   const [promotions, setPromotions] = useState<Promotion[]>(initialPromotions);
   const [faqs] = useState<FAQItem[]>(initialFAQs);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(initialSupportTickets);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [user, setUser] = useState<User | undefined>(initialUser);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | undefined>(undefined);
   const [filters, setFilters] = useState<FilterState>({
     category: 'all',
     priceRange: [0, 10000000],
@@ -79,7 +94,23 @@ export default function App() {
 
   // Account functions
   const handleLogin = () => {
+    setAuthTab('login');
+    setIsAuthOpen(true);
+  };
+
+  const handleRegister = () => {
+    setAuthTab('register');
+    setIsAuthOpen(true);
+  };
+
+  const handleLoginSuccess = (userData: User) => {
     setIsLoggedIn(true);
+    setUser(userData);
+  };
+
+  const handleRegisterSuccess = (userData: User) => {
+    setIsLoggedIn(true);
+    setUser(userData);
   };
 
   const handleLogout = () => {
@@ -146,6 +177,7 @@ export default function App() {
         isLoggedIn={isLoggedIn}
         user={user}
         onLogin={handleLogin}
+        onRegister={handleRegister}
         onLogout={handleLogout}
         onProfileClick={handleProfileClick}
         onOrdersClick={handleOrdersClick}
@@ -235,6 +267,14 @@ export default function App() {
         items={getSelectedItems()}
         totalPrice={getSelectedTotalPrice()}
         onCheckout={handleCheckout}
+      />
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        defaultTab={authTab}
+        onLoginSuccess={handleLoginSuccess}
+        onRegisterSuccess={handleRegisterSuccess}
       />
     </div>
   );

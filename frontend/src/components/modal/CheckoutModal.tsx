@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { ScrollArea } from './ui/scroll-area';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Label } from './ui/label';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Separator } from '../ui/separator';
+import { ScrollArea } from '../ui/scroll-area';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import { Label } from '../ui/label';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { 
   MapPin, 
   Edit, 
@@ -25,8 +25,8 @@ import {
   Tag,
   Plus
 } from 'lucide-react';
-import { CartItem, Address, PaymentMethod, ShippingMethod } from '../types';
-import { formatPrice } from '../lib/utils';
+import { CartItem, Address, PaymentMethod, ShippingMethod } from '../../types';
+import { formatPrice } from '../../lib/utils';
 
 interface CheckoutModalProps {
   isOpen: boolean;

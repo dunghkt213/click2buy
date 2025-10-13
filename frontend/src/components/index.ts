@@ -11,13 +11,13 @@ export * from './product';
 export * from './sidebars';
 
 // Individual exports (if needed directly)
-export { CartSidebar } from './CartSidebar';
-export { FilterSidebar } from './FilterSidebar';
-export { NotificationSidebar } from './NotificationSidebar';
-export { WishlistSidebar } from './WishlistSidebar';
-export { PromotionSidebar } from './PromotionSidebar';
-export { SupportSidebar } from './SupportSidebar';
-export { ProductCard } from './ProductCard';
-export { ProductGrid } from './ProductGrid';
-export { Categories } from './Categories';
-export { AccountDropdown } from './AccountDropdown';
+export { CartSidebar } from './sidebars/CartSidebar';
+export { FilterSidebar } from './sidebars/FilterSidebar';
+export { NotificationSidebar } from './sidebars/NotificationSidebar';
+export { WishlistSidebar } from './sidebars/WishlistSidebar';
+export { PromotionSidebar } from './sidebars/PromotionSidebar';
+export { SupportSidebar } from './sidebars/SupportSidebar';
+export { ProductCard } from './product/ProductCard';
+export { ProductGrid } from './product/ProductGrid';
+export { Categories } from './shared/Categories';
+export { AccountDropdown } from './shared/AccountDropdown';

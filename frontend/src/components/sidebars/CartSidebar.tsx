@@ -1,23 +1,20 @@
-import React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { ScrollArea } from './ui/scroll-area';
-import { Checkbox } from './ui/checkbox';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { 
-  ShoppingBag, 
-  Minus, 
-  Plus, 
-  Trash2, 
-  Shield,
-  Star,
+import {
   ArrowRight,
-  Truck
+  Minus,
+  Plus,
+  ShoppingBag,
+  Star,
+  Trash2
 } from 'lucide-react';
-import { CartItem } from '../types';
-import { formatPrice } from '../lib/utils';
+import { CartItem } from 'types';
+import { formatPrice } from '../../lib/utils';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { ScrollArea } from '../ui/scroll-area';
+import { Separator } from '../ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
 
 interface CartSidebarProps {
   isOpen: boolean;

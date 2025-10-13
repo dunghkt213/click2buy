@@ -1,25 +1,23 @@
-import React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { ScrollArea } from './ui/scroll-area';
-import { Progress } from './ui/progress';
-import { 
-  Tag,
-  Gift,
-  Clock,
-  Star,
-  Zap,
+import {
   Calendar,
-  Percent,
-  Trophy,
-  ShoppingCart,
+  Clock,
   Flame,
-  Timer
+  Gift,
+  Percent,
+  ShoppingCart,
+  Star,
+  Tag,
+  Timer,
+  Trophy,
+  Zap
 } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Promotion } from '../types';
+import { Promotion } from 'types';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Progress } from '../ui/progress';
+import { ScrollArea } from '../ui/scroll-area';
+import { Separator } from '../ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
 
 interface PromotionSidebarProps {
   isOpen: boolean;

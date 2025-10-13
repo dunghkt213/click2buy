@@ -1,26 +1,25 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Checkbox } from './ui/checkbox';
-import { Slider } from './ui/slider';
-import { Label } from './ui/label';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
-import { FilterState } from '../types';
-import { 
-  X, 
-  Star, 
-  Check,
-  Shirt,
-  Zap,
-  Home,
-  BookOpen,
-  Dumbbell,
-  Sparkles,
+import {
   Baby,
-  Car
+  BookOpen,
+  Car,
+  Check,
+  Dumbbell,
+  Home,
+  Shirt,
+  Sparkles,
+  Star,
+  X,
+  Zap
 } from 'lucide-react';
+import { FilterState } from 'types';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
+import { Separator } from '../ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
+import { Slider } from '../ui/slider';
 
 interface FilterSidebarProps {
   isOpen: boolean;
