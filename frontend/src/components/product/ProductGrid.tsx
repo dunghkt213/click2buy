@@ -1,19 +1,22 @@
+
+
+import { Filter, Grid, List } from 'lucide-react';
 import React from 'react';
-import { ProductCard } from './ProductCard'
-import { Product, FilterState } from '../../types';
+import { FilterState, Product } from 'types';
 import { Button } from '../ui/button';
-import { Grid, List, Filter } from 'lucide-react';
+import { ProductCard } from './ProductCard';
 
 interface ProductGridProps {
   filters: FilterState;
   onAddToCart: (product: Product) => void;
+  searchQuery?: string; // THÊM: Query tìm kiếm từ Header
 }
 
-export function ProductGrid({ filters, onAddToCart }: ProductGridProps) {
+export function ProductGrid({ filters, onAddToCart, searchQuery = '' }: ProductGridProps) {
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
 
   // Mock product data
-  const allProducts: Product[] = [
+    const allProducts: Product[] = [
     {
       id: '1',
       name: 'Áo Sơ Mi Công Sở Nam',
@@ -456,8 +459,17 @@ export function ProductGrid({ filters, onAddToCart }: ProductGridProps) {
   }
   ];
 
-  // Filter products based on filters
+  // Filter products based on filters and search query
   const filteredProducts = allProducts.filter(product => {
+    // SỬA: Thêm filter theo searchQuery - tìm trong tên và mô tả sản phẩm
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchName = product.name.toLowerCase().includes(query);
+      const matchDescription = product.description.toLowerCase().includes(query);
+      const matchBrand = product.brand.toLowerCase().includes(query);
+      if (!matchName && !matchDescription && !matchBrand) return false;
+    }
+    
     if (filters.category !== 'all' && product.category !== filters.category) return false;
     if (product.price < filters.priceRange[0] || product.price > filters.priceRange[1]) return false;
     if (filters.brands.length > 0 && !filters.brands.includes(product.brand)) return false;

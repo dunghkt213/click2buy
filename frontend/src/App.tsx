@@ -1,42 +1,55 @@
-import { useState } from 'react';
+import React, { useState, useRef } from 'react';
 // Layout Components
-import { Footer } from './components/layout/Footer';
 import { Header } from './components/layout/Header';
 import { Hero } from './components/layout/Hero';
+import { Footer } from './components/layout/Footer';
 
 // Shared Components  
-import {Categories} from './components/shared';
-import { CheckoutModal } from './components/modal';
-import {ProductGrid} from './components/product';
+import { 
+  Categories
+} from './components/shared';
+import { 
+  CheckoutModal 
+} from './components/modal';
+import { 
+  ProductGrid
+} from './components/product';
 
 // Sidebar Components
 import {
   CartSidebar,
   FilterSidebar,
   NotificationSidebar,
+  WishlistSidebar,
   PromotionSidebar,
-  SupportSidebar,
-  WishlistSidebar
+  SupportSidebar
 } from './components/sidebars';
 
 // Auth Components
 import { AuthModal } from './components/auth';
 
+// Search Components
+import { SearchModal } from './components/modal/SearchModal';
+
 // Hooks
-import { useCart, useNotifications, useWishlist } from './hooks';
+import { useCart, useWishlist, useNotifications } from './hooks';
 
 // Types & Data
-import {
-  initialCartItems,
-  initialFAQs,
-  initialNotifications,
-  initialPromotions,
-  initialSupportTickets
+import { FilterState, Promotion, FAQItem, SupportTicket, User } from './types';
+import { 
+  initialCartItems, 
+  initialNotifications, 
+  initialPromotions, 
+  initialFAQs, 
+  initialSupportTickets,
+  initialUser 
 } from './data/mockData';
 import { generateTicketId } from './lib/utils';
-import { FAQItem, FilterState, Promotion, SupportTicket, User } from './types';
 
 export default function App() {
+  // THÊM: Ref để scroll đến phần sản phẩm
+  const productSectionRef = useRef<HTMLDivElement>(null);
+
   // Sidebar states
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -47,6 +60,10 @@ export default function App() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  
+  // THÊM: State cho tìm kiếm
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Custom hooks
   const {
@@ -130,6 +147,20 @@ export default function App() {
     console.log('View product:', productId);
   };
 
+  // THÊM: Hàm scroll xuống phần sản phẩm khi click category
+  const scrollToProducts = () => {
+    if (productSectionRef.current) {
+      const headerOffset = 80; // Chiều cao của header (16 * 4 = 64px + padding)
+      const elementPosition = productSectionRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   // Promotion functions
   const handleClaimPromotion = (id: string) => {
     console.log('Claim promotion:', id);
@@ -181,13 +212,20 @@ export default function App() {
         onLogout={handleLogout}
         onProfileClick={handleProfileClick}
         onOrdersClick={handleOrdersClick}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSearchClick={() => setIsSearchOpen(true)}
       />
       
       <main className="pt-16">
         <Hero />
-        <Categories onCategorySelect={(category) => setFilters(prev => ({ ...prev, category }))} />
+        <Categories 
+          onCategorySelect={(category) => setFilters(prev => ({ ...prev, category }))} 
+          onCategoryClick={scrollToProducts}
+        />
         
-        <div className="container mx-auto px-4 py-8">
+        {/* SỬA: Thêm ref để scroll đến phần này */}
+        <div ref={productSectionRef} className="container mx-auto px-4 py-8">
           <div className="flex gap-8">
             <FilterSidebar 
               isOpen={isFilterOpen}
@@ -275,6 +313,13 @@ export default function App() {
         defaultTab={authTab}
         onLoginSuccess={handleLoginSuccess}
         onRegisterSuccess={handleRegisterSuccess}
+      />
+
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onAddToCart={addToCart}
+        initialSearchQuery={searchQuery}
       />
     </div>
   );

@@ -29,6 +29,9 @@ interface HeaderProps {
   onLogout: () => void;
   onProfileClick: () => void;
   onOrdersClick: () => void;
+  searchQuery?: string; // THÊM: Query tìm kiếm
+  onSearchChange?: (query: string) => void; // THÊM: Callback khi search thay đổi
+  onSearchClick?: () => void; // THÊM: Callback khi click vào search input để mở modal
 }
 
 export function Header({ 
@@ -47,9 +50,29 @@ export function Header({
   onRegister,
   onLogout,
   onProfileClick,
-  onOrdersClick
+  onOrdersClick,
+  searchQuery: externalSearchQuery = '', // THÊM: Nhận search query từ parent
+  onSearchChange, // THÊM: Nhận callback từ parent
+  onSearchClick // THÊM: Callback để mở search modal
 }: HeaderProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+  // Handler khi search thay đổi - cho phép nhập text
+  const handleSearchChange = (value: string) => {
+    onSearchChange?.(value);
+  };
+
+  // Handler khi submit search (Enter hoặc click icon)
+  const handleSearchSubmit = () => {
+    if (externalSearchQuery.trim()) {
+      onSearchClick?.();
+    }
+  };
+
+  // Handler khi nhấn Enter
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearchSubmit();
+    }
+  };
 
   return (
     <header className="fixed top-0 w-full bg-card/95 backdrop-blur-md border-b border-border z-50">
@@ -72,14 +95,18 @@ export function Header({
             </nav>
           </div>
 
-          {/* Search */}
+          {/* Search - Cho phép nhập, Enter hoặc click icon để search */}
           <div className="flex-1 max-w-xl mx-8 hidden md:block">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search 
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+                onClick={handleSearchSubmit}
+              />
               <Input
                 placeholder="Tìm kiếm sản phẩm..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={externalSearchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="pl-10 pr-4 bg-input-background border-0 rounded-full"
               />
             </div>
@@ -167,14 +194,18 @@ export function Header({
           </div>
         </div>
 
-        {/* Mobile search */}
+        {/* Mobile search - Cho phép nhập, Enter hoặc click icon để search */}
         <div className="md:hidden pb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search 
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+              onClick={handleSearchSubmit}
+            />
             <Input
               placeholder="Tìm kiếm sản phẩm..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={externalSearchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={handleKeyDown}
               className="pl-10 pr-4 bg-input-background border-0 rounded-full"
             />
           </div>
