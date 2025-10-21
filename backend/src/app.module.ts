@@ -8,6 +8,7 @@ import { ProductModule } from './product/product.model';
 import { AuthModule } from './auth/auth.module';
 import { ReviewModule } from './review/review.module';
 import { CartModule } from './cart/cart.module';
+import { OrderModule } from './order/order.module';
 @Module({
   imports: [
     // Load biến môi trường từ file .env
@@ -35,7 +36,7 @@ import { CartModule } from './cart/cart.module';
       }),
     }),
 
-    UserModule , ProductModule , AuthModule, ReviewModule, CartModule
+    UserModule , ProductModule , AuthModule, ReviewModule, CartModule, OrderModule
   ],
   controllers: [AppController],
   providers: [AppService],
