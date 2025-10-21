@@ -58,7 +58,7 @@ export function Categories({ onCategorySelect, onCategoryClick }: CategoriesProp
             </Card>
           ))}
         </div>
-        {/* ĐÃ XÓA: 3 banner "Thời trang Hot Trend", "Nhà cửa & Đời sống", "Làm đẹp & Sức khỏe" */}
+        {}
       </div>
     </section>
   );

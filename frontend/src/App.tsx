@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 // Layout Components
 import { Header } from './components/layout/Header';
 import { Hero } from './components/layout/Hero';

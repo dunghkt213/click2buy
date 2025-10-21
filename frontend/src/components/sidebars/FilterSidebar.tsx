@@ -38,7 +38,7 @@ export function FilterSidebar({ isOpen, onClose, filters, onFiltersChange }: Fil
     { id: 'sports', name: 'Thể thao', icon: Dumbbell },
     { id: 'beauty', name: 'Làm đẹp', icon: Sparkles },
     { id: 'baby', name: 'Mẹ & Bé', icon: Baby },
-    { id: 'automotive', name: 'Ô tô', icon: Car },
+    { id: 'toys', name: 'Đồ chơi', icon: Car },
   ];
 
   const brands = ['Apple', 'Samsung', 'IKEA', 'Adidas', 'Nike', 'L\'Oreal', 'Aristino', 'ASUS', 'Dell', 'Giant'];
