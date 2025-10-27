@@ -31,6 +31,9 @@ import { AuthModal } from './components/auth';
 // Search Components
 import { SearchModal } from './components/modal/SearchModal';
 
+// THÊM: Product Detail Modal
+import { ProductDetailModal } from './components/product/ProductDetailModal';
+
 // Hooks
 import { useCart, useWishlist, useNotifications } from './hooks';
 
@@ -64,6 +67,10 @@ export default function App() {
   // THÊM: State cho tìm kiếm
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // THÊM: State cho product detail modal
+  const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   // Custom hooks
   const {
@@ -103,7 +110,7 @@ export default function App() {
   const [user, setUser] = useState<User | undefined>(undefined);
   const [filters, setFilters] = useState<FilterState>({
     category: 'all',
-    priceRange: [0, 10000000],
+    priceRange: [0, 50000000],
     brands: [],
     rating: 0,
     inStock: true,
@@ -193,58 +200,98 @@ export default function App() {
     selectedItemIds.forEach(id => removeFromCart(id));
   };
 
+  // THÊM: Hàm xử lý xem chi tiết sản phẩm
+  const handleViewProductDetail = (product: any) => {
+    setSelectedProduct(product);
+    setIsProductDetailOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        cartItemsCount={getTotalItems()}
-        wishlistItemsCount={wishlistItems.length}
-        unreadNotifications={getUnreadCount()}
-        onCartClick={() => setIsCartOpen(true)}
-        onWishlistClick={() => setIsWishlistOpen(true)}
-        onNotificationsClick={() => setIsNotificationOpen(true)}
-        onFilterClick={() => setIsFilterOpen(true)}
-        onPromotionClick={() => setIsPromotionOpen(true)}
-        onSupportClick={() => setIsSupportOpen(true)}
-        isLoggedIn={isLoggedIn}
-        user={user}
-        onLogin={handleLogin}
-        onRegister={handleRegister}
-        onLogout={handleLogout}
-        onProfileClick={handleProfileClick}
-        onOrdersClick={handleOrdersClick}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSearchClick={() => setIsSearchOpen(true)}
-      />
-      
-      <main className="pt-16">
-        <Hero />
-        <Categories 
-          onCategorySelect={(category) => setFilters(prev => ({ ...prev, category }))} 
-          onCategoryClick={scrollToProducts}
-        />
-        
-        {/* SỬA: Thêm ref để scroll đến phần này */}
-        <div ref={productSectionRef} className="container mx-auto px-4 py-8">
-          <div className="flex gap-8">
-            <FilterSidebar 
-              isOpen={isFilterOpen}
-              onClose={() => setIsFilterOpen(false)}
-              filters={filters}
-              onFiltersChange={setFilters}
+      {!isSearchOpen ? (
+        <>
+          <Header 
+            cartItemsCount={getTotalItems()}
+            wishlistItemsCount={wishlistItems.length}
+            unreadNotifications={getUnreadCount()}
+            onCartClick={() => setIsCartOpen(true)}
+            onWishlistClick={() => setIsWishlistOpen(true)}
+            onNotificationsClick={() => setIsNotificationOpen(true)}
+            onFilterClick={() => setIsFilterOpen(true)}
+            onPromotionClick={() => setIsPromotionOpen(true)}
+            onSupportClick={() => setIsSupportOpen(true)}
+            isLoggedIn={isLoggedIn}
+            user={user}
+            onLogin={handleLogin}
+            onRegister={handleRegister}
+            onLogout={handleLogout}
+            onProfileClick={handleProfileClick}
+            onOrdersClick={handleOrdersClick}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onSearchClick={() => {
+              if (searchQuery.trim()) {
+                setIsSearchOpen(true);
+              }
+            }}
+          />
+          
+          <main className="pt-16">
+            <Hero />
+            <Categories 
+              onCategorySelect={(category) => setFilters(prev => ({ ...prev, category }))} 
+              onCategoryClick={scrollToProducts}
             />
             
-            <div className="flex-1">
-              <ProductGrid 
-                filters={filters}
-                onAddToCart={addToCart}
-              />
+            {/* SỬA: Thêm ref để scroll đến phần này */}
+            <div ref={productSectionRef} className="container mx-auto px-4 py-8">
+              <div className="flex gap-8">
+                <FilterSidebar 
+                  isOpen={isFilterOpen}
+                  onClose={() => setIsFilterOpen(false)}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                />
+                
+                <div className="flex-1">
+                  <ProductGrid 
+                    filters={filters}
+                    onAddToCart={addToCart}
+                    onViewDetail={handleViewProductDetail}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </main>
+          </main>
 
-      <Footer />
+          <Footer />
+        </>
+      ) : (
+        <SearchModal
+          isOpen={isSearchOpen}
+          onClose={() => {
+            setIsSearchOpen(false);
+            setSearchQuery(''); // Clear search query khi đóng
+          }}
+          onAddToCart={addToCart}
+          initialSearchQuery={searchQuery}
+          cartItemsCount={getTotalItems()}
+          wishlistItemsCount={wishlistItems.length}
+          unreadNotifications={getUnreadCount()}
+          onCartClick={() => setIsCartOpen(true)}
+          onWishlistClick={() => setIsWishlistOpen(true)}
+          onNotificationsClick={() => setIsNotificationOpen(true)}
+          onPromotionClick={() => setIsPromotionOpen(true)}
+          onSupportClick={() => setIsSupportOpen(true)}
+          isLoggedIn={isLoggedIn}
+          user={user}
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+          onLogout={handleLogout}
+          onProfileClick={handleProfileClick}
+          onOrdersClick={handleOrdersClick}
+        />
+      )}
 
       <CartSidebar
         isOpen={isCartOpen}
@@ -315,11 +362,12 @@ export default function App() {
         onRegisterSuccess={handleRegisterSuccess}
       />
 
-      <SearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
+      <ProductDetailModal
+        isOpen={isProductDetailOpen}
+        onClose={() => setIsProductDetailOpen(false)}
+        product={selectedProduct}
         onAddToCart={addToCart}
-        initialSearchQuery={searchQuery}
+        onAddToWishlist={addToWishlist}
       />
     </div>
   );

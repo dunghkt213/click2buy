@@ -1,26 +1,27 @@
-import {
+import React, { useState } from 'react';
+import { Card, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { 
+  Star, 
+  Heart, 
+  ShoppingCart, 
   Eye,
-  Heart,
   Share2,
-  ShoppingCart,
-  Star,
   Zap
 } from 'lucide-react';
-import { useState } from 'react';
 import { Product } from 'types';
-import { calculateDiscount, formatPrice } from "../../lib/utils";
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Card, CardContent } from '../ui/card';
+import { formatPrice, calculateDiscount } from '../../lib/utils';
 
 interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
   viewMode?: 'grid' | 'list';
+  onViewDetail?: (product: Product) => void; // THÊM: Callback khi click xem chi tiết
 }
 
-export function ProductCard({ product, onAddToCart, viewMode = 'grid' }: ProductCardProps) {
+export function ProductCard({ product, onAddToCart, viewMode = 'grid', onViewDetail }: ProductCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -116,7 +117,7 @@ export function ProductCard({ product, onAddToCart, viewMode = 'grid' }: Product
                   <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current text-red-500' : ''}`} />
                 </Button>
                 
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" onClick={() => onViewDetail && onViewDetail(product)}>
                   <Eye className="w-4 h-4" />
                 </Button>
               </div>
@@ -174,6 +175,7 @@ export function ProductCard({ product, onAddToCart, viewMode = 'grid' }: Product
               variant="secondary"
               size="sm"
               className="w-10 h-10 p-0 bg-white/90 backdrop-blur-sm hover:bg-white"
+              onClick={() => onViewDetail && onViewDetail(product)}
             >
               <Eye className="w-4 h-4" />
             </Button>
@@ -201,7 +203,7 @@ export function ProductCard({ product, onAddToCart, viewMode = 'grid' }: Product
             isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
           }`}>
             <Button
-              className="w-full gap-2 bg-black/90 backdrop-blur-sm text-foreground hover:bg-black"
+              className="w-full gap-2 bg-white/90 backdrop-blur-sm text-foreground hover:bg-white"
               onClick={() => onAddToCart(product)}
               disabled={!product.inStock}
             >

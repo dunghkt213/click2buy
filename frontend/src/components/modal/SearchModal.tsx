@@ -4,34 +4,71 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { ProductCard } from '../product/ProductCard';
-import { Product } from 'types';
+import { Product, FilterState } from 'types';
+import { Header } from '../layout/Header';
+import { Footer } from '../layout/Footer';
+import { FilterSidebar } from '../sidebars/FilterSidebar';
 
 interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddToCart: (product: Product) => void;
   initialSearchQuery?: string; // Query tìm kiếm từ Header
+  // Header props
+  cartItemsCount: number;
+  wishlistItemsCount: number;
+  unreadNotifications: number;
+  onCartClick: () => void;
+  onWishlistClick: () => void;
+  onNotificationsClick: () => void;
+  onPromotionClick: () => void;
+  onSupportClick: () => void;
+  isLoggedIn: boolean;
+  user?: any;
+  onLogin: () => void;
+  onRegister: () => void;
+  onLogout: () => void;
+  onProfileClick: () => void;
+  onOrdersClick: () => void;
 }
 
-const categories = [
-  { id: 'all', name: 'Tất cả', icon: '🔍' },
-  { id: 'fashion', name: 'Thời trang', icon: '👕' },
-  { id: 'electronics', name: 'Điện tử', icon: '📱' },
-  { id: 'home', name: 'Nhà cửa', icon: '🏠' },
-  { id: 'books', name: 'Sách', icon: '📚' },
-  { id: 'sports', name: 'Thể thao', icon: '⚽' },
-  { id: 'beauty', name: 'Làm đẹp', icon: '💄' },
-  { id: 'baby', name: 'Mẹ & Bé', icon: '👶' },
-];
-
-export function SearchModal({ isOpen, onClose, onAddToCart, initialSearchQuery = '' }: SearchModalProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+export function SearchModal({ 
+  isOpen, 
+  onClose, 
+  onAddToCart, 
+  initialSearchQuery = '',
+  cartItemsCount,
+  wishlistItemsCount,
+  unreadNotifications,
+  onCartClick,
+  onWishlistClick,
+  onNotificationsClick,
+  onPromotionClick,
+  onSupportClick,
+  isLoggedIn,
+  user,
+  onLogin,
+  onRegister,
+  onLogout,
+  onProfileClick,
+  onOrdersClick,
+}: SearchModalProps) {
+  const [inputValue, setInputValue] = useState(''); // Giá trị tạm trong input
+  const [searchQuery, setSearchQuery] = useState(''); // Giá trị thực tế để filter
+  const [filters, setFilters] = useState<FilterState>({
+    category: 'all',
+    priceRange: [0, 50000000],
+    brands: [],
+    rating: 0,
+    inStock: true,
+  });
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Cập nhật search query khi modal mở với query từ Header
+  // Cập nhật cả input value và search query khi modal mở với query từ Header
   useEffect(() => {
     if (isOpen && initialSearchQuery) {
+      setInputValue(initialSearchQuery);
       setSearchQuery(initialSearchQuery);
     }
   }, [isOpen, initialSearchQuery]);
@@ -84,7 +121,7 @@ export function SearchModal({ isOpen, onClose, onAddToCart, initialSearchQuery =
     },
     {
       id: '4',
-      name: 'Sách Dạy Nấu Ăn Cơ Bản',
+      name: 'Sách Dạy Nấu n Cơ Bản',
       price: 149000,
       originalPrice: 199000,
       image: 'https://images.unsplash.com/photo-1595315343110-9b445a960442?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxib29rcyUyMGVkdWNhdGlvbiUyMHN0dWR5fGVufDF8fHx8MTc1ODA0ODQ4OXww&ixlib=rb-4.1.0&q=80&w=1080',
@@ -151,95 +188,108 @@ export function SearchModal({ isOpen, onClose, onAddToCart, initialSearchQuery =
     },
   ];
 
-  // Filter products - luôn filter theo search query
+  // Filter products based on search query and filters
   const filteredProducts = allProducts.filter(product => {
-    // Bắt buộc phải có search query
-    if (!searchQuery.trim()) return false;
-    
-    const matchesSearch = 
+    // Search query filter
+    const matchesSearch = !searchQuery.trim() || 
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.brand.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    // Category filter
+    const matchesCategory = filters.category === 'all' || product.category === filters.category;
     
-    return matchesSearch && matchesCategory;
+    // Price filter
+    const matchesPrice = product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1];
+    
+    // Brand filter
+    const matchesBrand = filters.brands.length === 0 || filters.brands.includes(product.brand);
+    
+    // Rating filter
+    const matchesRating = filters.rating === 0 || product.rating >= filters.rating;
+    
+    // Stock filter
+    const matchesStock = !filters.inStock || product.inStock;
+    
+    return matchesSearch && matchesCategory && matchesPrice && matchesBrand && matchesRating && matchesStock;
   });
 
   // Handle search input change
   const handleSearchInputChange = (value: string) => {
-    setSearchQuery(value);
+    setInputValue(value);
+  };
+
+  // Handle search input submit
+  const handleSearchInputSubmit = () => {
+    setSearchQuery(inputValue);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="fixed inset-0 z-50 flex flex-col bg-background">
-        {/* Header */}
-        <div className="border-b border-border bg-card/50 backdrop-blur-md">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
-              {/* Search Input */}
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  ref={inputRef}
-                  placeholder="Tìm kiếm sản phẩm, thương hiệu..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchInputChange(e.target.value)}
-                  className="pl-12 pr-4 h-12 text-base bg-muted/50 border-0 rounded-full focus-visible:ring-2 focus-visible:ring-primary"
-                />
+    <div className="min-h-screen bg-background">
+      <Header 
+        cartItemsCount={cartItemsCount}
+        wishlistItemsCount={wishlistItemsCount}
+        unreadNotifications={unreadNotifications}
+        onCartClick={onCartClick}
+        onWishlistClick={onWishlistClick}
+        onNotificationsClick={onNotificationsClick}
+        onFilterClick={() => setIsFilterOpen(true)}
+        onPromotionClick={onPromotionClick}
+        onSupportClick={onSupportClick}
+        isLoggedIn={isLoggedIn}
+        user={user}
+        onLogin={onLogin}
+        onRegister={onRegister}
+        onLogout={onLogout}
+        onProfileClick={onProfileClick}
+        onOrdersClick={onOrdersClick}
+        searchQuery={inputValue}
+        onSearchChange={handleSearchInputChange}
+        onSearchClick={handleSearchInputSubmit}
+      />
+      
+      <main className="pt-16">
+        {/* Search Header Section */}
+        <div className="border-b border-border bg-card/50 backdrop-blur-md py-6">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-2xl">
+                  {searchQuery.trim() ? `Kết quả tìm kiếm "${searchQuery}"` : 'Tìm kiếm sản phẩm'}
+                </h1>
+                <p className="text-muted-foreground text-sm mt-1">
+                  {searchQuery.trim() ? `Tìm thấy ${filteredProducts.length} sản phẩm` : 'Nhập từ khóa vào ô tìm kiếm phía trên'}
+                </p>
               </div>
-
-              {/* Close Button */}
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
                 onClick={onClose}
-                className="shrink-0 rounded-full"
+                className="gap-2"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
+                Đóng tìm kiếm
               </Button>
-            </div>
-
-            {/* Categories Filter */}
-            <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
-              {categories.map((category) => (
-                <Button
-                  key={category.id}
-                  variant={selectedCategory === category.id ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category.id)}
-                  className="shrink-0 rounded-full"
-                >
-                  <span className="mr-1">{category.icon}</span>
-                  {category.name}
-                </Button>
-              ))}
             </div>
           </div>
         </div>
 
-        {/* Content - Chỉ hiển thị kết quả tìm kiếm */}
-        <ScrollArea className="flex-1">
-          <div className="container mx-auto px-4 py-6">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">
-                    Kết quả tìm kiếm "{searchQuery}"
-                  </h2>
-                  <p className="text-muted-foreground text-sm mt-1">
-                    {searchQuery.trim() ? `Tìm thấy ${filteredProducts.length} sản phẩm` : 'Nhập từ khóa để tìm kiếm'}
-                  </p>
-                </div>
-              </div>
-
+        {/* Products with Filter Sidebar */}
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex gap-8">
+            <FilterSidebar 
+              isOpen={isFilterOpen}
+              onClose={() => setIsFilterOpen(false)}
+              filters={filters}
+              onFiltersChange={setFilters}
+            />
+            
+            <div className="flex-1">
               {!searchQuery.trim() ? (
                 <div className="text-center py-16">
                   <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-                  <h3 className="font-medium mb-2">Bắt đầu tìm kiếm</h3>
+                  <h3 className="mb-2">Bắt đầu tìm kiếm</h3>
                   <p className="text-muted-foreground text-sm">
                     Nhập tên sản phẩm, thương hiệu hoặc từ khóa ở ô tìm kiếm phía trên
                   </p>
@@ -247,16 +297,16 @@ export function SearchModal({ isOpen, onClose, onAddToCart, initialSearchQuery =
               ) : filteredProducts.length === 0 ? (
                 <div className="text-center py-16">
                   <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-                  <h3 className="font-medium mb-2">Không tìm thấy sản phẩm</h3>
+                  <h3 className="mb-2">Không tìm thấy sản phẩm</h3>
                   <p className="text-muted-foreground text-sm">
                     Không tìm thấy sản phẩm nào phù hợp với "{searchQuery}"
                   </p>
                   <p className="text-muted-foreground text-sm mt-2">
-                    Thử tìm kiếm với từ khóa khác hoặc chọn danh mục bên trên
+                    Thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {filteredProducts.map((product) => (
                     <ProductCard
                       key={product.id}
@@ -269,8 +319,10 @@ export function SearchModal({ isOpen, onClose, onAddToCart, initialSearchQuery =
               )}
             </div>
           </div>
-        </ScrollArea>
-      </div>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }
