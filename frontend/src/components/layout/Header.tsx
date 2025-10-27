@@ -60,7 +60,7 @@ export function Header({
     onSearchChange?.(value);
   };
 
-  // Handler khi submit search (Enter hoặc click icon)
+  // Handler khi submit search (chỉ khi nhấn Enter)
   const handleSearchSubmit = () => {
     if (externalSearchQuery.trim()) {
       onSearchClick?.();
@@ -85,7 +85,7 @@ export function Header({
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-4 h-4 bg-primary-foreground rounded-sm"></div>
               </div>
-              <span className="text-xl font-semibold">ShopMart</span>
+              <span className="text-xl font-semibold">Click2buy</span>
             </div>
 
             {/* Navigation */}
@@ -95,12 +95,11 @@ export function Header({
             </nav>
           </div>
 
-          {/* Search - Cho phép nhập, Enter hoặc click icon để search */}
+          {/* Search - Chỉ Enter mới trigger tìm kiếm */}
           <div className="flex-1 max-w-xl mx-8 hidden md:block">
             <div className="relative">
               <Search 
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
-                onClick={handleSearchSubmit}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" 
               />
               <Input
                 placeholder="Tìm kiếm sản phẩm..."
@@ -194,12 +193,11 @@ export function Header({
           </div>
         </div>
 
-        {/* Mobile search - Cho phép nhập, Enter hoặc click icon để search */}
+        {/* Mobile search - Chỉ Enter mới trigger tìm kiếm */}
         <div className="md:hidden pb-4">
           <div className="relative">
             <Search 
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
-              onClick={handleSearchSubmit}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" 
             />
             <Input
               placeholder="Tìm kiếm sản phẩm..."

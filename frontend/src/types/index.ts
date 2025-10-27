@@ -13,6 +13,23 @@ export interface Product {
   inStock: boolean;
   isNew?: boolean;
   isSale?: boolean;
+  soldCount?: number; // THÊM: Số lượng đã bán
+  images?: string[]; // THÊM: Nhiều ảnh sản phẩm
+  specifications?: { [key: string]: string }; // THÊM: Thông số kỹ thuật
+}
+
+// THÊM: Review/Comment types
+export interface ProductReview {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  rating: number;
+  comment: string;
+  images?: string[];
+  date: string;
+  helpful: number;
+  isVerifiedPurchase?: boolean;
 }
 
 export interface CartItem extends Product {
@@ -132,4 +149,3 @@ export interface CheckoutData {
   total: number;
   note?: string;
 }
-
