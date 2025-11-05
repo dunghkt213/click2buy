@@ -50,7 +50,7 @@ export class ProductService {
     return { items, total };
   }
 
-  async findById(id: string): Promise<ProductDocument | null> {
+  async findOne(id: string): Promise<ProductDocument | null> {
     return this.productModel.findById(id).exec();
   }
 
