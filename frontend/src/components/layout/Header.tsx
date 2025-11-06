@@ -32,6 +32,8 @@ interface HeaderProps {
   searchQuery?: string; // THÊM: Query tìm kiếm
   onSearchChange?: (query: string) => void; // THÊM: Callback khi search thay đổi
   onSearchClick?: () => void; // THÊM: Callback khi click vào search input để mở modal
+  cartIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho icon cart để flying animation
+  wishlistIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho icon wishlist để flying animation
 }
 
 export function Header({ 
@@ -53,7 +55,9 @@ export function Header({
   onOrdersClick,
   searchQuery: externalSearchQuery = '', // THÊM: Nhận search query từ parent
   onSearchChange, // THÊM: Nhận callback từ parent
-  onSearchClick // THÊM: Callback để mở search modal
+  onSearchClick, // THÊM: Callback để mở search modal
+  cartIconRef, // THÊM: Nhận ref từ parent
+  wishlistIconRef // THÊM: Nhận ref từ parent
 }: HeaderProps) {
   // Handler khi search thay đổi - cho phép nhập text
   const handleSearchChange = (value: string) => {
@@ -85,7 +89,7 @@ export function Header({
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-4 h-4 bg-primary-foreground rounded-sm"></div>
               </div>
-              <span className="text-xl font-semibold">Click2buy</span>
+              <span className="text-xl font-semibold">ShopMart</span>
             </div>
 
             {/* Navigation */}
@@ -137,6 +141,7 @@ export function Header({
               size="sm" 
               className="hidden md:flex relative"
               onClick={onWishlistClick}
+              ref={wishlistIconRef}
             >
               <Heart className="w-4 h-4" />
               {wishlistItemsCount > 0 && (
@@ -155,6 +160,7 @@ export function Header({
               size="sm" 
               className="relative"
               onClick={onCartClick}
+              ref={cartIconRef}
             >
               <ShoppingCart className="w-4 h-4" />
               {cartItemsCount > 0 && (

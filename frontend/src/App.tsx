@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 // Layout Components
 import { Header } from './components/layout/Header';
 import { Hero } from './components/layout/Hero';
@@ -6,14 +6,14 @@ import { Footer } from './components/layout/Footer';
 
 // Shared Components  
 import { 
-  Categories
-} from './components/shared';
-import { 
+  ProductGrid 
+} from './components/product';
+import {  
   CheckoutModal 
 } from './components/modal';
 import { 
-  ProductGrid
-} from './components/product';
+  Categories 
+} from './components/shared';
 
 // Sidebar Components
 import {
@@ -34,6 +34,9 @@ import { SearchModal } from './components/modal/SearchModal';
 // THÊM: Product Detail Modal
 import { ProductDetailModal } from './components/product/ProductDetailModal';
 
+// THÊM: Flying Icon
+import { FlyingIcon, FlyingIconConfig } from './components/animation/FlyingIcon';
+
 // Hooks
 import { useCart, useWishlist, useNotifications } from './hooks';
 
@@ -52,6 +55,13 @@ import { generateTicketId } from './lib/utils';
 export default function App() {
   // THÊM: Ref để scroll đến phần sản phẩm
   const productSectionRef = useRef<HTMLDivElement>(null);
+  
+  // THÊM: Refs cho icon cart và wishlist trên header
+  const cartIconRef = useRef<HTMLButtonElement>(null);
+  const wishlistIconRef = useRef<HTMLButtonElement>(null);
+
+  // THÊM: State cho flying icons animation
+  const [flyingIcons, setFlyingIcons] = useState<FlyingIconConfig[]>([]);
 
   // Sidebar states
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -93,6 +103,11 @@ export default function App() {
     addToWishlist,
     removeFromWishlist
   } = useWishlist();
+
+  // THÊM: Hàm isInWishlist để check sản phẩm có trong wishlist không
+  const isInWishlist = (productId: string) => {
+    return wishlistItems.some(item => item.id === productId);
+  };
 
   const {
     notifications,
@@ -206,6 +221,41 @@ export default function App() {
     setIsProductDetailOpen(true);
   };
 
+  // THÊM: Hàm trigger flying icon animation
+  const handleTriggerFlyingIcon = (type: 'heart' | 'cart', element: HTMLElement) => {
+    const targetRef = type === 'heart' ? wishlistIconRef : cartIconRef;
+    
+    if (!targetRef.current) return;
+    
+    // Lấy vị trí của element được click
+    const startRect = element.getBoundingClientRect();
+    const startX = startRect.left + startRect.width / 2;
+    const startY = startRect.top + startRect.height / 2;
+    
+    // Lấy vị trí của icon đích trên header
+    const endRect = targetRef.current.getBoundingClientRect();
+    const endX = endRect.left + endRect.width / 2;
+    const endY = endRect.top + endRect.height / 2;
+    
+    // Tạo flying icon config
+    const newIcon: FlyingIconConfig = {
+      id: `${type}-${Date.now()}-${Math.random()}`,
+      type,
+      startX,
+      startY,
+      endX,
+      endY,
+    };
+    
+    // Thêm icon vào danh sách
+    setFlyingIcons(prev => [...prev, newIcon]);
+  };
+
+  // THÊM: Callback khi animation hoàn thành
+  const handleAnimationComplete = (id: string) => {
+    setFlyingIcons(prev => prev.filter(icon => icon.id !== id));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {!isSearchOpen ? (
@@ -234,6 +284,8 @@ export default function App() {
                 setIsSearchOpen(true);
               }
             }}
+            cartIconRef={cartIconRef}
+            wishlistIconRef={wishlistIconRef}
           />
           
           <main className="pt-16">
@@ -258,6 +310,9 @@ export default function App() {
                     filters={filters}
                     onAddToCart={addToCart}
                     onViewDetail={handleViewProductDetail}
+                    onAddToWishlist={addToWishlist} // THÊM: Truyền addToWishlist
+                    isInWishlist={isInWishlist} // THÊM: Truyền isInWishlist
+                    onTriggerFlyingIcon={handleTriggerFlyingIcon} // THÊM: Truyền flying icon handler
                   />
                 </div>
               </div>
@@ -290,6 +345,10 @@ export default function App() {
           onLogout={handleLogout}
           onProfileClick={handleProfileClick}
           onOrdersClick={handleOrdersClick}
+          onViewDetail={handleViewProductDetail} // THÊM: Truyền handleViewProductDetail
+          onAddToWishlist={addToWishlist} // THÊM: Truyền addToWishlist
+          isInWishlist={isInWishlist} // THÊM: Truyền isInWishlist
+          onTriggerFlyingIcon={handleTriggerFlyingIcon} // THÊM: Truyền flying icon handler
         />
       )}
 
@@ -368,6 +427,12 @@ export default function App() {
         product={selectedProduct}
         onAddToCart={addToCart}
         onAddToWishlist={addToWishlist}
+      />
+
+      {/* THÊM: Flying Icon Animation */}
+      <FlyingIcon
+        icons={flyingIcons}
+        onComplete={handleAnimationComplete}
       />
     </div>
   );

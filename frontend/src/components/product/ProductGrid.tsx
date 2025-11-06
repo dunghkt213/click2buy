@@ -9,9 +9,12 @@ interface ProductGridProps {
   onAddToCart: (product: Product) => void;
   searchQuery?: string; // THÊM: Query tìm kiếm từ Header
   onViewDetail?: (product: Product) => void; // THÊM: Handler xem chi tiết
+  onAddToWishlist?: (product: Product) => void; // THÊM: Handler thêm vào wishlist
+  isInWishlist?: (productId: string) => boolean; // THÊM: Hàm check wishlist
+  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void; // THÊM: Handler flying animation
 }
 
-export function ProductGrid({ filters, onAddToCart, searchQuery = '', onViewDetail }: ProductGridProps) {
+export function ProductGrid({ filters, onAddToCart, searchQuery = '', onViewDetail, onAddToWishlist, isInWishlist, onTriggerFlyingIcon }: ProductGridProps) {
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
 
   // Mock product data
@@ -252,6 +255,9 @@ export function ProductGrid({ filters, onAddToCart, searchQuery = '', onViewDeta
               onAddToCart={onAddToCart}
               viewMode={viewMode}
               onViewDetail={onViewDetail}
+              onAddToWishlist={onAddToWishlist}
+              isInWishlist={isInWishlist ? isInWishlist(product.id) : false} // SỬA: Gọi hàm isInWishlist với product.id
+              onTriggerFlyingIcon={onTriggerFlyingIcon}
             />
           ))}
         </div>

@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { ProductCard } from '../product/ProductCard';
-import { Product, FilterState } from 'types';
+import { Product, FilterState } from 'types';   
 import { Header } from '../layout/Header';
 import { Footer } from '../layout/Footer';
 import { FilterSidebar } from '../sidebars/FilterSidebar';
@@ -30,6 +30,10 @@ interface SearchModalProps {
   onLogout: () => void;
   onProfileClick: () => void;
   onOrdersClick: () => void;
+  onViewDetail?: (product: Product) => void; // THÊM: Callback xem chi tiết
+  onAddToWishlist?: (product: Product) => void; // THÊM: Callback thêm vào wishlist
+  isInWishlist?: (productId: string) => boolean; // THÊM: Hàm check wishlist
+  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void; // THÊM: Handler flying animation
 }
 
 export function SearchModal({ 
@@ -52,6 +56,10 @@ export function SearchModal({
   onLogout,
   onProfileClick,
   onOrdersClick,
+  onViewDetail, // THÊM
+  onAddToWishlist, // THÊM
+  isInWishlist, // THÊM
+  onTriggerFlyingIcon, // THÊM
 }: SearchModalProps) {
   const [inputValue, setInputValue] = useState(''); // Giá trị tạm trong input
   const [searchQuery, setSearchQuery] = useState(''); // Giá trị thực tế để filter
@@ -313,6 +321,10 @@ export function SearchModal({
                       product={product}
                       onAddToCart={onAddToCart}
                       viewMode="grid"
+                      onViewDetail={onViewDetail} // THÊM
+                      onAddToWishlist={onAddToWishlist} // THÊM
+                      isInWishlist={isInWishlist ? isInWishlist(product.id) : false} // SỬA: Gọi hàm isInWishlist với product.id
+                      onTriggerFlyingIcon={onTriggerFlyingIcon} // THÊM
                     />
                   ))}
                 </div>

@@ -19,15 +19,48 @@ interface ProductCardProps {
   onAddToCart: (product: Product) => void;
   viewMode?: 'grid' | 'list';
   onViewDetail?: (product: Product) => void; // THÊM: Callback khi click xem chi tiết
+  onAddToWishlist?: (product: Product) => void; // THÊM: Callback khi thêm vào wishlist
+  isInWishlist?: boolean; // THÊM: Check xem sản phẩm đã có trong wishlist chưa
+  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void; // THÊM: Trigger flying animation
 }
 
-export function ProductCard({ product, onAddToCart, viewMode = 'grid', onViewDetail }: ProductCardProps) {
-  const [isFavorite, setIsFavorite] = useState(false);
+export function ProductCard({ 
+  product, 
+  onAddToCart, 
+  viewMode = 'grid', 
+  onViewDetail, 
+  onAddToWishlist, 
+  isInWishlist = false,
+  onTriggerFlyingIcon 
+}: ProductCardProps) {
+  // SỬA: Không dùng local state nữa, sử dụng isInWishlist từ props
   const [isHovered, setIsHovered] = useState(false);
 
   const discountPercent = product.originalPrice 
     ? calculateDiscount(product.originalPrice, product.price)
     : 0;
+
+  // THÊM: Handler cho wishlist
+  const handleWishlistClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Trigger flying animation
+    if (onTriggerFlyingIcon) {
+      onTriggerFlyingIcon('heart', e.currentTarget);
+    }
+    
+    if (onAddToWishlist) {
+      onAddToWishlist(product);
+    }
+  };
+
+  // THÊM: Handler cho add to cart
+  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Trigger flying animation
+    if (onTriggerFlyingIcon) {
+      onTriggerFlyingIcon('cart', e.currentTarget);
+    }
+    
+    onAddToCart(product);
+  };
 
   if (viewMode === 'list') {
     return (
@@ -102,7 +135,7 @@ export function ProductCard({ product, onAddToCart, viewMode = 'grid', onViewDet
               <div className="flex items-center gap-2">
                 <Button
                   className="flex-1 gap-2"
-                  onClick={() => onAddToCart(product)}
+                  onClick={handleAddToCart}
                   disabled={!product.inStock}
                 >
                   <ShoppingCart className="w-4 h-4" />
@@ -112,9 +145,9 @@ export function ProductCard({ product, onAddToCart, viewMode = 'grid', onViewDet
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setIsFavorite(!isFavorite)}
+                  onClick={handleWishlistClick}
                 >
-                  <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current text-red-500' : ''}`} />
+                  <Heart className={`w-4 h-4 ${isInWishlist ? 'fill-current text-red-500' : ''}`} />
                 </Button>
                 
                 <Button variant="outline" size="icon" onClick={() => onViewDetail && onViewDetail(product)}>
@@ -166,9 +199,9 @@ export function ProductCard({ product, onAddToCart, viewMode = 'grid', onViewDet
               variant="secondary"
               size="sm"
               className="w-10 h-10 p-0 bg-white/90 backdrop-blur-sm hover:bg-white"
-              onClick={() => setIsFavorite(!isFavorite)}
+              onClick={handleWishlistClick}
             >
-              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current text-red-500' : ''}`} />
+              <Heart className={`w-4 h-4 ${isInWishlist ? 'fill-current text-red-500' : ''}`} />
             </Button>
             
             <Button
@@ -204,7 +237,7 @@ export function ProductCard({ product, onAddToCart, viewMode = 'grid', onViewDet
           }`}>
             <Button
               className="w-full gap-2 bg-white/90 backdrop-blur-sm text-foreground hover:bg-white"
-              onClick={() => onAddToCart(product)}
+              onClick={handleAddToCart}
               disabled={!product.inStock}
             >
               <ShoppingCart className="w-4 h-4" />
