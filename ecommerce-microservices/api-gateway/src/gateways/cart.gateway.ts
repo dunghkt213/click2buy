@@ -16,7 +16,6 @@ export class CartGateway {
 
   @Get()
   getCart(@Headers('authorization') auth?: string) {
-    // cart-service sẽ tự verify JWT và lấy userId từ token
     return this.kafka.send('cart.get', { auth });
   }
 

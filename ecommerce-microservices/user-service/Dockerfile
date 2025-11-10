@@ -1,40 +1,15 @@
-# ==========================
-# 1. Base image (Node 18)
-# ==========================
-FROM node:18
+FROM node:20-alpine
 
-# ==========================
-# 2. Set working directory
-# ==========================
 WORKDIR /app
 
-# ==========================
-# 3. Copy package.json trước
-#  -> tận dụng cache Docker
-# ==========================
+# Copy package.json trước
 COPY package*.json ./
 
-# ==========================
-# 4. Cài dependencies
-# ==========================
+# Cài đặt dependency (sẽ bao gồm kafkajs)
 RUN npm install
 
-# ==========================
-# 5. Copy toàn bộ source code
-# ==========================
+# Copy toàn bộ source code
 COPY . .
 
-# ==========================
-# 6. Build NestJS (nếu chạy production)
-# ==========================
-RUN npm run build
-
-# ==========================
-# 7. Expose port
-# ==========================
 EXPOSE 3000
-
-# ==========================
-# 8. Start command
-# ==========================
-CMD ["npm", "run", "start:prod"]
+CMD ["npm", "run", "start:dev"]

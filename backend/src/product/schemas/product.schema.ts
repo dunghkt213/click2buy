@@ -1,6 +1,6 @@
 import { Prop, Schema } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { createMongoSchema } from 'src/common/utils/mongo-schema.util';
+import { createMongoSchema } from '../../common/utils/mongo-schema.util';
 
 /**
  * Kiểu tài liệu Mongoose
