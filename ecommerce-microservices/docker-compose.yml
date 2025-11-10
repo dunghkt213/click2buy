@@ -1,104 +1,193 @@
-version: '3.9'
+name: Click2Buy
 
 services:
+  # =========================================
+  # Zookeeper
+  # =========================================
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
-    container_name: zookeeper
+    container_name: click2buy_zookeeper
     restart: always
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "2181:2181"
+      - "22181:2181"
+    networks:
+      - click2buy_net
 
+  # =========================================
+  # Kafka
+  # =========================================
   kafka:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: kafka
+    container_name: click2buy_kafka
     restart: always
     depends_on:
       - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ZOOKEEPER_CONNECT: click2buy_zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://click2buy_kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     ports:
-      - "9092:9092"
+      - "19092:9092"
+    networks:
+      - click2buy_net
 
+  # =========================================
+  # MongoDB
+  # =========================================
+  mongo:
+    image: mongo:6
+    container_name: click2buy_mongo
+    restart: always
+    ports:
+      - "27027:27017"
+    volumes:
+      - click2buy_mongo_data:/data/db
+    networks:
+      - click2buy_net
+
+  # =========================================
+  # Auth Service
+  # =========================================
   auth-service:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
-    container_name: auth-service
-    restart: unless-stopped
-    depends_on:
-      - kafka
+    container_name: click2buy_auth-service
+    volumes:
+      - ./auth-service:/app
+      - /app/node_modules
+    ports:
+      - "3101:3001"
     env_file:
       - ./auth-service/.env
-    ports:
-      - "3001:3001"
+    command: npm run start:dev
+    depends_on:
+      - kafka
+      - mongo
+    networks:
+      - click2buy_net
 
+  # =========================================
+  # User Service
+  # =========================================
   user-service:
     build:
       context: ./user-service
       dockerfile: Dockerfile
-    container_name: user-service
+    container_name: click2buy_user-service
     volumes:
       - ./user-service:/app
       - /app/node_modules
+    ports:
+      - "3102:3002"
+    env_file:
+      - ./user-service/.env
     command: npm run start:dev
     depends_on:
       - kafka
-    env_file:
-      - ./user-service/.env
-    ports:
-      - "3002:3002"
+      - mongo
+    networks:
+      - click2buy_net
 
+  # =========================================
+  # Product Service
+  # =========================================
   product-service:
     build:
       context: ./product-service
       dockerfile: Dockerfile
-    container_name: product-service
+    container_name: click2buy_product-service
     volumes:
       - ./product-service:/app
       - /app/node_modules
+    ports:
+      - "3103:3003"
+    env_file:
+      - ./product-service/.env
     command: npm run start:dev
     depends_on:
       - kafka
-    env_file:
-      - ./product-service/.env
-    ports:
-      - "3003:3003"
+      - mongo
+    networks:
+      - click2buy_net
 
+  # =========================================
+  # Cart Service
+  # =========================================
   cart-service:
     build:
       context: ./cart-service
       dockerfile: Dockerfile
-    container_name: cart-service
+    container_name: click2buy_cart-service
     volumes:
       - ./cart-service:/app
       - /app/node_modules
+    ports:
+      - "3104:3004"
+    env_file:
+      - ./cart-service/.env
     command: npm run start:dev
     depends_on:
       - kafka
-    env_file:
-      - ./cart-service/.env
-    ports:
-      - "3004:3004"
+      - mongo
+    networks:
+      - click2buy_net
 
+  # =========================================
+  # Review Service
+  # =========================================
   review-service:
     build:
       context: ./review-service
       dockerfile: Dockerfile
-    container_name: review-service
+    container_name: click2buy_review-service
     volumes:
       - ./review-service:/app
       - /app/node_modules
+    ports:
+      - "3105:3005"
+    env_file:
+      - ./review-service/.env
     command: npm run start:dev
     depends_on:
       - kafka
-    env_file:
-      - ./review-service/.env
+      - mongo
+    networks:
+      - click2buy_net
+
+  # =========================================
+  # API Gateway
+  # =========================================
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: click2buy_api-gateway
+    volumes:
+    - ./api-gateway:/app:delegated    # ✅ mount code để hot reload
+    - /app/node_modules               # ✅ giữ node_modules trong container
     ports:
-      - "3005:3005"
+      - "3000:3000"
+    env_file:
+      - ./api-gateway/.env
+    command: npm run start:dev
+    depends_on:
+      - kafka
+      - mongo
+    networks:
+      - click2buy_net
+# =========================================
+# Volume + Network
+# =========================================
+volumes:
+  click2buy_mongo_data:
+
+networks:
+  click2buy_net:
+    name: click2buy_network
+    driver: bridge
