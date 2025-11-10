@@ -1,14 +1,16 @@
 import { Controller, UseGuards } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { JwtKafkaAuthGuard, CurrentUser } from '../../libs/auth';
+import { JwtKafkaAuthGuard } from './auth/jwt-kafka.guard';
+import { CurrentUser } from './auth/current-user.decorator';
 import { AppService } from './app.service';
 
 @Controller()
 export class AppController {
   constructor(private readonly AppService: AppService) {}
 
-  @UseGuards(JwtKafkaAuthGuard)
+
   @MessagePattern('user.create')
+  @UseGuards(JwtKafkaAuthGuard)
   async create(@Payload() data: any, @CurrentUser() user: any) {
       if(user.role !== 'admin') {
       throw new Error('Access denied: Only admins can access all users.');
@@ -17,8 +19,9 @@ export class AppController {
   }
 
 
-  @UseGuards(JwtKafkaAuthGuard)
+
   @MessagePattern('user.findAll')
+  @UseGuards(JwtKafkaAuthGuard)
   async findAll(@Payload() data: any, @CurrentUser() user: any) {
     if(user.role !== 'admin') {
       throw new Error('Access denied: Only admins can access all users.');
@@ -26,8 +29,8 @@ export class AppController {
      else return this.AppService.findAll(data.q);
   }
 
-  @UseGuards(JwtKafkaAuthGuard)
   @MessagePattern('user.findOne')
+  @UseGuards(JwtKafkaAuthGuard)
   async findOne(@Payload() data: any, @CurrentUser() user: any) {
     if(user.role !== 'admin') {
       throw new Error('Access denied: Only admins can access all users.');
@@ -36,8 +39,9 @@ export class AppController {
   }
 
 
-  @UseGuards(JwtKafkaAuthGuard)
+
   @MessagePattern('user.update')
+  @UseGuards(JwtKafkaAuthGuard)
   async update(@Payload() data: any, @CurrentUser() user: any) {
     if(user.sub !== data.id){
       throw new Error('Access denied: You can only update your own profile.');
@@ -46,8 +50,9 @@ export class AppController {
   }
 
 
-  @UseGuards(JwtKafkaAuthGuard)
+
   @MessagePattern('user.deactivate')
+  @UseGuards(JwtKafkaAuthGuard)
   async deactivate(@Payload() data: any, @CurrentUser() user: any) {
     if(user.sub !== data.id){
       throw new Error('Access denied: You can only update your own profile.');

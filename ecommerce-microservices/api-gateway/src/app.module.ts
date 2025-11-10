@@ -19,7 +19,7 @@ import { ReviewGateway } from './gateways/review.gateway';
         options: {
           client: {
             clientId: 'api-gateway',
-            brokers: [process.env.KAFKA_BROKER || 'kafka:9092'],
+            brokers: ['click2buy_kafka:9092'],
           },
           consumer: {
             groupId: 'api-gateway-consumer',

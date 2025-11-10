@@ -5,9 +5,10 @@ import { Connection } from 'mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { User, UserSchema } from './schemas/user.schema';
-
+import { AuthModule } from './auth/auth.module';
 @Module({
   imports: [
+    AuthModule,
     // 1️⃣ Load biến môi trường toàn cục (.env)
     ConfigModule.forRoot({ isGlobal: true }),
 

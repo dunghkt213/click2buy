@@ -10,7 +10,7 @@ async function bootstrap() {
       options: {
         client: {
           clientId: 'user-service',
-          brokers: ['kafka:9092'], 
+          brokers: ['click2buy_kafka:9092'],
         },
         consumer: {
           groupId: 'user-consumer-group',
@@ -20,5 +20,6 @@ async function bootstrap() {
   );
 
   await app.listen();
+  console.log('✅ User Service is listening to Kafka at click2buy_kafka:9092');
 }
 bootstrap();
