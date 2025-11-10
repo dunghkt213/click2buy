@@ -1,10 +1,47 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+
+import { AuthGateway } from './gateways/auth.gateway';
+import { UserGateway } from './gateways/user.gateway';
+import { ProductGateway } from './gateways/product.gateway';
+import { CartGateway } from './gateways/cart.gateway';
+import { ReviewGateway } from './gateways/review.gateway';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot(),
+
+    ClientsModule.register([
+      {
+        name: 'KAFKA_SERVICE',
+        transport: Transport.KAFKA,
+        options: {
+          client: {
+            clientId: 'api-gateway',
+            brokers: [process.env.KAFKA_BROKER || 'kafka:9092'],
+          },
+          consumer: {
+            groupId: 'api-gateway-consumer',
+          },
+
+          subscribe: {
+            fromBeginning: false
+          },
+          producerOnlyMode: false,
+        },
+      },
+    ]),
+  ],
+
+  controllers: [
+    AuthGateway,
+    UserGateway,
+    ProductGateway,
+    CartGateway,
+    ReviewGateway,
+  ],
+
+  providers: [],
 })
 export class AppModule {}
