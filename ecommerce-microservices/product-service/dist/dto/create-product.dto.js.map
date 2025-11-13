@@ -1,1 +1,0 @@
-{"version":3,"file":"create-product.dto.js","sourceRoot":"","sources":["../../dto/create-product.dto.ts"],"names":[],"mappings":";;;AAEA,MAAa,gBAAgB;IAC3B,IAAI,CAAS;IACb,WAAW,CAAU;IACrB,KAAK,CAAS;IACd,SAAS,CAAU;IACnB,KAAK,CAAU;IACf,KAAK,CAAS;IACd,SAAS,CAAoB;IAC7B,WAAW,CAAY;IACvB,IAAI,CAAY;IAChB,MAAM,CAAY;IAClB,UAAU,CAAuB;IACjC,QAAQ,CAAuB;IAC/B,gBAAgB,CAAoB;CACrC;AAdD,4CAcC"}
