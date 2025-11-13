@@ -1,14 +1,18 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AppService } from './app.service';
+import { CurrentUser } from './auth/current-user.decorator';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @MessagePattern('product.create')
-  create(@Payload() { dto }: any) {
-    return this.appService.create(dto);
+  //@UseGuards(JwtKafkaAuthGuard)
+  create(@Payload() { dto }: any, @CurrentUser() user: any) {
+    //const userId = user?.sub || user?.id;
+    const userId = 'mock-user';
+    return this.appService.create(dto, userId);
   }
 
   @MessagePattern('product.findAll')
@@ -22,13 +26,19 @@ export class AppController {
   }
 
   @MessagePattern('product.update')
-  update(@Payload() { id, dto }: any) {
-    return this.appService.update(id, dto);
+  //@UseGuards(JwtKafkaAuthGuard)
+  update(@Payload() { id, dto }: any, @CurrentUser() user: any) {
+    //const userId = user?.sub || user?.id;
+    const userId = 'mock-user';
+    return this.appService.update(id, dto, userId);
   }
 
   @MessagePattern('product.remove')
-  remove(@Payload() { id }: any) {
-    return this.appService.remove(id);
+  //@UseGuards(JwtKafkaAuthGuard)
+  remove(@Payload() { id }: any, @CurrentUser() user: any) {
+    //const userId = user?.sub || user?.id;
+    const userId = 'mock-user';
+    return this.appService.remove({ id, userId });
   }
 
   @MessagePattern('product.search')

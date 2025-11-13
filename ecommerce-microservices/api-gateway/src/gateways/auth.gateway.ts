@@ -1,11 +1,11 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import { LoginDto } from '../dtos/auth/login.dto';
-import { RegisterDto } from '../dtos/auth/register.dto';
-import {Inject} from '@nestjs/common/decorators/core/inject.decorator';
+import { Inject } from '@nestjs/common/decorators/core/inject.decorator';
+import { LoginDto } from 'src/dtos/login.dto';
+import { RegisterDto } from 'src/dtos/register.dto';
 @Controller('auth')
 export class AuthGateway {
-  constructor(@Inject('KAFKA_SERVICE') private readonly kafka: ClientKafka) {}
+  constructor(@Inject('KAFKA_SERVICE') private readonly kafka: ClientKafka) { }
 
   async onModuleInit() {
     this.kafka.subscribeToResponseOf('auth.login');
