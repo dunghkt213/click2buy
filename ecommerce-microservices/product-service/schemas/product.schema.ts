@@ -47,6 +47,9 @@ export class Product {
   @Prop({ required: true, trim: true })
   name: string;
 
+  @Prop({ type: String, required: true })
+  ownerId: string; 
+
   @Prop({ trim: true })
   description?: string;
 

@@ -23,6 +23,7 @@ export class ReviewGateway {
 
     @Get()
     findAll(@Query() q: any) {
+        console.log("Lấy tất cả review");
         return kafkaRequest(this.kafka, 'review.findAll', { q });
     }
 
