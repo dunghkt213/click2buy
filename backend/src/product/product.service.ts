@@ -6,6 +6,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
 import { ProductDto } from './dto/product.dto';
+import { BadRequestException } from '@nestjs/common';
 
 @Injectable()
 export class ProductService {
@@ -15,8 +16,23 @@ export class ProductService {
   ) {}
 
   async create(dto: CreateProductDto): Promise<ProductDocument> {
-    const product = new this.productModel(dto);
-    return await product.save();
+    try {
+      const product = new this.productModel(dto);
+      return await product.save();
+    } catch (error) {
+      if (error.name === 'ValidationError') {
+        const messages = Object.values(error.errors).map(
+          (err: any) => err.message
+        );
+
+        throw new BadRequestException({
+          message: 'Validation failed',
+          errors: messages,
+        });
+      }
+
+      throw error;
+    }
   }
 
   async findAll(query: QueryProductDto): Promise<{ items: ProductDocument[]; total: number }> {

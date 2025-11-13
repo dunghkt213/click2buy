@@ -8,13 +8,11 @@ import { ProductModule } from './product/product.model';
 import { AuthModule } from './auth/auth.module';
 @Module({
   imports: [
-    // Load biến môi trường từ file .env
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,
     }),
 
-    // Kết nối MongoDB với ConfigService (best practice)
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -33,7 +31,7 @@ import { AuthModule } from './auth/auth.module';
       }),
     }),
 
-    UserModule , ProductModule , AuthModule
+    UserModule , ProductModule , AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

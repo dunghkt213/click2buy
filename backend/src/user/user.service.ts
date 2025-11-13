@@ -95,7 +95,7 @@ export class UserService  {
   async update(id: string, dto: UpdateUserDto): Promise<UserDto> {
     const update: any = { ...dto };
 
-    // Chuẩn hóa + hash nếu có password
+  
     if (dto.password) {
       update.passwordHash = await bcrypt.hash(dto.password, 10);
       delete update.password;
@@ -110,20 +110,18 @@ export class UserService  {
       if (!updated) throw new NotFoundException('User không tồn tại');
       return this.toUserDto(updated);
     } catch (e: any) {
-      // E11000 = duplicate key (vỡ unique index)
+
       if (e?.code === 11000) throw new BadRequestException('Email hoặc username đã tồn tại');
       throw e;
     }
   }
 
-  // "Xóa" mềm: set isActive = false
   async deactivate(id: string): Promise<{ deactivated: true }> {
     const res = await this.userModel.findByIdAndUpdate(id, { $set: { isActive: false } }, { new: true }).exec();
     if (!res) throw new NotFoundException('User không tồn tại');
     return { deactivated: true };
   }
 
-  // Xóa cứng 
   async hardDelete(id: string): Promise<{ deleted: true }> {
     const res = await this.userModel.findByIdAndDelete(id).exec();
     if (!res) throw new NotFoundException('User không tồn tại');
