@@ -10,7 +10,13 @@ import {
   Bell
 } from 'lucide-react';
 import { AccountDropdown } from '../shared/AccountDropdown';
-import { User } from '../../types';
+import { User, CartItem } from '../../types'; // THÊM: Import CartItem
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../ui/popover'; // THÊM: Import Popover
+import { CartPreview } from '../modal/CartPreview'; // THÊM: Import CartPreview
 
 interface HeaderProps {
   cartItemsCount: number;
@@ -34,6 +40,8 @@ interface HeaderProps {
   onSearchClick?: () => void; // THÊM: Callback khi click vào search input để mở modal
   cartIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho icon cart để flying animation
   wishlistIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho icon wishlist để flying animation
+  cartItems?: CartItem[]; // THÊM: Danh sách items trong giỏ hàng
+  totalPrice?: number; // THÊM: Tổng tiền
 }
 
 export function Header({ 
@@ -57,8 +65,12 @@ export function Header({
   onSearchChange, // THÊM: Nhận callback từ parent
   onSearchClick, // THÊM: Callback để mở search modal
   cartIconRef, // THÊM: Nhận ref từ parent
-  wishlistIconRef // THÊM: Nhận ref từ parent
+  wishlistIconRef, // THÊM: Nhận ref từ parent
+  cartItems, // THÊM: Nhận danh sách items từ parent
+  totalPrice // THÊM: Nhận tổng tiền từ parent
 }: HeaderProps) {
+  const [isCartPreviewOpen, setIsCartPreviewOpen] = useState(false); // THÊM: State cho cart preview
+
   // Handler khi search thay đổi - cho phép nhập text
   const handleSearchChange = (value: string) => {
     onSearchChange?.(value);
@@ -89,7 +101,7 @@ export function Header({
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-4 h-4 bg-primary-foreground rounded-sm"></div>
               </div>
-              <span className="text-xl font-semibold">ShopMart</span>
+              <span className="text-xl font-semibold">Click2buy</span>
             </div>
 
             {/* Navigation */}
@@ -155,23 +167,43 @@ export function Header({
             </Button>
 
             {/* Cart */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <div 
               className="relative"
-              onClick={onCartClick}
-              ref={cartIconRef}
+              onMouseEnter={() => setIsCartPreviewOpen(true)}
+              onMouseLeave={() => setIsCartPreviewOpen(false)}
             >
-              <ShoppingCart className="w-4 h-4" />
-              {cartItemsCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
-                >
-                  {cartItemsCount > 99 ? '99+' : cartItemsCount}
-                </Badge>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="relative"
+                onClick={onCartClick}
+                ref={cartIconRef}
+              >
+                <ShoppingCart className="w-4 h-4" />
+                {cartItemsCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
+                  >
+                    {cartItemsCount > 99 ? '99+' : cartItemsCount}
+                  </Badge>
+                )}
+              </Button>
+
+              {/* Hover Preview */}
+              {isCartPreviewOpen && (
+                <div className="absolute right-0 top-full mt-2 z-50">
+                  <CartPreview 
+                    items={cartItems || []} 
+                    totalPrice={totalPrice || 0}
+                    onViewCart={() => {
+                      setIsCartPreviewOpen(false);
+                      onCartClick();
+                    }}
+                  />
+                </div>
               )}
-            </Button>
+            </div>
 
             {/* Account */}
             <AccountDropdown

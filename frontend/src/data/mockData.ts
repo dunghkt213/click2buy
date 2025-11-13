@@ -1,4 +1,4 @@
-import { CartItem, FAQItem, Notification, Promotion, SupportTicket, User } from '../types';
+import { CartItem, Notification, Promotion, FAQItem, SupportTicket, User, Order } from '../types'; // THÊM Order
 
 export const initialCartItems: CartItem[] = [
   {
@@ -14,7 +14,8 @@ export const initialCartItems: CartItem[] = [
     brand: 'Apple',
     inStock: true,
     isSale: true,
-    quantity: 2
+    quantity: 2,
+    selected: true
   },
   {
     id: '2',
@@ -27,7 +28,8 @@ export const initialCartItems: CartItem[] = [
     description: 'Samsung Galaxy S24 Ultra với S Pen',
     brand: 'Samsung',
     inStock: true,
-    quantity: 1
+    quantity: 1,
+    selected: false
   },
   {
     id: '3',
@@ -42,7 +44,8 @@ export const initialCartItems: CartItem[] = [
     brand: 'Apple',
     inStock: true,
     isSale: true,
-    quantity: 1
+    quantity: 1,
+    selected: true
   },
   {
     id: '4',
@@ -55,7 +58,8 @@ export const initialCartItems: CartItem[] = [
     description: 'iPad Pro với chip M4, màn hình Liquid Retina XDR',
     brand: 'Apple',
     inStock: true,
-    quantity: 1
+    quantity: 1,
+    selected: false
   },
   {
     id: '5',
@@ -70,7 +74,8 @@ export const initialCartItems: CartItem[] = [
     brand: 'Sony',
     inStock: true,
     isSale: true,
-    quantity: 1
+    quantity: 1,
+    selected: true
   },
   {
     id: '6',
@@ -83,7 +88,8 @@ export const initialCartItems: CartItem[] = [
     description: 'Laptop Dell XPS 13 Plus với Intel Core i7',
     brand: 'Dell',
     inStock: true,
-    quantity: 1
+    quantity: 1,
+    selected: false
   }
 ];
 
@@ -246,7 +252,7 @@ export const initialFAQs: FAQItem[] = [
   {
     id: '2',
     question: 'Chính sách đổi trả như thế nào?',
-    answer: 'Click2buy hỗ trợ đổi trả trong vòng 30 ngày với điều kiện sản phẩm còn nguyên tem, chưa qua sử dụng.',
+    answer: 'ShopMart hỗ trợ đổi trả trong vòng 30 ngày với điều kiện sản phẩm còn nguyên tem, chưa qua sử dụng.',
     category: 'Đổi trả',
     isPopular: true
   },
@@ -293,3 +299,195 @@ export const initialUser: User = {
   membershipLevel: 'Gold',
   points: 2580
 };
+
+// THÊM: Initial Orders
+export const initialOrders: Order[] = [
+  {
+    id: 'order-1',
+    orderNumber: 'SH2024001',
+    items: [
+      {
+        id: 'item-1',
+        productId: '1',
+        name: 'iPhone 15 Pro Max 256GB',
+        image: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=300',
+        price: 29990000,
+        quantity: 1,
+        variant: 'Titan Xanh - 256GB'
+      },
+      {
+        id: 'item-2',
+        productId: '5',
+        name: 'Sony WH-1000XM5',
+        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
+        price: 7990000,
+        quantity: 1,
+        variant: 'Đen'
+      }
+    ],
+    totalPrice: 37980000,
+    shippingFee: 0,
+    discount: 1000000,
+    finalPrice: 36980000,
+    status: 'shipping',
+    paymentMethod: 'ZaloPay',
+    shippingMethod: 'Giao hàng nhanh',
+    shippingAddress: {
+      name: 'Nguyễn V��n A',
+      phone: '0901234567',
+      address: '123 Nguyen Van A, 144 Xuan Thuy, Phường Xuân Thủy, Quận Cầu Giấy, Hà Nội'
+    },
+    createdAt: '2024-11-10T10:30:00',
+    updatedAt: '2024-11-11T14:20:00',
+    estimatedDelivery: '2024-11-15T23:59:59',
+    trackingNumber: 'VN123456789',
+    note: 'Giao giờ hành chính',
+    timeline: [
+      {
+        status: 'pending',
+        timestamp: '2024-11-10T10:30:00',
+        description: 'Đơn hàng đã được đặt'
+      },
+      {
+        status: 'confirmed',
+        timestamp: '2024-11-10T11:15:00',
+        description: 'Đơn hàng đã được xác nhận'
+      },
+      {
+        status: 'shipping',
+        timestamp: '2024-11-11T14:20:00',
+        description: 'Đơn hàng đang được giao đến bạn'
+      }
+    ]
+  },
+  {
+    id: 'order-2',
+    orderNumber: 'SH2024002',
+    items: [
+      {
+        id: 'item-3',
+        productId: '3',
+        name: 'MacBook Air M3 13 inch',
+        image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=300',
+        price: 28990000,
+        quantity: 1,
+        variant: 'Xám - 8GB - 256GB'
+      }
+    ],
+    totalPrice: 28990000,
+    shippingFee: 0,
+    discount: 0,
+    finalPrice: 28990000,
+    status: 'completed',
+    paymentMethod: 'Chuyển khoản ngân hàng',
+    shippingMethod: 'Giao hàng tiêu chuẩn',
+    shippingAddress: {
+      name: 'Nguyễn Văn A',
+      phone: '0901234567',
+      address: '123 Nguyen Van A, 144 Xuan Thuy, Phường Xuân Thủy, Quận Cầu Giấy, Hà Nội'
+    },
+    createdAt: '2024-11-01T09:00:00',
+    updatedAt: '2024-11-05T16:30:00',
+    trackingNumber: 'VN987654321',
+    timeline: [
+      {
+        status: 'pending',
+        timestamp: '2024-11-01T09:00:00',
+        description: 'Đơn hàng đã được đặt'
+      },
+      {
+        status: 'confirmed',
+        timestamp: '2024-11-01T10:30:00',
+        description: 'Đơn hàng đã được xác nhận'
+      },
+      {
+        status: 'shipping',
+        timestamp: '2024-11-02T08:00:00',
+        description: 'Đơn hàng đang được giao'
+      },
+      {
+        status: 'completed',
+        timestamp: '2024-11-05T16:30:00',
+        description: 'Đơn hàng đã được giao thành công'
+      }
+    ]
+  },
+  {
+    id: 'order-3',
+    orderNumber: 'SH2024003',
+    items: [
+      {
+        id: 'item-4',
+        productId: '2',
+        name: 'Samsung Galaxy S24 Ultra',
+        image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300',
+        price: 26990000,
+        quantity: 1,
+        variant: 'Titan Gray - 512GB'
+      }
+    ],
+    totalPrice: 26990000,
+    shippingFee: 30000,
+    discount: 500000,
+    finalPrice: 26520000,
+    status: 'pending',
+    paymentMethod: 'Thanh toán khi nhận hàng (COD)',
+    shippingMethod: 'Giao hàng nhanh',
+    shippingAddress: {
+      name: 'Nguyễn Văn A',
+      phone: '0901234567',
+      address: '123 Nguyen Van A, 144 Xuan Thuy, Phường Xuân Thủy, Quận Cầu Giấy, Hà Nội'
+    },
+    createdAt: '2024-11-12T15:45:00',
+    updatedAt: '2024-11-12T15:45:00',
+    estimatedDelivery: '2024-11-16T23:59:59',
+    timeline: [
+      {
+        status: 'pending',
+        timestamp: '2024-11-12T15:45:00',
+        description: 'Đơn hàng đã được đặt, đang chờ xác nhận'
+      }
+    ]
+  },
+  {
+    id: 'order-4',
+    orderNumber: 'SH2024004',
+    items: [
+      {
+        id: 'item-5',
+        productId: '4',
+        name: 'iPad Pro 12.9 inch M4',
+        image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=300',
+        price: 25990000,
+        quantity: 1
+      }
+    ],
+    totalPrice: 25990000,
+    shippingFee: 0,
+    discount: 0,
+    finalPrice: 25990000,
+    status: 'cancelled',
+    paymentMethod: 'Thanh toán khi nhận hàng (COD)',
+    shippingMethod: 'Giao hàng tiêu chuẩn',
+    shippingAddress: {
+      name: 'Nguyễn Văn A',
+      phone: '0901234567',
+      address: '123 Nguyen Van A, 144 Xuan Thuy, Phường Xuân Thủy, Quận Cầu Giấy, Hà Nội'
+    },
+    createdAt: '2024-10-25T11:20:00',
+    updatedAt: '2024-10-25T13:00:00',
+    note: 'Đổi ý không mua nữa',
+    timeline: [
+      {
+        status: 'pending',
+        timestamp: '2024-10-25T11:20:00',
+        description: 'Đơn hàng đã được đặt'
+      },
+      {
+        status: 'cancelled',
+        timestamp: '2024-10-25T13:00:00',
+        description: 'Đơn hàng đã bị hủy theo yêu cầu của khách hàng'
+      }
+    ]
+  }
+];
