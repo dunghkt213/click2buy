@@ -1,6 +1,7 @@
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, FilterQuery } from 'mongoose';
 import { Product } from '../schemas/product.schema';
+
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
@@ -16,21 +17,17 @@ export class AppService {
   }
 
    async findAll(q?: any) {
-    //Lấy tham số phân trang
     const page = Math.max(parseInt(q?.page || '1', 10), 1);
     const limit = Math.max(parseInt(q?.limit || '10', 10), 1);
     const skip = (page - 1) * limit;
 
-    //Lọc theo keyword nếu có
     const filter: FilterQuery<Product> = {};
     if (q?.keyword) {
       filter.name = new RegExp(q.keyword.trim(), 'i');
     }
 
-    //Sắp xếp (mặc định: mới nhất trước)
     const sort = q?.sort ? q.sort.replace(/,/g, ' ') : '-createdAt';
 
-    //Lấy dữ liệu + tổng số record song song
     const [data, total] = await Promise.all([
       this.productModel.find(filter).sort(sort).skip(skip).limit(limit).lean(),
       this.productModel.countDocuments(filter),

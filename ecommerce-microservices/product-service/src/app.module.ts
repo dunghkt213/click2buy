@@ -10,10 +10,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    // 1️⃣ Load biến môi trường toàn cục (.env)
+
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // 2️⃣ Kết nối MongoDB (async để lấy từ .env)
+
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -28,10 +28,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       },
     }),
 
-    // 3️⃣ Đăng ký schema của Product
+
     MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
 
-    // 4️⃣ Đăng ký Kafka client (để lắng nghe và phản hồi)
+  
     ClientsModule.registerAsync([
       {
         name: 'PRODUCT_SERVICE',
