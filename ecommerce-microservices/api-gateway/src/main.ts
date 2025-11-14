@@ -4,16 +4,15 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-    // 🚀 Tạo HTTP server (API Gateway)
+    
     const app = await NestFactory.create(AppModule);
 
-    // 🧁 Thêm middleware để đọc / ghi cookie HTTP-Only
+    
     app.use(cookieParser());
 
-    // 🌐 Cho phép CORS (để FE có thể gửi cookie đi)
     app.enableCors({
-        origin: ['http://localhost:5173'], // 👈 domain frontend (thay bằng FE của bạn)
-        credentials: true,                 // cho phép gửi cookie kèm request
+        origin: ['http://localhost:5173'],  
+        credentials: true,                 
     });
 
     app.connectMicroservice<MicroserviceOptions>({

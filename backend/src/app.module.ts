@@ -11,13 +11,11 @@ import { CartModule } from './cart/cart.module';
 import { OrderModule } from './order/order.module';
 @Module({
   imports: [
-    // Load biến môi trường từ file .env
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,
     }),
 
-    // Kết nối MongoDB với ConfigService (best practice)
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

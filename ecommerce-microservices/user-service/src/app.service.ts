@@ -7,6 +7,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { UserDto } from './dto/user.dto';
+import { log } from 'console';
+// TEST HOT RELOAD
 
 @Injectable() 
 export class AppService  {
@@ -43,7 +45,7 @@ export class AppService  {
       username: dto.username.toLowerCase(),
       email: dto.email.toLowerCase(),
       passwordHash,
-      role: dto.role ?? UserRole.CUSTOMER,
+      role: 'customer' as UserRole,
       phone: dto.phone,
       avatar: dto.avatar,
       isActive: true,
@@ -91,7 +93,7 @@ export class AppService  {
     if (!doc) throw new NotFoundException('User không tồn tại');
     return this.toUserDto(doc);
   }
-
+  
   async update(id: string, dto: UpdateUserDto): Promise<UserDto> {
     const update: any = { ...dto };
 
@@ -115,6 +117,74 @@ export class AppService  {
       throw e;
     }
   }
+
+async findByforpasswordHash(
+  value: string
+) {
+  // ❗ Chặn lỗi nguy hiểm: field hoặc value bị undefined → query thành {}
+  if (!value) {
+    throw new NotFoundException('Không tìm thấy người dùng (tham số không hợp lệ)');
+  }
+  const query: any = {};
+
+  query['username'] = value.toLowerCase();
+
+  console.log("🔎 Query chạy:", query);
+
+  const doc = await this.userModel
+    .findOne(query)
+    .select("+passwordHash")
+    .lean() // ⚡ lean() đảm bảo trả về object THÔ, không biến dạng
+    .exec();
+
+  // Nếu không tìm thấy → return null (không throw)
+  if (!doc) {
+    console.log("❌ User không tồn tại");
+    return null;
+  }
+
+  console.log("🔥 Found user:", doc);
+
+  return doc;
+}
+
+
+async findBy(field: 'username' | 'email' | '_id', value: string) {
+  // ❗ Chặn lỗi nguy hiểm: field hoặc value bị undefined → query thành {}
+  if (!field || !value) {
+    throw new NotFoundException('Không tìm thấy người dùng (tham số không hợp lệ)');
+  }
+
+  const query: any = {};
+
+  if (field === 'username' || field === 'email') {
+    query[field] = value.toLowerCase();
+  } else if (field === '_id') {
+    query[field] = value;
+  } else {
+    // ❗ Nếu field không hợp lệ
+    throw new NotFoundException('Không tìm thấy người dùng (field không hợp lệ)');
+  }
+
+  console.log("🔍 Running findBy with query:", query);
+
+  const user = await this.userModel
+    .findOne(query)
+    .select("-passwordHash")   // xoá mật khẩu khi trả về
+    .lean()
+    .exec();
+
+  // ❗ Nếu không tìm thấy → báo lỗi đúng chuẩn
+  if (!user) {
+    throw new NotFoundException('Không tìm thấy người dùng');
+  }
+
+  return user;
+}
+
+
+
+
 
   async deactivate(id: string): Promise<{ deactivated: true }> {
     const res = await this.userModel.findByIdAndUpdate(id, { $set: { isActive: false } }, { new: true }).exec();

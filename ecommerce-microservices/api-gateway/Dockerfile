@@ -1,17 +1,19 @@
+# -----------------------------
+# Stage 1: Base
+# -----------------------------
 FROM node:18-alpine
 
-# Làm việc bên trong thư mục api-gateway
+# Tạo thư mục làm việc trong container
 WORKDIR /app
 
-# Cài Nest CLI (nếu chưa có)
-RUN npm install -g @nestjs/cli
-
-# Copy package files và cài dependency
+# Copy package.json trước để cài dependencies
 COPY package*.json ./
+
+# Cài dependencies
 RUN npm install
 
-# Copy toàn bộ mã nguồn vào container
-COPY . .
+# Expose cổng nếu cần (Nest thường là 3000, nhưng microservice có thể không cần)
+EXPOSE 3001
 
-# Mặc định chạy ở chế độ dev
+# Lệnh chạy cho môi trường dev
 CMD ["npm", "run", "start:dev"]

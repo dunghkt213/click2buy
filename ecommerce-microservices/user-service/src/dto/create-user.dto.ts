@@ -6,16 +6,13 @@ export class CreateUserDto {
   @IsString() @IsNotEmpty()
   username: string;
 
-  @IsEmail()
+  @IsEmail() @IsNotEmpty()
   email: string;
 
-  @IsString() @MinLength(6)
+  @IsString() @MinLength(6) @IsNotEmpty()
   password: string; // client gửi plain password -> BE sẽ hash thành passwordHash
 
-  @IsOptional() @IsEnum(UserRole)
-  role?: UserRole;
-
-  @IsOptional() @IsString()
+  @IsString() @IsNotEmpty()
   phone?: string;
 
   @IsOptional() @IsString()
