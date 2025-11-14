@@ -84,7 +84,7 @@ let AppService = class AppService {
             username: dto.username.toLowerCase(),
             email: dto.email.toLowerCase(),
             passwordHash,
-            role: dto.role ?? user_schema_1.UserRole.CUSTOMER,
+            role: 'customer',
             phone: dto.phone,
             avatar: dto.avatar,
             isActive: true,
@@ -147,6 +147,50 @@ let AppService = class AppService {
                 throw new common_1.BadRequestException('Email hoặc username đã tồn tại');
             throw e;
         }
+    }
+    async findByforpasswordHash(value) {
+        if (!value) {
+            throw new common_1.NotFoundException('Không tìm thấy người dùng (tham số không hợp lệ)');
+        }
+        const query = {};
+        query['username'] = value.toLowerCase();
+        console.log("🔎 Query chạy:", query);
+        const doc = await this.userModel
+            .findOne(query)
+            .select("+passwordHash")
+            .lean()
+            .exec();
+        if (!doc) {
+            console.log("❌ User không tồn tại");
+            return null;
+        }
+        console.log("🔥 Found user:", doc);
+        return doc;
+    }
+    async findBy(field, value) {
+        if (!field || !value) {
+            throw new common_1.NotFoundException('Không tìm thấy người dùng (tham số không hợp lệ)');
+        }
+        const query = {};
+        if (field === 'username' || field === 'email') {
+            query[field] = value.toLowerCase();
+        }
+        else if (field === '_id') {
+            query[field] = value;
+        }
+        else {
+            throw new common_1.NotFoundException('Không tìm thấy người dùng (field không hợp lệ)');
+        }
+        console.log("🔍 Running findBy with query:", query);
+        const user = await this.userModel
+            .findOne(query)
+            .select("-passwordHash")
+            .lean()
+            .exec();
+        if (!user) {
+            throw new common_1.NotFoundException('Không tìm thấy người dùng');
+        }
+        return user;
     }
     async deactivate(id) {
         const res = await this.userModel.findByIdAndUpdate(id, { $set: { isActive: false } }, { new: true }).exec();

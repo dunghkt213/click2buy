@@ -18,6 +18,16 @@ export declare class AppService {
     }>;
     findOne(id: string): Promise<UserDto>;
     update(id: string, dto: UpdateUserDto): Promise<UserDto>;
+    findByforpasswordHash(value: string): Promise<(import("mongoose").FlattenMaps<UserDocument> & Required<{
+        _id: import("mongoose").FlattenMaps<unknown>;
+    }> & {
+        __v: number;
+    }) | null>;
+    findBy(field: 'username' | 'email' | '_id', value: string): Promise<import("mongoose").FlattenMaps<UserDocument> & Required<{
+        _id: import("mongoose").FlattenMaps<unknown>;
+    }> & {
+        __v: number;
+    }>;
     deactivate(id: string): Promise<{
         deactivated: true;
     }>;

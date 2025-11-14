@@ -1,16 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, FilterQuery } from 'mongoose';
 import { Product } from '../schemas/product.schema';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+
+import { CreateProductDto } from '../dto/create-product.dto';
+import { UpdateProductDto } from '../dto/update-product.dto';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class AppService {
   constructor(@InjectModel(Product.name) private readonly productModel: Model<Product>) {}
 
-  async create(dto: CreateProductDto) {
-    const created = await this.productModel.create(dto);
+  async create(dto: CreateProductDto, userId: string) {
+    const created = await this.productModel.create({ ...dto, ownerId: userId });
     return { success: true, data: created };
   }
 
@@ -49,15 +51,37 @@ export class AppService {
     return { success: true, data: product };
   }
 
-  async update(id: string, dto: UpdateProductDto) {
-    const updated = await this.productModel.findByIdAndUpdate(id, dto, { new: true }).lean();
-    if (!updated) throw new NotFoundException('Product not found');
-    return { success: true, data: updated };
+  async update(id: string, dto: UpdateProductDto, userId: string) {
+    const updated = await this.productModel.findById(id);
+
+    if (!updated) {
+      console.log('🧩 Throwing RpcException: { statusCode: 404, message: "Product not found" }');
+      throw new RpcException({ statusCode: 404, message: 'Product not found' });
+    }
+
+    if (updated.ownerId.toString() !== userId) {
+      console.log('🧩 Throwing RpcException: { statusCode: 403, message: "You are not allowed to edit this product" }');
+      throw new RpcException({ statusCode: 403, message: 'You are not allowed to edit this product' });
+    }
+
+    return {
+      success: true,
+      message: 'Product updated successfully',
+      data: updated
+    };
   }
 
-  async remove(id: string) {
-    const deleted = await this.productModel.findByIdAndDelete(id).lean();
-    if (!deleted) throw new NotFoundException('Product not found');
+  async remove({ id, userId }: { id: string; userId: string }) {
+    const product = await this.productModel.findById(id);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (product.ownerId.toString() !== userId) {
+      throw new ForbiddenException('You are not allowed to delete this review');
+    }
+
+    await this.productModel.findByIdAndDelete(id);
     return { success: true, message: 'Product deleted successfully' };
   }
 

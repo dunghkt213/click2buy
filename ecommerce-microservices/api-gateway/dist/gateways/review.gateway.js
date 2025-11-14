@@ -16,6 +16,7 @@ exports.ReviewGateway = void 0;
 const common_1 = require("@nestjs/common");
 const microservices_1 = require("@nestjs/microservices");
 const inject_decorator_1 = require("@nestjs/common/decorators/core/inject.decorator");
+const kafka_request_helper_1 = require("../common/kafka-request.helper");
 let ReviewGateway = class ReviewGateway {
     kafka;
     constructor(kafka) {
@@ -30,19 +31,20 @@ let ReviewGateway = class ReviewGateway {
         await this.kafka.connect();
     }
     create(dto, auth) {
-        return this.kafka.send('review.create', { dto, auth });
+        return (0, kafka_request_helper_1.kafkaRequest)(this.kafka, 'review.create', { dto, auth });
     }
     findAll(q) {
-        return this.kafka.send('review.findAll', { q });
+        console.log("Lấy tất cả review");
+        return (0, kafka_request_helper_1.kafkaRequest)(this.kafka, 'review.findAll', { q });
     }
     findOne(id) {
-        return this.kafka.send('review.findOne', { id });
+        return (0, kafka_request_helper_1.kafkaRequest)(this.kafka, 'review.findOne', { id });
     }
     update(id, dto, auth) {
-        return this.kafka.send('review.update', { id, dto, auth });
+        return (0, kafka_request_helper_1.kafkaRequest)(this.kafka, 'review.update', { id, dto, auth });
     }
     remove(id, auth) {
-        return this.kafka.send('review.delete', { id, auth });
+        return (0, kafka_request_helper_1.kafkaRequest)(this.kafka, 'review.delete', { id, auth });
     }
 };
 exports.ReviewGateway = ReviewGateway;

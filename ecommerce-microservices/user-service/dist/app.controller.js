@@ -18,17 +18,25 @@ const microservices_1 = require("@nestjs/microservices");
 const jwt_kafka_guard_1 = require("./auth/jwt-kafka.guard");
 const current_user_decorator_1 = require("./auth/current-user.decorator");
 const app_service_1 = require("./app.service");
+const create_user_dto_1 = require("./dto/create-user.dto");
 let AppController = class AppController {
     AppService;
     constructor(AppService) {
         this.AppService = AppService;
     }
-    async create(data, user) {
-        if (user.role !== 'admin') {
-            throw new Error('Access denied: Only admins can access all users.');
+    async create(data) {
+        try {
+            const result = await this.AppService.create(data);
+            console.log('User created successfully:', result);
+            return result;
         }
-        else
-            return this.AppService.create(data.dto);
+        catch (err) {
+            throw new microservices_1.RpcException({
+                success: false,
+                message: err.message || 'User creation failed',
+                code: 'USER_CREATE_ERROR',
+            });
+        }
     }
     async findAll(data, user) {
         if (user.role !== 'admin') {
@@ -37,12 +45,34 @@ let AppController = class AppController {
         else
             return this.AppService.findAll(data.q);
     }
-    async findOne(data, user) {
-        if (user.role !== 'admin') {
-            throw new Error('Access denied: Only admins can access all users.');
+    async findOne(data) {
+        return this.AppService.findOne(data.id);
+    }
+    async findByCondition(data) {
+        try {
+            console.log('Finding user by condition:', data);
+            return await this.AppService.findBy(data.field, data.value);
         }
-        else
-            return this.AppService.findOne(data.id);
+        catch (err) {
+            throw new microservices_1.RpcException({
+                success: false,
+                message: err.message || 'User not found',
+                code: 'USER_NOT_FOUND',
+            });
+        }
+    }
+    async findByforpasswordHash(data) {
+        try {
+            console.log('Finding user by condition:', data.username);
+            return await this.AppService.findByforpasswordHash(data.username);
+        }
+        catch (err) {
+            throw new microservices_1.RpcException({
+                success: false,
+                message: err.message || 'User not found',
+                code: 'USER_NOT_FOUND',
+            });
+        }
     }
     async update(data, user) {
         if (user.sub !== data.id) {
@@ -61,11 +91,9 @@ let AppController = class AppController {
 exports.AppController = AppController;
 __decorate([
     (0, microservices_1.MessagePattern)('user.create'),
-    (0, common_1.UseGuards)(jwt_kafka_guard_1.JwtKafkaAuthGuard),
     __param(0, (0, microservices_1.Payload)()),
-    __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [create_user_dto_1.CreateUserDto]),
     __metadata("design:returntype", Promise)
 ], AppController.prototype, "create", null);
 __decorate([
@@ -79,13 +107,25 @@ __decorate([
 ], AppController.prototype, "findAll", null);
 __decorate([
     (0, microservices_1.MessagePattern)('user.findOne'),
-    (0, common_1.UseGuards)(jwt_kafka_guard_1.JwtKafkaAuthGuard),
     __param(0, (0, microservices_1.Payload)()),
-    __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AppController.prototype, "findOne", null);
+__decorate([
+    (0, microservices_1.MessagePattern)('user.getByCondition'),
+    __param(0, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AppController.prototype, "findByCondition", null);
+__decorate([
+    (0, microservices_1.MessagePattern)('user.getByforpasswordHash'),
+    __param(0, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AppController.prototype, "findByforpasswordHash", null);
 __decorate([
     (0, microservices_1.MessagePattern)('user.update'),
     (0, common_1.UseGuards)(jwt_kafka_guard_1.JwtKafkaAuthGuard),

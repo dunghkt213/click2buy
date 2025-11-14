@@ -8,20 +8,50 @@ export declare class AppService {
     create(dto: CreateReviewDto, userId: string): Promise<{
         success: boolean;
         message: string;
-        data: any;
+        data: import("mongoose").Document<unknown, {}, Review, {}, {}> & Review & {
+            _id: import("mongoose").Types.ObjectId;
+        } & {
+            __v: number;
+        };
     }>;
     findAll(q?: any): Promise<{
         success: boolean;
-        data: any;
+        data: (import("mongoose").FlattenMaps<{
+            productId: string;
+            userId: string;
+            rating: number;
+            comment?: string | undefined;
+            images: string[];
+            isApproved: boolean;
+        }> & {
+            _id: import("mongoose").Types.ObjectId;
+        } & {
+            __v: number;
+        })[];
     }>;
     findOne(id: string): Promise<{
         success: boolean;
-        data: any;
+        data: import("mongoose").FlattenMaps<{
+            productId: string;
+            userId: string;
+            rating: number;
+            comment?: string | undefined;
+            images: string[];
+            isApproved: boolean;
+        }> & {
+            _id: import("mongoose").Types.ObjectId;
+        } & {
+            __v: number;
+        };
     }>;
     update(id: string, dto: UpdateReviewDto, userId: string): Promise<{
         success: boolean;
         message: string;
-        data: any;
+        data: import("mongoose").Document<unknown, {}, Review, {}, {}> & Review & {
+            _id: import("mongoose").Types.ObjectId;
+        } & {
+            __v: number;
+        };
     }>;
     remove({ id, userId }: {
         id: string;

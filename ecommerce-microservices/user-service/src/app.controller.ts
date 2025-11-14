@@ -1,8 +1,9 @@
 import { Controller, UseGuards } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { JwtKafkaAuthGuard } from './auth/jwt-kafka.guard';
 import { CurrentUser } from './auth/current-user.decorator';
 import { AppService } from './app.service';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Controller()
 export class AppController {
@@ -10,15 +11,19 @@ export class AppController {
 
 
   @MessagePattern('user.create')
-  @UseGuards(JwtKafkaAuthGuard)
-  async create(@Payload() data: any, @CurrentUser() user: any) {
-      if(user.role !== 'admin') {
-      throw new Error('Access denied: Only admins can access all users.');
-    }
-    else return this.AppService.create(data.dto);
+  async create(@Payload() data: CreateUserDto) {
+  try {
+    const result = await this.AppService.create(data);
+    return result;
+  } catch (err) {
+    // Tạo format lỗi gửi về Gateway
+    throw new RpcException({
+      success: false,
+      message: err.message || 'User creation failed',
+      code: 'USER_CREATE_ERROR',
+    });
   }
-
-
+  }
 
   @MessagePattern('user.findAll')
   @UseGuards(JwtKafkaAuthGuard)
@@ -30,15 +35,35 @@ export class AppController {
   }
 
   @MessagePattern('user.findOne')
-  @UseGuards(JwtKafkaAuthGuard)
-  async findOne(@Payload() data: any, @CurrentUser() user: any) {
-    if(user.role !== 'admin') {
-      throw new Error('Access denied: Only admins can access all users.');
-    }
-    else return this.AppService.findOne(data.id);
+  async findOne(@Payload() data: any) {
+    return this.AppService.findOne(data.id);
   }
 
+  @MessagePattern('user.getByCondition')
+  async findByCondition(@Payload() data: any) {
+    try {
+      return await this.AppService.findBy(data.field, data.value);
+    } catch (err) {
+      throw new RpcException({
+        success: false,
+        message: err.message || 'User not found',
+        code: 'USER_NOT_FOUND',
+      });
+    }
+  }
 
+  @MessagePattern('user.getByforpasswordHash')
+  async findByforpasswordHash(@Payload() data: any) {
+    try {
+      return await this.AppService.findByforpasswordHash(data.username);
+    } catch (err) {
+      throw new RpcException({
+        success: false,
+        message: err.message || 'User not found',
+        code: 'USER_NOT_FOUND',
+      });
+    }
+  }
 
   @MessagePattern('user.update')
   @UseGuards(JwtKafkaAuthGuard)

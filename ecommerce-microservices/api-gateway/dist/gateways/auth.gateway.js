@@ -15,9 +15,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthGateway = void 0;
 const common_1 = require("@nestjs/common");
 const microservices_1 = require("@nestjs/microservices");
-const login_dto_1 = require("../dtos/auth/login.dto");
-const register_dto_1 = require("../dtos/auth/register.dto");
 const inject_decorator_1 = require("@nestjs/common/decorators/core/inject.decorator");
+const login_dto_1 = require("../dtos/login.dto");
+const register_dto_1 = require("../dtos/register.dto");
 let AuthGateway = class AuthGateway {
     kafka;
     constructor(kafka) {
@@ -26,30 +26,133 @@ let AuthGateway = class AuthGateway {
     async onModuleInit() {
         this.kafka.subscribeToResponseOf('auth.login');
         this.kafka.subscribeToResponseOf('auth.register');
+        this.kafka.subscribeToResponseOf('auth.refresh');
+        this.kafka.subscribeToResponseOf('auth.logout');
         await this.kafka.connect();
     }
-    login(dto) {
-        return this.kafka.send('auth.login', dto);
+    async login(dto, res) {
+        const result = await this.kafka.send('auth.login', dto).toPromise();
+        if (!result.success) {
+            throw new common_1.BadRequestException(result.message || 'Login failed');
+        }
+        const { user, accessToken, refreshTokenInfo } = result.data;
+        res.cookie('refresh_token', refreshTokenInfo.value, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            path: '/',
+            maxAge: refreshTokenInfo.options.maxAge,
+        });
+        return {
+            message: 'login successful',
+            user,
+            accessToken,
+        };
     }
-    register(dto) {
-        return this.kafka.send('auth.register', dto);
+    async register(dto, res) {
+        const result = await this.kafka.send('auth.register', dto).toPromise();
+        if (!result.success) {
+            throw new common_1.BadRequestException(result.message || 'Register failed');
+        }
+        const { user, accessToken, refreshTokenInfo } = result.data;
+        res.cookie('refresh_token', refreshTokenInfo.value, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            path: '/',
+            maxAge: refreshTokenInfo.options.maxAge,
+        });
+        return {
+            message: 'Register successful',
+            user,
+            accessToken,
+        };
+    }
+    async refresh(req, res) {
+        const refreshToken = req.cookies?.refresh_token;
+        if (!refreshToken) {
+            throw new common_1.UnauthorizedException('Refresh token missing');
+        }
+        const result = await this.kafka
+            .send('auth.refresh', { refreshToken })
+            .toPromise();
+        if (!result.success) {
+            throw new common_1.UnauthorizedException(result.error || 'Invalid refresh token');
+        }
+        const { accessToken, refreshTokenInfo } = result.data;
+        res.cookie('refresh_token', refreshTokenInfo.value, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            path: '/',
+            maxAge: refreshTokenInfo.options.maxAge,
+        });
+        return {
+            message: 'Access token refreshed',
+            accessToken,
+        };
+    }
+    async logout(req, res) {
+        const refreshToken = req.cookies?.refresh_token;
+        if (!refreshToken) {
+            res.clearCookie('refresh_token', {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'strict',
+                path: '/',
+            });
+            return { success: true, message: 'Logged out (no token found)' };
+        }
+        const result = await this.kafka
+            .send('auth.logout', { refreshToken })
+            .toPromise();
+        res.clearCookie('refresh_token', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            path: '/',
+        });
+        if (result.success) {
+            return { success: true, message: 'Logged out successfully' };
+        }
+        else {
+            return { success: false, message: result.error };
+        }
     }
 };
 exports.AuthGateway = AuthGateway;
 __decorate([
     (0, common_1.Post)('login'),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [login_dto_1.LoginDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
+    __metadata("design:returntype", Promise)
 ], AuthGateway.prototype, "login", null);
 __decorate([
     (0, common_1.Post)('register'),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [register_dto_1.RegisterDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [register_dto_1.RegisterDto, Object]),
+    __metadata("design:returntype", Promise)
 ], AuthGateway.prototype, "register", null);
+__decorate([
+    (0, common_1.Post)('refresh'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthGateway.prototype, "refresh", null);
+__decorate([
+    (0, common_1.Post)('logout'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthGateway.prototype, "logout", null);
 exports.AuthGateway = AuthGateway = __decorate([
     (0, common_1.Controller)('auth'),
     __param(0, (0, inject_decorator_1.Inject)('KAFKA_SERVICE')),
