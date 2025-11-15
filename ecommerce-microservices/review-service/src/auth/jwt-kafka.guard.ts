@@ -8,29 +8,33 @@ import { JwtService } from './jwt.service';
 
 @Injectable()
 export class JwtKafkaAuthGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly jwtService: JwtService) { }
 
   canActivate(context: ExecutionContext): boolean {
-    // 1️⃣ Lấy Kafka message context
-    const kafkaContext = context.switchToRpc().getContext();
-    const message = kafkaContext.getMessage().value;
+    console.log('📩 Incoming Kafka data:', context.switchToRpc().getData());
+    // ✅ Dùng Nest helper lấy payload JSON đã parse sẵn
+    const data = context.switchToRpc().getData();
 
-    // 2️⃣ Lấy token từ field 'authorization' trong message
-    const authHeader = message?.authorization || message?.auth;
+    // 1️⃣ Lấy token từ field 'auth' hoặc 'authorization'
+    const authHeader = data?.authorization || data?.auth;
     if (!authHeader) {
       throw new UnauthorizedException('Missing authorization field in message');
     }
 
-    // 3️⃣ Cắt chuỗi Bearer token
+    // 2️⃣ Cắt chuỗi "Bearer "
     const token = authHeader.startsWith('Bearer ')
       ? authHeader.split(' ')[1]
       : authHeader;
 
-    // 4️⃣ Validate và lấy payload
+    // 3️⃣ Validate và decode token
     const payload = this.jwtService.validateToken(token);
+    if (!payload) {
+      throw new UnauthorizedException('Invalid token');
+    }
 
-    // 5️⃣ Gắn payload vào message để handler dùng được
-    message.user = payload;
+    // 4️⃣ Gắn payload vào data để controller dùng
+    data.user = payload;
+
     return true;
   }
 }

@@ -8,8 +8,11 @@ export class JwtService {
   validateToken(token: string) {
     try {
       const payload = jwt.verify(token, this.secret);
+      console.log('🔐 Using JWT_SECRET:', this.secret?.slice(0, 5) + '...');
+      console.log('✅ Token payload:', payload);
       return payload;
     } catch (error) {
+      console.error('❌ JWT validation error:', error.message);
       throw new UnauthorizedException('Invalid or expired token');
     }
   }

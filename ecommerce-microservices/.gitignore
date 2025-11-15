@@ -88,4 +88,4 @@ libs/auth/dist/
 
 # Optional: exclude local docker data
 docker-data/
-volumes/
+volumes/ 
