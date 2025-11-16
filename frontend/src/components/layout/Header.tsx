@@ -7,7 +7,8 @@ import {
   ShoppingCart, 
   Heart, 
   Menu,
-  Bell
+  Bell,
+  Store // THÊM: Icon Store
 } from 'lucide-react';
 import { AccountDropdown } from '../shared/AccountDropdown';
 import { User, CartItem } from '../../types'; // THÊM: Import CartItem
@@ -28,6 +29,7 @@ interface HeaderProps {
   onFilterClick: () => void;
   onPromotionClick: () => void;
   onSupportClick: () => void;
+  onStoreClick: () => void; // THÊM: Callback cho Store
   isLoggedIn: boolean;
   user?: User;
   onLogin: () => void;
@@ -54,6 +56,7 @@ export function Header({
   onFilterClick,
   onPromotionClick,
   onSupportClick,
+  onStoreClick, // THÊM: Nhận callback từ parent
   isLoggedIn,
   user,
   onLogin,
@@ -129,6 +132,16 @@ export function Header({
 
           {/* Actions */}
           <div className="flex items-center gap-2">
+            {/* Store */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="hidden md:flex relative"
+              onClick={onStoreClick}
+            >
+              <Store className="w-4 h-4" />
+            </Button>
+
             {/* Notifications */}
             <Button 
               variant="ghost" 

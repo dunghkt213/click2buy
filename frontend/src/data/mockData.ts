@@ -1,4 +1,4 @@
-import { CartItem, Notification, Promotion, FAQItem, SupportTicket, User, Order } from '../types'; // THÊM Order
+import { CartItem, Notification, Promotion, FAQItem, SupportTicket, User, Order, StoreProduct, StoreStats, StoreInfo } from '../types'; // THÊM Store types
 
 export const initialCartItems: CartItem[] = [
   {
@@ -333,7 +333,7 @@ export const initialOrders: Order[] = [
     paymentMethod: 'ZaloPay',
     shippingMethod: 'Giao hàng nhanh',
     shippingAddress: {
-      name: 'Nguyễn V��n A',
+      name: 'Nguyễn Vn A',
       phone: '0901234567',
       address: '123 Nguyen Van A, 144 Xuan Thuy, Phường Xuân Thủy, Quận Cầu Giấy, Hà Nội'
     },
@@ -491,3 +491,109 @@ export const initialOrders: Order[] = [
     ]
   }
 ];
+
+// THÊM: Initial Store Products
+export const initialStoreProducts: StoreProduct[] = [
+  {
+    id: 'sp-1',
+    name: 'iPhone 15 Pro Max 256GB',
+    price: 29990000,
+    originalPrice: 34990000,
+    stock: 50,
+    sold: 125,
+    image: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=300',
+    category: 'electronics',
+    description: 'iPhone 15 Pro Max với chip A17 Pro, camera 48MP',
+    status: 'active',
+    createdAt: '2024-01-15T08:00:00',
+    rating: 4.8,
+    reviews: 1250
+  },
+  {
+    id: 'sp-2',
+    name: 'Samsung Galaxy S24 Ultra',
+    price: 26990000,
+    stock: 30,
+    sold: 89,
+    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300',
+    category: 'electronics',
+    description: 'Samsung Galaxy S24 Ultra với S Pen',
+    status: 'active',
+    createdAt: '2024-02-10T10:00:00',
+    rating: 4.7,
+    reviews: 890
+  },
+  {
+    id: 'sp-3',
+    name: 'MacBook Air M3 13 inch',
+    price: 28990000,
+    originalPrice: 32990000,
+    stock: 5,
+    sold: 65,
+    image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=300',
+    category: 'electronics',
+    description: 'MacBook Air với chip M3, 8GB RAM, 256GB SSD',
+    status: 'active',
+    createdAt: '2024-03-05T09:00:00',
+    rating: 4.9,
+    reviews: 650
+  },
+  {
+    id: 'sp-4',
+    name: 'Sony WH-1000XM5',
+    price: 7990000,
+    originalPrice: 9990000,
+    stock: 0,
+    sold: 210,
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
+    category: 'electronics',
+    description: 'Tai nghe không dây chống ồn hàng đầu',
+    status: 'out_of_stock',
+    createdAt: '2024-01-20T11:00:00',
+    rating: 4.6,
+    reviews: 2100
+  },
+  {
+    id: 'sp-5',
+    name: 'Dell XPS 13 Plus',
+    price: 35990000,
+    stock: 15,
+    sold: 32,
+    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=300',
+    category: 'electronics',
+    description: 'Laptop Dell XPS 13 Plus với Intel Core i7',
+    status: 'active',
+    createdAt: '2024-04-12T14:00:00',
+    rating: 4.5,
+    reviews: 320
+  }
+];
+
+// THÊM: Initial Store Stats
+export const initialStoreStats: StoreStats = {
+  totalProducts: 100,
+  totalOrders: 521,
+  totalRevenue: 1564000000,
+  pendingOrders: 12,
+  monthlyRevenue: 285000000,
+  monthlyOrders: 85,
+  rating: 4.7,
+  totalReviews: 5210
+};
+
+// THÊM: Initial Store Info
+export const initialStoreInfo: StoreInfo = {
+  id: 'store-1',
+  name: 'ShopMart Official Store',
+  description: 'Cửa hàng chính thức của ShopMart - Chuyên cung cấp các sản phẩm công nghệ chất lượng cao',
+  logo: '',
+  cover: '',
+  rating: 4.7,
+  totalReviews: 5210,
+  totalProducts: 100,
+  followers: 15420,
+  joinedDate: '2020-01-01T00:00:00',
+  address: '123 Nguyen Van A, 144 Xuan Thuy, Phường Xuân Thủy, Quận Cầu Giấy, Hà Nội',
+  phone: '0901234567',
+  email: 'store@shopmart.vn'
+};

@@ -79,6 +79,51 @@ export interface Order {
   }[];
 }
 
+// THÊM: Store types
+export interface StoreProduct {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  stock: number;
+  sold: number;
+  image: string;
+  images?: string[];
+  category: string;
+  description: string;
+  status: 'active' | 'inactive' | 'out_of_stock';
+  createdAt: string;
+  rating: number;
+  reviews: number;
+}
+
+export interface StoreStats {
+  totalProducts: number;
+  totalOrders: number;
+  totalRevenue: number;
+  pendingOrders: number;
+  monthlyRevenue: number;
+  monthlyOrders: number;
+  rating: number;
+  totalReviews: number;
+}
+
+export interface StoreInfo {
+  id: string;
+  name: string;
+  description: string;
+  logo?: string;
+  cover?: string;
+  rating: number;
+  totalReviews: number;
+  totalProducts: number;
+  followers: number;
+  joinedDate: string;
+  address: string;
+  phone: string;
+  email: string;
+}
+
 // Filter types
 export interface FilterState {
   category: string;

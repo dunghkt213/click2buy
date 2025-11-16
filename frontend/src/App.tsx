@@ -1,17 +1,17 @@
-import React, { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 // Layout Components
+import { Footer } from './components/layout/Footer';
 import { Header } from './components/layout/Header';
 import { Hero } from './components/layout/Hero';
-import { Footer } from './components/layout/Footer';
 
 // Shared Components  
-import { 
-  CheckoutModal 
+import {
+  CheckoutModal
 } from './components/modal';
-import { 
+import {
   ProductGrid
 } from './components/product';
-import { 
+import {
   Categories
 } from './components/shared';
 
@@ -20,9 +20,9 @@ import {
   CartSidebar,
   FilterSidebar,
   NotificationSidebar,
-  WishlistSidebar,
   PromotionSidebar,
-  SupportSidebar
+  SupportSidebar,
+  WishlistSidebar
 } from './components/sidebars';
 
 // Auth Components
@@ -43,21 +43,25 @@ import { CartPage } from './components/pages/CartPage';
 // THÊM: Orders Page
 import { OrdersPage } from './components/pages/OrdersPage';
 
+// THÊM: My Store Page
+import { MyStorePage } from './components/pages/MyStorePage.tsx';
+
 // Hooks
-import { useCart, useWishlist, useNotifications } from './hooks';
+import { useCart, useNotifications, useWishlist } from './hooks';
 
 // Types & Data
-import { FilterState, Promotion, FAQItem, SupportTicket, User, Order, OrderItem } from './types'; // THÊM: Order, OrderItem
-import { 
-  initialCartItems, 
-  initialNotifications, 
-  initialPromotions, 
-  initialFAQs, 
+import {
+  initialCartItems,
+  initialFAQs,
+  initialNotifications,
+  initialOrders,
+  initialPromotions, // THÊM: initialOrders
+  initialStoreProducts,
   initialSupportTickets,
-  initialUser,
-  initialOrders // THÊM: initialOrders
+  initialUser
 } from './data/mockData';
 import { generateTicketId } from './lib/utils';
+import { FAQItem, FilterState, Order, Promotion, SupportTicket, User } from './types'; // THÊM: Store types
 
 export default function App() {
   // THÊM: Ref để scroll đến phần sản phẩm
@@ -95,6 +99,9 @@ export default function App() {
   // THÊM: State cho orders page
   const [isOrdersPageOpen, setIsOrdersPageOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
+
+  // THÊM: State cho my store page
+  const [isMyStorePageOpen, setIsMyStorePageOpen] = useState(false);
 
   // Custom hooks
   const {
@@ -333,7 +340,72 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      {isOrdersPageOpen ? (
+      {isMyStorePageOpen ? (
+        /* THÊM: My Store Page - Màn hình cửa hàng của tôi với Header + Footer */
+        <>
+          <Header 
+            cartItemsCount={getTotalItems()}
+            wishlistItemsCount={wishlistItems.length}
+            unreadNotifications={getUnreadCount()}
+            onCartClick={() => setIsCartPageOpen(true)}
+            onWishlistClick={() => setIsWishlistOpen(true)}
+            onNotificationsClick={() => setIsNotificationOpen(true)}
+            onFilterClick={() => setIsFilterOpen(true)}
+            onPromotionClick={() => setIsPromotionOpen(true)}
+            onSupportClick={() => setIsSupportOpen(true)}
+            onStoreClick={() => setIsMyStorePageOpen(false)} // Click lại để đóng
+            isLoggedIn={isLoggedIn}
+            user={user}
+            onLogin={handleLogin}
+            onRegister={handleRegister}
+            onLogout={handleLogout}
+            onProfileClick={handleProfileClick}
+            onOrdersClick={handleOrdersClick}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onSearchClick={() => {
+              if (searchQuery.trim()) {
+                setIsSearchOpen(true);
+              }
+            }}
+            cartIconRef={cartIconRef}
+            wishlistIconRef={wishlistIconRef}
+            cartItems={cartItems}
+            totalPrice={getTotalPrice()}
+          />
+          
+          <main className="pt-16 min-h-screen">
+            <MyStorePage
+              storeProducts={initialStoreProducts}
+              storeOrders={orders.filter(o => o.status !== 'cancelled')}
+              onAddProduct={() => console.log('Add product')}
+              onUpdateProduct={() => console.log('Update product')}
+              onDeleteProduct={() => console.log('Delete product')}
+              onUpdateOrderStatus={(orderId, status) => {
+                setOrders(prev => prev.map(order => 
+                  order.id === orderId 
+                    ? { 
+                        ...order, 
+                        status: status as any,
+                        updatedAt: new Date().toISOString(),
+                        timeline: [
+                          ...order.timeline,
+                          {
+                            status: status as any,
+                            timestamp: new Date().toISOString(),
+                            description: `Đơn hàng đã chuyển sang trạng thái ${status}`
+                          }
+                        ]
+                      }
+                    : order
+                ));
+              }}
+            />
+          </main>
+
+          <Footer />
+        </>
+      ) : isOrdersPageOpen ? (
         /* THÊM: Orders Page - Màn hình đơn hàng của tôi */
         <OrdersPage
           orders={orders}
@@ -370,6 +442,7 @@ export default function App() {
             onFilterClick={() => setIsFilterOpen(true)}
             onPromotionClick={() => setIsPromotionOpen(true)}
             onSupportClick={() => setIsSupportOpen(true)}
+            onStoreClick={() => setIsMyStorePageOpen(true)} // THÊM: Mở my store page
             isLoggedIn={isLoggedIn}
             user={user}
             onLogin={handleLogin}
