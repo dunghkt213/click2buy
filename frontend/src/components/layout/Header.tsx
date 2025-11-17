@@ -100,12 +100,15 @@ export function Header({
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-3">
+            <button 
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            >
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-4 h-4 bg-primary-foreground rounded-sm"></div>
               </div>
-              <span className="text-xl font-semibold">Click2buy</span>
-            </div>
+              <span className="text-xl font-semibold">ShopMart</span>
+            </button>
 
             {/* Navigation */}
             <nav className="hidden lg:flex items-center gap-6">

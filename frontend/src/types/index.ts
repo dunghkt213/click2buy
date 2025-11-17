@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   price: number;
   originalPrice?: number;
+  discount?: number; // THÊM: Phần trăm giảm giá
   image: string;
   category: string;
   rating: number;
@@ -13,7 +14,9 @@ export interface Product {
   inStock: boolean;
   isNew?: boolean;
   isSale?: boolean;
+  isBestSeller?: boolean; // THÊM: Sản phẩm bán chạy
   soldCount?: number; // THÊM: Số lượng đã bán
+  timeLeft?: string; // THÊM: Thời gian còn lại của deal
   images?: string[]; // THÊM: Nhiều ảnh sản phẩm
   specifications?: { [key: string]: string }; // THÊM: Thông số kỹ thuật
 }

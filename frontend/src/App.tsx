@@ -1,28 +1,28 @@
-import { useRef, useState } from 'react';
+import React, { useState, useRef } from 'react';
 // Layout Components
-import { Footer } from './components/layout/Footer';
 import { Header } from './components/layout/Header';
 import { Hero } from './components/layout/Hero';
+import { Footer } from './components/layout/Footer';
 
 // Shared Components  
-import {
-  CheckoutModal
+import { 
+  Categories 
+} from './components/shared';
+import {  
+  CheckoutModal 
 } from './components/modal';
-import {
+import {  
   ProductGrid
 } from './components/product';
-import {
-  Categories
-} from './components/shared';
 
 // Sidebar Components
 import {
   CartSidebar,
   FilterSidebar,
   NotificationSidebar,
+  WishlistSidebar,
   PromotionSidebar,
-  SupportSidebar,
-  WishlistSidebar
+  SupportSidebar
 } from './components/sidebars';
 
 // Auth Components
@@ -31,47 +31,55 @@ import { AuthModal } from './components/auth';
 // Search Components
 import { SearchModal } from './components/modal/SearchModal';
 
-// THÊM: Product Detail Modal
+// Product Detail Modal
 import { ProductDetailModal } from './components/product/ProductDetailModal';
 
-// THÊM: Flying Icon
+// Flying Icon
 import { FlyingIcon, FlyingIconConfig } from './components/animation/FlyingIcon';
 
-// THÊM: Cart Page
+// Cart Page
 import { CartPage } from './components/pages/CartPage';
 
-// THÊM: Orders Page
+// Orders Page
 import { OrdersPage } from './components/pages/OrdersPage';
 
-// THÊM: My Store Page
-import { MyStorePage } from './components/pages/MyStorePage.tsx';
+// My Store Page
+import { MyStorePage } from './components/pages/MyStorePage';
+
+// Store Registration Modal
+import { StoreRegistrationModal } from './components/modal/StoreRegistrationModal';
+
+// Hot Deals Section
+import { HotDealsSection } from './components/product/HotDealsSection';
 
 // Hooks
-import { useCart, useNotifications, useWishlist } from './hooks';
+import { useCart, useWishlist, useNotifications } from './hooks';
 
 // Types & Data
-import {
-  initialCartItems,
-  initialFAQs,
-  initialNotifications,
-  initialOrders,
-  initialPromotions, // THÊM: initialOrders
-  initialStoreProducts,
+import { FilterState, Promotion, FAQItem, SupportTicket, User, Order, OrderItem, StoreProduct, StoreStats, StoreInfo } from './types';
+import { 
+  initialCartItems, 
+  initialNotifications, 
+  initialPromotions, 
+  initialFAQs, 
   initialSupportTickets,
-  initialUser
+  initialUser,
+  initialOrders,
+  initialStoreProducts,
+  initialStoreStats,
+  initialStoreInfo
 } from './data/mockData';
 import { generateTicketId } from './lib/utils';
-import { FAQItem, FilterState, Order, Promotion, SupportTicket, User } from './types'; // THÊM: Store types
 
 export default function App() {
-  // THÊM: Ref để scroll đến phần sản phẩm
+  // Ref để scroll đến phần sản phẩm
   const productSectionRef = useRef<HTMLDivElement>(null);
   
-  // THÊM: Refs cho icon cart và wishlist trên header
+  // Refs cho icon cart và wishlist trên header
   const cartIconRef = useRef<HTMLButtonElement>(null);
   const wishlistIconRef = useRef<HTMLButtonElement>(null);
 
-  // THÊM: State cho flying icons animation
+  // State cho flying icons animation
   const [flyingIcons, setFlyingIcons] = useState<FlyingIconConfig[]>([]);
 
   // Sidebar states
@@ -85,23 +93,31 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
   
-  // THÊM: State cho tìm kiếm
+  // State cho tìm kiếm
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // THÊM: State cho product detail modal
+  // State cho product detail modal
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
-  // THÊM: State cho cart page
+  // State cho cart page
   const [isCartPageOpen, setIsCartPageOpen] = useState(false);
 
-  // THÊM: State cho orders page
+  // State cho orders page
   const [isOrdersPageOpen, setIsOrdersPageOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
 
-  // THÊM: State cho my store page
+  // State cho my store page
   const [isMyStorePageOpen, setIsMyStorePageOpen] = useState(false);
+
+  // State cho store registration modal
+  const [isStoreRegistrationOpen, setIsStoreRegistrationOpen] = useState(false);
+  
+  // State cho store
+  const [hasStore, setHasStore] = useState(false); // User chưa có store
+  const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
+  const [storeProducts, setStoreProducts] = useState<StoreProduct[]>([]);
 
   // Custom hooks
   const {
@@ -125,7 +141,7 @@ export default function App() {
     removeFromWishlist
   } = useWishlist();
 
-  // THÊM: Hàm isInWishlist để check sản phẩm có trong wishlist không
+  // Hàm isInWishlist để check sản phẩm có trong wishlist không
   const isInWishlist = (productId: string) => {
     return wishlistItems.some(item => item.id === productId);
   };
@@ -142,8 +158,8 @@ export default function App() {
   const [promotions, setPromotions] = useState<Promotion[]>(initialPromotions);
   const [faqs] = useState<FAQItem[]>(initialFAQs);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(initialSupportTickets);
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // THAY ĐỔI: Đặt true để mặc định đã đăng nhập
-  const [user, setUser] = useState<User | undefined>(initialUser); // THAY ĐỔI: Sử dụng initialUser từ mockData
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [user, setUser] = useState<User | undefined>(initialUser);
   const [filters, setFilters] = useState<FilterState>({
     category: 'all',
     priceRange: [0, 50000000],
@@ -183,17 +199,17 @@ export default function App() {
   };
 
   const handleOrdersClick = () => {
-    setIsOrdersPageOpen(true); // THAY ĐỔI: Mở orders page
+    setIsOrdersPageOpen(true);
   };
 
   const handleViewProduct = (productId: string) => {
     console.log('View product:', productId);
   };
 
-  // THÊM: Hàm scroll xuống phần sản phẩm khi click category
+  // Hàm scroll xuống phần sản phẩm khi click category
   const scrollToProducts = () => {
     if (productSectionRef.current) {
-      const headerOffset = 80; // Chiều cao của header (16 * 4 = 64px + padding)
+      const headerOffset = 80;
       const elementPosition = productSectionRef.current.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
@@ -229,36 +245,31 @@ export default function App() {
   // Checkout functions
   const handleCheckout = (checkoutData: any) => {
     console.log('Checkout data:', checkoutData);
-    // Here you would typically send the data to your backend
     alert('Đặt hàng thành công! Cảm ơn bạn đã mua sắm tại ShopMart.');
-    // Remove only selected items after successful checkout
     const selectedItemIds = getSelectedItems().map(item => item.id);
     selectedItemIds.forEach(id => removeFromCart(id));
   };
 
-  // THÊM: Hàm xử lý xem chi tiết sản phẩm
+  // Hàm xử lý xem chi tiết sản phẩm
   const handleViewProductDetail = (product: any) => {
     setSelectedProduct(product);
     setIsProductDetailOpen(true);
   };
 
-  // THÊM: Hàm trigger flying icon animation
+  // Hàm trigger flying icon animation
   const handleTriggerFlyingIcon = (type: 'heart' | 'cart', element: HTMLElement) => {
     const targetRef = type === 'heart' ? wishlistIconRef : cartIconRef;
     
     if (!targetRef.current) return;
     
-    // Lấy vị trí của element được click
     const startRect = element.getBoundingClientRect();
     const startX = startRect.left + startRect.width / 2;
     const startY = startRect.top + startRect.height / 2;
     
-    // Lấy vị trí của icon đích trên header
     const endRect = targetRef.current.getBoundingClientRect();
     const endX = endRect.left + endRect.width / 2;
     const endY = endRect.top + endRect.height / 2;
     
-    // Tạo flying icon config
     const newIcon: FlyingIconConfig = {
       id: `${type}-${Date.now()}-${Math.random()}`,
       type,
@@ -268,16 +279,15 @@ export default function App() {
       endY,
     };
     
-    // Thêm icon vào danh sách
     setFlyingIcons(prev => [...prev, newIcon]);
   };
 
-  // THÊM: Callback khi animation hoàn thành
+  // Callback khi animation hoàn thành
   const handleAnimationComplete = (id: string) => {
     setFlyingIcons(prev => prev.filter(icon => icon.id !== id));
   };
 
-  // THÊM: Order functions
+  // Order functions
   const handleViewOrderDetail = (order: Order) => {
     console.log('View order detail:', order);
   };
@@ -308,7 +318,6 @@ export default function App() {
   const handleReorder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
-      // Add all items from order back to cart
       order.items.forEach(item => {
         addToCart({
           id: item.productId,
@@ -338,10 +347,76 @@ export default function App() {
     alert('Chức năng liên hệ shop sẽ được phát triển sau');
   };
 
+  // Store functions
+  const handleStoreClick = () => {
+    if (!hasStore) {
+      setIsStoreRegistrationOpen(true);
+    } else {
+      setIsMyStorePageOpen(true);
+    }
+  };
+
+  const handleStoreRegistration = (newStoreInfo: Omit<StoreInfo, 'id' | 'rating' | 'totalReviews' | 'totalProducts' | 'followers' | 'joinedDate'>) => {
+    const fullStoreInfo: StoreInfo = {
+      id: `store-${Date.now()}`,
+      ...newStoreInfo,
+      rating: 0,
+      totalReviews: 0,
+      totalProducts: 0,
+      followers: 0,
+      joinedDate: new Date().toISOString()
+    };
+    
+    setStoreInfo(fullStoreInfo);
+    setHasStore(true);
+    setIsStoreRegistrationOpen(false);
+    setIsMyStorePageOpen(true);
+    
+    alert('Chúc mừng! Cửa hàng của bạn đã được tạo thành công!');
+  };
+
+  const handleAddProduct = (product: Omit<StoreProduct, 'id'>) => {
+    const newProduct: StoreProduct = {
+      ...product,
+      id: `product-${Date.now()}`
+    };
+    setStoreProducts(prev => [newProduct, ...prev]);
+    
+    if (storeInfo) {
+      setStoreInfo({
+        ...storeInfo,
+        totalProducts: storeProducts.length + 1
+      });
+    }
+    
+    alert('Sản phẩm đã được thêm thành công!');
+  };
+
+  const handleUpdateProduct = (id: string, updates: Partial<StoreProduct>) => {
+    setStoreProducts(prev => prev.map(product => 
+      product.id === id 
+        ? { ...product, ...updates }
+        : product
+    ));
+    alert('Sản phẩm đã được cập nhật!');
+  };
+
+  const handleDeleteProduct = (id: string) => {
+    setStoreProducts(prev => prev.filter(product => product.id !== id));
+    
+    if (storeInfo) {
+      setStoreInfo({
+        ...storeInfo,
+        totalProducts: storeProducts.length - 1
+      });
+    }
+    
+    alert('Sản phẩm đã được xóa!');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {isMyStorePageOpen ? (
-        /* THÊM: My Store Page - Màn hình cửa hàng của tôi với Header + Footer */
         <>
           <Header 
             cartItemsCount={getTotalItems()}
@@ -353,7 +428,7 @@ export default function App() {
             onFilterClick={() => setIsFilterOpen(true)}
             onPromotionClick={() => setIsPromotionOpen(true)}
             onSupportClick={() => setIsSupportOpen(true)}
-            onStoreClick={() => setIsMyStorePageOpen(false)} // Click lại để đóng
+            onStoreClick={handleStoreClick}
             isLoggedIn={isLoggedIn}
             user={user}
             onLogin={handleLogin}
@@ -376,11 +451,11 @@ export default function App() {
           
           <main className="pt-16 min-h-screen">
             <MyStorePage
-              storeProducts={initialStoreProducts}
+              storeProducts={storeProducts}
               storeOrders={orders.filter(o => o.status !== 'cancelled')}
-              onAddProduct={() => console.log('Add product')}
-              onUpdateProduct={() => console.log('Update product')}
-              onDeleteProduct={() => console.log('Delete product')}
+              onAddProduct={handleAddProduct}
+              onUpdateProduct={handleUpdateProduct}
+              onDeleteProduct={handleDeleteProduct}
               onUpdateOrderStatus={(orderId, status) => {
                 setOrders(prev => prev.map(order => 
                   order.id === orderId 
@@ -406,7 +481,6 @@ export default function App() {
           <Footer />
         </>
       ) : isOrdersPageOpen ? (
-        /* THÊM: Orders Page - Màn hình đơn hàng của tôi */
         <OrdersPage
           orders={orders}
           onBack={() => setIsOrdersPageOpen(false)}
@@ -417,7 +491,6 @@ export default function App() {
           onContactShop={handleContactShop}
         />
       ) : isCartPageOpen ? (
-        /* THÊM: Cart Page - Màn hình giỏ hàng đầy đủ */
         <CartPage
           items={cartItems}
           onUpdateQuantity={updateQuantity}
@@ -427,7 +500,7 @@ export default function App() {
           onDeselectAllItems={deselectAllItems}
           selectedTotalPrice={getSelectedTotalPrice()}
           selectedItems={getSelectedItems()}
-          onCheckout={handleCheckout} // SỬA: Truyền handleCheckout trực tiếp
+          onCheckout={handleCheckout}
           onBack={() => setIsCartPageOpen(false)}
         />
       ) : !isSearchOpen ? (
@@ -436,13 +509,13 @@ export default function App() {
             cartItemsCount={getTotalItems()}
             wishlistItemsCount={wishlistItems.length}
             unreadNotifications={getUnreadCount()}
-            onCartClick={() => setIsCartPageOpen(true)} // THAY ĐỔI: Mở cart page thay vì sidebar
+            onCartClick={() => setIsCartPageOpen(true)}
             onWishlistClick={() => setIsWishlistOpen(true)}
             onNotificationsClick={() => setIsNotificationOpen(true)}
             onFilterClick={() => setIsFilterOpen(true)}
             onPromotionClick={() => setIsPromotionOpen(true)}
             onSupportClick={() => setIsSupportOpen(true)}
-            onStoreClick={() => setIsMyStorePageOpen(true)} // THÊM: Mở my store page
+            onStoreClick={handleStoreClick}
             isLoggedIn={isLoggedIn}
             user={user}
             onLogin={handleLogin}
@@ -459,18 +532,27 @@ export default function App() {
             }}
             cartIconRef={cartIconRef}
             wishlistIconRef={wishlistIconRef}
-            cartItems={cartItems} // THÊM: Truyền cart items cho preview
-            totalPrice={getTotalPrice()} // THÊM: Truyền total price cho preview
+            cartItems={cartItems}
+            totalPrice={getTotalPrice()}
           />
           
           <main className="pt-16">
             <Hero />
+            
             <Categories 
               onCategorySelect={(category) => setFilters(prev => ({ ...prev, category }))} 
               onCategoryClick={scrollToProducts}
             />
             
-            {/* SỬA: Thêm ref để scroll đến phần này */}
+            {/* Hot Deals Section */}
+            <HotDealsSection
+              onAddToCart={addToCart}
+              onViewDetail={handleViewProductDetail}
+              onAddToWishlist={addToWishlist}
+              isInWishlist={isInWishlist}
+              onTriggerFlyingIcon={handleTriggerFlyingIcon}
+            />
+            
             <div ref={productSectionRef} className="container mx-auto px-4 py-8">
               <div className="flex gap-8">
                 <FilterSidebar 
@@ -485,9 +567,9 @@ export default function App() {
                     filters={filters}
                     onAddToCart={addToCart}
                     onViewDetail={handleViewProductDetail}
-                    onAddToWishlist={addToWishlist} // THÊM: Truyền addToWishlist
-                    isInWishlist={isInWishlist} // THÊM: Truyền isInWishlist
-                    onTriggerFlyingIcon={handleTriggerFlyingIcon} // THÊM: Truyền flying icon handler
+                    onAddToWishlist={addToWishlist}
+                    isInWishlist={isInWishlist}
+                    onTriggerFlyingIcon={handleTriggerFlyingIcon}
                   />
                 </div>
               </div>
@@ -501,7 +583,7 @@ export default function App() {
           isOpen={isSearchOpen}
           onClose={() => {
             setIsSearchOpen(false);
-            setSearchQuery(''); // Clear search query khi đóng
+            setSearchQuery('');
           }}
           onAddToCart={addToCart}
           initialSearchQuery={searchQuery}
@@ -520,10 +602,10 @@ export default function App() {
           onLogout={handleLogout}
           onProfileClick={handleProfileClick}
           onOrdersClick={handleOrdersClick}
-          onViewDetail={handleViewProductDetail} // THÊM: Truyền handleViewProductDetail
-          onAddToWishlist={addToWishlist} // THÊM: Truyền addToWishlist
-          isInWishlist={isInWishlist} // THÊM: Truyền isInWishlist
-          onTriggerFlyingIcon={handleTriggerFlyingIcon} // THÊM: Truyền flying icon handler
+          onViewDetail={handleViewProductDetail}
+          onAddToWishlist={addToWishlist}
+          isInWishlist={isInWishlist}
+          onTriggerFlyingIcon={handleTriggerFlyingIcon}
         />
       )}
 
@@ -604,10 +686,15 @@ export default function App() {
         onAddToWishlist={addToWishlist}
       />
 
-      {/* THÊM: Flying Icon Animation */}
       <FlyingIcon
         icons={flyingIcons}
         onComplete={handleAnimationComplete}
+      />
+
+      <StoreRegistrationModal
+        isOpen={isStoreRegistrationOpen}
+        onClose={() => setIsStoreRegistrationOpen(false)}
+        onRegister={handleStoreRegistration}
       />
     </div>
   );
