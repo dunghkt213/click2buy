@@ -30,6 +30,7 @@ interface HeaderProps {
   onPromotionClick: () => void;
   onSupportClick: () => void;
   onStoreClick: () => void; // THÊM: Callback cho Store
+  onLogoClick?: () => void; // THÊM: Callback khi click logo để về màn hình chính
   isLoggedIn: boolean;
   user?: User;
   onLogin: () => void;
@@ -57,6 +58,7 @@ export function Header({
   onPromotionClick,
   onSupportClick,
   onStoreClick, // THÊM: Nhận callback từ parent
+  onLogoClick, // THÊM: Nhận callback để quay về màn hình chính
   isLoggedIn,
   user,
   onLogin,
@@ -101,7 +103,7 @@ export function Header({
           {/* Logo */}
           <div className="flex items-center gap-8">
             <button 
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              onClick={onLogoClick}
               className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
             >
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
