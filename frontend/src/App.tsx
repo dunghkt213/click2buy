@@ -6,12 +6,12 @@ import { Footer } from './components/layout/Footer';
 
 // Shared Components  
 import { 
-  Categories 
-} from './components/shared';
-import {  
   CheckoutModal 
 } from './components/modal';
-import {  
+import { 
+  Categories
+} from './components/shared';
+import { 
   ProductGrid
 } from './components/product';
 
@@ -356,6 +356,15 @@ export default function App() {
     }
   };
 
+  // Logo click - quay về màn hình chính
+  const handleLogoClick = () => {
+    setIsCartPageOpen(false);
+    setIsOrdersPageOpen(false);
+    setIsMyStorePageOpen(false);
+    setIsSearchOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleStoreRegistration = (newStoreInfo: Omit<StoreInfo, 'id' | 'rating' | 'totalReviews' | 'totalProducts' | 'followers' | 'joinedDate'>) => {
     const fullStoreInfo: StoreInfo = {
       id: `store-${Date.now()}`,
@@ -429,6 +438,7 @@ export default function App() {
             onPromotionClick={() => setIsPromotionOpen(true)}
             onSupportClick={() => setIsSupportOpen(true)}
             onStoreClick={handleStoreClick}
+            onLogoClick={handleLogoClick}
             isLoggedIn={isLoggedIn}
             user={user}
             onLogin={handleLogin}
@@ -516,6 +526,7 @@ export default function App() {
             onPromotionClick={() => setIsPromotionOpen(true)}
             onSupportClick={() => setIsSupportOpen(true)}
             onStoreClick={handleStoreClick}
+            onLogoClick={handleLogoClick}
             isLoggedIn={isLoggedIn}
             user={user}
             onLogin={handleLogin}
