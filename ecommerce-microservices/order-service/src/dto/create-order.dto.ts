@@ -28,4 +28,8 @@ export class CreateOrderDto {
 
   @IsNumber()
   total: number;
+
+  @IsString()
+  @IsNotEmpty()
+  paymentMethod: string;
 }

@@ -22,8 +22,11 @@ export class Order {
  @Prop({ required: true })
   ownerId: string;
 
-  @Prop({ default: 'PENDING_PAYMENT' })
+  @Prop({ default: 'PENDING' })
   status: string;
+
+ @Prop({ required: true })
+  paymentMethod: string;
 
   @Prop()
   expiresAt: Date;

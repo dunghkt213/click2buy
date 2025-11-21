@@ -23,5 +23,5 @@ export class AppController {
     console.log('Order timeout received in order-service:', data);
     return true
   }
-
+  
 }

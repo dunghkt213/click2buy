@@ -30,7 +30,7 @@ import { AppService } from './app.service';
           options: {
             client: {
               clientId: 'inventory-producer',
-              brokers: config.get('KAFKA_BROKERS').split(','),
+              brokers: ['click2buy_kafka:9092'],
             },
             consumer: {
               groupId: 'inventory-producer-group',

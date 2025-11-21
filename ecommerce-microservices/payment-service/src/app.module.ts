@@ -1,24 +1,25 @@
-import { Module, OnModuleInit } from '@nestjs/common';
-import { MongooseModule, InjectConnection } from '@nestjs/mongoose';
+// src/payment.module.ts
+import { Module, OnModuleInit} from '@nestjs/common';
+import { MongooseModule, InjectConnection} from '@nestjs/mongoose';
+import { Payment, PaymentSchema } from './schemas/payment.schema';
+import { PaymentService } from './app.service';
+import { PaymentController } from './app.controller';
+import { ConfigModule } from '@nestjs/config/dist/config.module';
+import { ConfigService } from '@nestjs/config/dist/config.service';
 import { Connection } from 'mongoose';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { Product, ProductSchema } from '../schemas/product.schema';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-
-
 @Module({
   imports: [
-
+    // 1️⃣ Load biến môi trường toàn cục (.env)
     ConfigModule.forRoot({ isGlobal: true }),
 
-
+    // 2️⃣ Kết nối MongoDB trước khi đăng ký model
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
-        const uri = config.get<string>('MONGO_URI');
+        const uri =
+          config.get<string>('MONGO_URI');
         console.log('🧩 Connecting to MongoDB:', uri);
         return {
           uri,
@@ -28,24 +29,23 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       },
     }),
 
+    // 3️⃣ Sau khi có connection, mới đăng ký schema
+    MongooseModule.forFeature([{ name: Payment.name, schema: PaymentSchema }]),
 
-    MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
-
-  
     ClientsModule.registerAsync([
       {
-        name: 'PRODUCT_SERVICE',
+        name: 'KAFKA_PRODUCER',
         imports: [ConfigModule],
         inject: [ConfigService],
         useFactory: async (config: ConfigService) => ({
           transport: Transport.KAFKA,
           options: {
             client: {
-              clientId: 'product-service',
+              clientId: 'payment-producer',
               brokers: ['click2buy_kafka:9092'],
             },
             consumer: {
-              groupId: 'product-consumer',
+              groupId: 'payment-producer-group',
             },
           },
         }),
@@ -53,10 +53,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     ]),
   ],
 
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [PaymentController],
+  providers: [PaymentService],
 })
-export class AppModule implements OnModuleInit {
+export class PaymentModule implements OnModuleInit {
   constructor(@InjectConnection() private readonly connection: Connection) {}
 
   async onModuleInit() {
