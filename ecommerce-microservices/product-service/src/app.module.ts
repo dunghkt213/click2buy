@@ -3,16 +3,16 @@ import { MongooseModule, InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { Product, ProductSchema } from '../schemas/product.schema';
+import { Product, ProductSchema } from './schemas/product.schema';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
-
+    AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
-
+    
 
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -42,7 +42,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           options: {
             client: {
               clientId: 'product-service',
-              brokers: [config.get<string>('KAFKA_BROKER') || 'localhost:9092'],
+              brokers: ['click2buy_kafka:9092'],
             },
             consumer: {
               groupId: 'product-consumer',
