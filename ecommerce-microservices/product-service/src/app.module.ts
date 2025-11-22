@@ -3,16 +3,16 @@ import { MongooseModule, InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { Product, ProductSchema } from '../schemas/product.schema';
+import { Product, ProductSchema } from './schemas/product.schema';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
-
+    AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
-
+    
 
     MongooseModule.forRootAsync({
       imports: [ConfigModule],

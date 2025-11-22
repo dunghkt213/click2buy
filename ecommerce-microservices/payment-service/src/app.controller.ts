@@ -20,4 +20,5 @@ export class PaymentController {
   findAll(@Query() query: QueryPaymentDto) {
     return this.paymentService.findAll(query);
   }
+  
 }

@@ -231,6 +231,7 @@ volumes:
   cart_node_modules:
   review_node_modules:
   gateway_node_modules:
+  payment_node_modules:
 
 networks:
   click2buy_net:
