@@ -1,4 +1,4 @@
-import { ProductCondition } from '../../../../backend/src/product/schemas/product.schema';
+import { ProductCondition } from '../schemas/product.schema';
 
 export class QueryProductDto {
   text?: string;

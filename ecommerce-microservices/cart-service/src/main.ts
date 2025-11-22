@@ -11,7 +11,7 @@ async function bootstrap() {
     options: {
       client: {
         clientId: 'cart-service',
-        brokers: [process.env.KAFKA_BROKER || 'click2buy_kafka:9092'],
+        brokers: ['click2buy_kafka:9092'],
       },
       consumer: {
         groupId: 'cart-service-consumer',

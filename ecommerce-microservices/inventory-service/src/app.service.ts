@@ -1,6 +1,10 @@
 // src/app.service.ts
-import { Injectable, Logger, Inject } from '@nestjs/common';
+
+import { Injectable, Logger, Inject, BadRequestException } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Inventory, InventoryDocument } from './schemas/inventory.schemas';
 
 @Injectable()
 export class AppService {
@@ -9,30 +13,58 @@ export class AppService {
   constructor(
     @Inject('KAFKA_PRODUCER')
     private readonly kafka: ClientKafka,
-  ) {}
 
-  async onProductCreated(data: any) {
-    this.logger.log('product.created received', data);
-    return true;
-  }
+    @InjectModel(Inventory.name)
+    private readonly inventoryModel: Model<InventoryDocument>,
+  ) {}
 
   async reserveStock(data: any) {
     this.logger.log('reserve stock', data);
-    return true;
+
+    const results = [];
+
+    for (const item of data.items) {
+      const { productId, quantity } = item;
+
+      let inventory = await this.inventoryModel.findOne({ productId });
+
+      inventory.availableStock -= quantity;
+
+      inventory.reservedStock += quantity;
+
+      await inventory.save();
+    }
+
+    // 🔥 Emit event cho Order-Service
+    this.kafka.emit('inventory.reserved', data);
+    console.log('Emitted inventory.reserved event for orderId:', data);
+    return { success: true, items: results };
   }
 
-  async confirmStock(data: any) {
-    this.logger.log('confirm stock', data);
-    return true;
-  }
-
+  /**
+   * Khi payment thất bại hoặc hủy đơn hàng
+   */
   async releaseStock(data: any) {
     this.logger.log('release stock', data);
-    return true;
-  }
 
-  emitInventoryEvent(event: string, payload: any) {
-    this.kafka.emit(event, payload);
-    this.logger.log(`emitted ${event}`, payload);
+    for (const item of data.items) {
+      const { productId, quantity } = item;
+
+      const inventory = await this.inventoryModel.findOne({ productId });
+      if (!inventory) continue;
+
+      inventory.availableStock += quantity;
+
+      inventory.reservedStock -= quantity;
+
+      await inventory.save();
+    }
+
+    this.kafka.emit('inventory.released', {
+      orderId: data,
+    });
+
+    console.log('Emitted inventory.released event for orderId:', data);
+    return { success: true };
   }
 }

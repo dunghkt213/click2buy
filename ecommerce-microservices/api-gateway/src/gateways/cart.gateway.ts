@@ -1,113 +1,81 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import { Inject } from '@nestjs/common/decorators/core/inject.decorator';
-import * as jwt from 'jsonwebtoken';
+import { Inject } from '@nestjs/common';
 
 @Controller('cart')
 export class CartGateway {
-  constructor(@Inject('KAFKA_SERVICE') private readonly kafka: ClientKafka) {}
+  constructor(
+    @Inject('KAFKA_SERVICE')
+    private readonly kafka: ClientKafka,
+  ) {}
 
   async onModuleInit() {
-    this.kafka.subscribeToResponseOf('cart.get');
+    // Các topic RPC API Gateway phải subscribe để nhận response
+    this.kafka.subscribeToResponseOf('cart.getAll');
     this.kafka.subscribeToResponseOf('cart.add');
     this.kafka.subscribeToResponseOf('cart.update');
     this.kafka.subscribeToResponseOf('cart.remove');
+
     await this.kafka.connect();
   }
 
-  private extractUserId(authHeader?: string): string {
-    if (!authHeader) {
-      throw new UnauthorizedException('Authorization header is required');
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) {
-      throw new UnauthorizedException('Invalid authorization header format');
-    }
-
-    try {
-      const decoded = jwt.decode(token) as any;
-      if (!decoded || !decoded.sub) {
-        throw new UnauthorizedException('Invalid token: missing user ID');
-      }
-      return decoded.sub;
-    } catch (error) {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-  }
-
+  /** Lấy tất cả giỏ hàng theo seller */
   @Get()
-  async getCart(@Headers('authorization') auth?: string) {
-    const userId = this.extractUserId(auth);
-    const result = await this.kafka.send('cart.get', { userId }).toPromise();
-    
-    if (!result.success) {
-      throw new BadRequestException(result.error || 'Failed to get cart');
-    }
-    
-    return result.data;
+  getCarts(@Headers('authorization') auth?: string) {
+    return this.kafka.send('cart.getAll', { auth });
   }
 
-  @Post('items')
-  async addItem(@Body() dto: any, @Headers('authorization') auth?: string) {
-    const userId = this.extractUserId(auth);
-    
-    if (!dto.productId || !dto.quantity || dto.price === undefined) {
-      throw new BadRequestException('productId, quantity, and price are required');
-    }
-
-    const result = await this.kafka.send('cart.add', {
-      userId,
-      productId: dto.productId,
-      quantity: dto.quantity,
-      price: dto.price,
-    }).toPromise();
-    
-    if (!result.success) {
-      throw new BadRequestException(result.error || 'Failed to add item to cart');
-    }
-    
-    return result.data;
-  }
-
-  @Patch('items/:productId')
-  async updateItem(
-    @Param('productId') productId: string,
-    @Body() dto: any,
-    @Headers('authorization') auth?: string,
+  /** Thêm sản phẩm vào cart */
+  @Post('add')
+  addItem(
+    @Headers('authorization') auth: string,
+    @Body()
+    dto: {
+      productId: string;
+      quantity: number;
+      price: number;
+      sellerId: string;
+    },
   ) {
-    const userId = this.extractUserId(auth);
-    
-    if (dto.quantity === undefined) {
-      throw new BadRequestException('quantity is required');
-    }
-
-    const result = await this.kafka.send('cart.update', {
-      userId,
-      productId,
-      quantity: dto.quantity,
-    }).toPromise();
-    
-    if (!result.success) {
-      throw new BadRequestException(result.error || 'Failed to update item');
-    }
-    
-    return result.data;
+    return this.kafka.send('cart.add', { auth, dto });
   }
 
-  @Delete('items/:productId')
-  async removeItem(@Param('productId') productId: string, @Headers('authorization') auth?: string) {
-    const userId = this.extractUserId(auth);
-    
-    const result = await this.kafka.send('cart.remove', {
-      userId,
+  /** Cập nhật item */
+  @Patch(':sellerId/update/:productId')
+  updateItem(
+    @Headers('authorization') auth: string,
+    @Param('sellerId') sellerId: string,
+    @Param('productId') productId: string,
+    @Body() dto: { quantity: number; price: number },
+  ) {
+    return this.kafka.send('cart.update', {
+      auth,
+      sellerId,
       productId,
-    }).toPromise();
-    
-    if (!result.success) {
-      throw new BadRequestException(result.error || 'Failed to remove item');
-    }
-    
-    return result.data;
+      dto,
+    });
+  }
+
+  /** Xóa sản phẩm */
+  @Delete(':sellerId/remove/:productId')
+  removeItem(
+    @Headers('authorization') auth: string,
+    @Param('sellerId') sellerId: string,
+    @Param('productId') productId: string,
+  ) {
+    return this.kafka.send('cart.remove', {
+      auth,
+      sellerId,
+      productId,
+    });
   }
 }

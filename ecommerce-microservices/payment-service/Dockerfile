@@ -1,7 +1,7 @@
 # -----------------------------
 # Stage 1: Base
 # -----------------------------
-FROM node:20-alpine
+FROM node:18-alpine
 
 # Tạo thư mục làm việc trong container
 WORKDIR /app

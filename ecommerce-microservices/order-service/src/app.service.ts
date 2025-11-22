@@ -27,7 +27,6 @@ export class AppService {
     await order.save();
     const order_Id = order._id.toString();
     this.kafka.emit('order.created', {
-      event: 'order.created',
       ...dto,
       orderId: order_Id,
     });
@@ -49,7 +48,6 @@ export class AppService {
     await order.save();
 
     this.kafka.emit('order.status.updated', {
-      event: 'order.status.updated',
       orderId: dto.orderId,
       status: dto.status,
     });
