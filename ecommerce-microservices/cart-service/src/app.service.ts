@@ -1,0 +1,70 @@
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Cart } from './schemas/cart.schema';
+
+@Injectable()
+export class CartService {
+  constructor(
+    @InjectModel(Cart.name)
+    private readonly cartModel: Model<Cart>,
+  ) {}
+
+  /** Lấy tất cả cart chia theo seller của user */
+  async getCarts(userId: string) {
+    return this.cartModel.find({ userId });
+  }
+
+  /** Lấy cart theo user + seller */
+  async getCartBySeller(userId: string, sellerId: string) {
+    let cart = await this.cartModel.findOne({ userId, sellerId });
+
+    if (!cart) {
+      cart = new this.cartModel({ userId, sellerId, items: [] });
+      await cart.save();
+    }
+
+    return cart;
+  }
+
+  /** Thêm sản phẩm vào cart của seller */
+  async addItem(userId: string, dto: { productId: string; quantity: number; price: number; sellerId: string }) {
+    const { productId, quantity, price, sellerId } = dto;
+
+    const cart = await this.getCartBySeller(userId, sellerId);
+
+    const existing = cart.items.find(i => i.productId === productId);
+
+    if (existing) {
+      existing.quantity += quantity;
+    } else {
+      cart.items.push({ productId, quantity, price });
+    }
+
+    return cart.save();
+  }
+
+  /** Cập nhật */
+  async updateItem(userId: string, sellerId: string, productId: string, quantity: number, price: number) {
+    const cart = await this.getCartBySeller(userId, sellerId);
+
+    const item = cart.items.find(i => i.productId === productId);
+    if (!item) throw new NotFoundException('Item not found');
+
+    if (quantity < 1) {
+      cart.items = cart.items.filter(i => i.productId !== productId);
+    } else {
+      item.quantity = quantity;
+      item.price = price;
+    }
+
+    return cart.save();
+  }
+
+  /** Xóa 1 sản phẩm khỏi cart seller */
+  async removeItem(userId: string, sellerId: string, productId: string) {
+    const cart = await this.getCartBySeller(userId, sellerId);
+    cart.items = cart.items.filter(i => i.productId !== productId);
+    return cart.save();
+  }
+}

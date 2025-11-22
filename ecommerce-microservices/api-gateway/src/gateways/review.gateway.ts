@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common/decorators/core/inject.decorator';
+
 @Controller('reviews')
 export class ReviewGateway {
     constructor(@Inject('KAFKA_SERVICE') private readonly kafka: ClientKafka) { }
@@ -15,8 +16,7 @@ export class ReviewGateway {
     }
 
     @Post()
-    create(@Body() dto: any, @Headers('authorization') auth?: string) {
-        // service sẽ tự trích user từ token (JwtAuthGuard trong service)
+    create(@Body() dto: any, @Headers('authorization') auth?: string) { 
         return this.kafka.send('review.create', { dto, auth });
     }
 

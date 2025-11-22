@@ -13,6 +13,7 @@ export type UserDocument = User & Document;
 export enum UserRole {
   CUSTOMER = 'customer',
   ADMIN = 'admin',
+  SELLER = 'seller',
 }
 
 /**

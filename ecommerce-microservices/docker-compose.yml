@@ -81,6 +81,28 @@ services:
       - click2buy_net
     restart: unless-stopped
 
+  payment-service:
+    build: ./payment-service
+    container_name: click2buy_payment-service
+    working_dir: /app
+    volumes:
+      - ./payment-service:/app:delegated
+      - payment_node_modules:/app/node_modules
+    ports:
+      - "3007:3007"
+    env_file:
+      - ./payment-service/.env
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 500
+      CHOKIDAR_DEPTH: 99
+    depends_on:
+      - kafka
+      - mongo
+    networks:
+      - click2buy_net
+    restart: unless-stopped
+
   user-service:
     build: ./user-service
     container_name: click2buy_user-service
@@ -209,6 +231,7 @@ volumes:
   cart_node_modules:
   review_node_modules:
   gateway_node_modules:
+  payment_node_modules:
 
 networks:
   click2buy_net:
