@@ -6,7 +6,6 @@ export class ProductDto {
   description?: string;
   price: number;
   salePrice?: number;
-  stock: number;
   isActive: boolean;
   brand: string;
   condition: ProductCondition;

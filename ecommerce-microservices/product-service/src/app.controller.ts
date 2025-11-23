@@ -30,18 +30,16 @@ export class AppController {
   }
 
   @MessagePattern('product.update')
-  //@UseGuards(JwtKafkaAuthGuard)
+  @UseGuards(JwtKafkaAuthGuard)
   update(@Payload() { id, dto }: any, @CurrentUser() user: any) {
-    //const userId = user?.sub || user?.id;
-    const userId = 'mock-user';
+    const userId = user?.sub || user?.id;
     return this.appService.update(id, dto, userId);
   }
 
   @MessagePattern('product.remove')
-  //@UseGuards(JwtKafkaAuthGuard)
+  @UseGuards(JwtKafkaAuthGuard)
   remove(@Payload() { id }: any, @CurrentUser() user: any) {
-    //const userId = user?.sub || user?.id;
-    const userId = 'mock-user';
+    const userId = user?.sub || user?.id;
     return this.appService.remove({ id, userId });
   }
 
