@@ -1,0 +1,606 @@
+openapi: 3.0.0
+paths:
+  /auth/login:
+    post:
+      operationId: AuthGateway_login
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginDto"
+      responses:
+        "201":
+          description: ""
+      tags: &a1
+        - AuthGateway
+  /auth/register:
+    post:
+      operationId: AuthGateway_register
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDto"
+      responses:
+        "201":
+          description: ""
+      tags: *a1
+  /auth/refresh:
+    post:
+      operationId: AuthGateway_refresh
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      tags: *a1
+  /auth/logout:
+    post:
+      operationId: AuthGateway_logout
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      tags: *a1
+  /users:
+    post:
+      operationId: UserGateway_create
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: &a2
+        - UserGateway
+    get:
+      operationId: UserGateway_findAll
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+  /users/{id}:
+    get:
+      operationId: UserGateway_findOne
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+    put:
+      operationId: UserGateway_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+    delete:
+      operationId: UserGateway_deactivate
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+  /products:
+    post:
+      operationId: ProductGateway_create
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductDto"
+      responses:
+        "201":
+          description: Product created
+      summary: Tạo sản phẩm mới
+      tags: &a3
+        - Products
+    get:
+      operationId: ProductGateway_findAll
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductDto"
+      summary: Lấy danh sách sản phẩm (filter + search)
+      tags: *a3
+  /products/{id}:
+    get:
+      operationId: ProductGateway_findOne
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDto"
+      summary: Lấy chi tiết một sản phẩm
+      tags: *a3
+    patch:
+      operationId: ProductGateway_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductDto"
+      responses:
+        "200":
+          description: ""
+      summary: Cập nhật thông tin sản phẩm
+      tags: *a3
+    delete:
+      operationId: ProductGateway_remove
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product deleted
+      summary: Xoá mềm sản phẩm (chỉ owner mới được xoá)
+      tags: *a3
+  /products/search:
+    post:
+      operationId: ProductGateway_search
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimpleSearchDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductDto"
+      summary: Tìm kiếm sản phẩm nâng cao
+      tags: *a3
+  /products/{id}/stock:
+    patch:
+      operationId: ProductGateway_updateStock
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStockDto"
+      responses:
+        "200":
+          description: ""
+      summary: Cập nhật tồn kho (nhập / giảm hàng)
+      tags: *a3
+  /cart:
+    get:
+      operationId: CartGateway_getCarts
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: &a4
+        - CartGateway
+  /cart/add:
+    post:
+      operationId: CartGateway_addItem
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: *a4
+  /cart/{sellerId}/update/{productId}:
+    patch:
+      operationId: CartGateway_updateItem
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+        - name: sellerId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: productId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a4
+  /cart/{sellerId}/remove/{productId}:
+    delete:
+      operationId: CartGateway_removeItem
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+        - name: sellerId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: productId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a4
+  /reviews:
+    post:
+      operationId: ReviewGateway_create
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: &a5
+        - ReviewGateway
+    get:
+      operationId: ReviewGateway_findAll
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: *a5
+  /reviews/{id}:
+    get:
+      operationId: ReviewGateway_findOne
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a5
+    patch:
+      operationId: ReviewGateway_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a5
+    delete:
+      operationId: ReviewGateway_remove
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a5
+  /media/upload:
+    post:
+      operationId: MediaGateway_uploadMedia
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags:
+        - MediaGateway
+info:
+  title: Click2Buy - API Gateway
+  description: API Gateway for Click2Buy microservices.
+  version: "1.0"
+  contact: {}
+tags: []
+servers: []
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+  schemas:
+    LoginDto:
+      type: object
+      properties: {}
+    RegisterDto:
+      type: object
+      properties: {}
+    WarehouseAddress:
+      type: object
+      properties:
+        line1:
+          type: string
+          example: 123 Nguyễn Trãi
+        line2:
+          type: string
+          example: Tầng 2
+        city:
+          type: string
+          example: Hà Nội
+        province:
+          type: string
+          example: Thanh Xuân
+        country:
+          type: string
+          example: Việt Nam
+        postalCode:
+          type: string
+          example: "100000"
+      required:
+        - line1
+        - city
+    CreateProductDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: iPhone 15 Pro Max
+        description:
+          type: string
+          example: Điện thoại cao cấp 2025
+        price:
+          type: number
+          example: 29990000
+        salePrice:
+          type: number
+          example: 27990000
+        stock:
+          type: number
+          example: 10
+        brand:
+          type: string
+          example: Apple
+        condition:
+          type: string
+          enum:
+            - new
+            - used
+          example: new
+        categoryIds:
+          example:
+            - cat123
+            - cat456
+          type: array
+          items:
+            type: string
+        tags:
+          example:
+            - smartphone
+            - apple
+          type: array
+          items:
+            type: string
+        images:
+          example:
+            - https://img.com/a.jpg
+          type: array
+          items:
+            type: string
+        attributes:
+          type: object
+          example:
+            color: black
+            storage: 256GB
+        variants:
+          type: object
+          example:
+            variantKey: value
+        warehouseAddress:
+          $ref: "#/components/schemas/WarehouseAddress"
+      required:
+        - name
+        - price
+        - brand
+    ProductDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        salePrice:
+          type: number
+        isActive:
+          type: boolean
+        brand:
+          type: string
+        condition:
+          type: string
+          enum:
+            - new
+            - used
+          description: Tình trạng sản phẩm
+        categoryIds:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        images:
+          type: array
+          items:
+            type: string
+        attributes:
+          type: object
+          description: "Thông tin tuỳ chỉnh (ví dụ: màu sắc, kích thước)"
+        variants:
+          type: object
+          description: "Biến thể sản phẩm (ví dụ: S/M/L, màu sắc…) "
+        ratingAvg:
+          type: number
+          default: 0
+        warehouseAddress:
+          $ref: "#/components/schemas/WarehouseAddress"
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+        - id
+        - name
+        - price
+        - isActive
+        - brand
+        - condition
+        - createdAt
+        - updatedAt
+    SimpleSearchDto:
+      type: object
+      properties:
+        keyword:
+          type: string
+          example: iphone
+          description: Từ khóa tìm kiếm sản phẩm
+      required:
+        - keyword
+    UpdateStockDto:
+      type: object
+      properties:
+        amount:
+          type: number
+          example: 5
+          description: Số lượng điều chỉnh. >= 0 là nhập thêm, < 0 là giảm
+      required:
+        - amount
