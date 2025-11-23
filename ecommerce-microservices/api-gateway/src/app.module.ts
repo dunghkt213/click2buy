@@ -7,6 +7,7 @@ import { UserGateway } from './gateways/user.gateway';
 import { ProductGateway } from './gateways/product.gateway';
 import { CartGateway } from './gateways/cart.gateway';
 import { ReviewGateway } from './gateways/review.gateway';
+import { MediaGateway } from './gateways/media.gateway';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ReviewGateway } from './gateways/review.gateway';
     ProductGateway,
     CartGateway,
     ReviewGateway,
+    MediaGateway
   ],
 
   providers: [],
