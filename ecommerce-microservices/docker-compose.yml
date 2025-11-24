@@ -29,7 +29,7 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: click2buy_zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://click2buy_kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -50,6 +50,18 @@ services:
       - "27027:27017"
     volumes:
       - click2buy_mongo_data:/data/db
+    networks:
+      - click2buy_net
+
+  # ============================
+  # Redis
+  # ============================
+  redis:
+    image: redis:7
+    container_name: click2buy_redis
+    restart: always
+    ports:
+      - "6379:6379"
     networks:
       - click2buy_net
 
@@ -199,6 +211,58 @@ services:
       - click2buy_net
     restart: unless-stopped
 
+  media-service:
+    build: ./media-service
+    container_name: click2buy_media-service
+    working_dir: /app
+    volumes:
+      - ./media-service:/app:delegated
+      - media_node_modules:/app/node_modules
+    ports:
+      - "3106:3006"
+    env_file:
+      - ./media-service/.env
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 500
+      CHOKIDAR_DEPTH: 99
+      NODE_ENV: development
+
+    command: sh -c "npm install && npm run start:dev"
+
+    depends_on:
+      - kafka
+      - mongo
+
+    networks:
+      - click2buy_net
+
+    restart: unless-stopped
+
+  inventory-service:
+    build: ./inventory-service
+    container_name: click2buy_inventory-service
+    working_dir: /app
+    volumes:
+      - ./inventory-service:/app:delegated
+      - inventory_node_modules:/app/node_modules
+    ports:
+      - "3107:3007"
+    env_file:
+      - ./inventory-service/.env
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 500
+      CHOKIDAR_DEPTH: 99
+    command: sh -c "npm install && npm run start:dev"
+    depends_on:
+      - kafka
+      - mongo
+    networks:
+      - click2buy_net
+    restart: unless-stopped
+
+
   api-gateway:
     build: ./api-gateway
     container_name: click2buy_api-gateway
@@ -232,6 +296,8 @@ volumes:
   review_node_modules:
   gateway_node_modules:
   payment_node_modules:
+  media_node_modules:
+  inventory_node_modules:
 
 networks:
   click2buy_net:

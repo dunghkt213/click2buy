@@ -7,18 +7,28 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { Inventory, InventorySchema } from './schemas/inventory.schemas';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // MongoDB
     MongooseModule.forRootAsync({
+      imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        uri: config.get('MONGO_URI'),
-      }),
+      useFactory: async (config: ConfigService) => {
+        const uri = config.get<string>('MONGO_URI');
+        console.log('🧩 Connecting to MongoDB:', uri);
+        return {
+          uri,
+          serverSelectionTimeoutMS: 5000,
+          retryWrites: true,
+        };
+      },
     }),
+
+
+    MongooseModule.forFeature([{ name: Inventory.name, schema: InventorySchema }]),
 
     // Kafka producer
     ClientsModule.registerAsync([

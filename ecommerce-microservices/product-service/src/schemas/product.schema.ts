@@ -15,6 +15,13 @@ export enum ProductCondition {
   USED = 'used',
 }
 
+export enum ProductStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  DELETED = 'DELETED',
+}
+
+
 /**
  * Schema phụ - địa chỉ kho hàng
  */
@@ -59,9 +66,6 @@ export class Product {
   @Prop()
   salePrice?: number;
 
-  @Prop({ default: 0 })
-  stock: number;
-
   @Prop({ default: true })
   isActive: boolean;
 
@@ -91,6 +95,12 @@ export class Product {
 
   @Prop({ type: WarehouseAddress })
   warehouseAddress?: WarehouseAddress;
+
+  @Prop({
+    enum: ProductStatus,
+    default: ProductStatus.ACTIVE
+  })
+  status: ProductStatus;
 }
 
 /**

@@ -1,23 +1,91 @@
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, FilterQuery } from 'mongoose';
-import { Product } from './schemas/product.schema';
-
+import { Product, ProductStatus } from './schemas/product.schema';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Injectable } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { Redis } from 'ioredis';
 import { RpcException } from '@nestjs/microservices';
+import { ClientKafka, MessagePattern, Payload } from '@nestjs/microservices';
 
 @Injectable()
 export class AppService {
   constructor(
     @InjectModel(Product.name) 
-    private readonly productModel: Model<Product>
+    private readonly productModel: Model<Product>,
+
+    @Inject('KAFKA_SERVICE')
+    private readonly kafka: ClientKafka,
+
+    @Inject('REDIS_CLIENT')  
+    private readonly redis: Redis,
   ) {}
 
   /** Tạo sản phẩm */
   async create(dto: CreateProductDto, userId: string) {
-    const created = await this.productModel.create({ ...dto, ownerId: userId });
+    const created = await this.productModel.create({ ...dto, ownerId: userId, createdAt: new Date(), });
+
+    const productId = created._id.toString();
+  
+    // --- INITIAL REDIS STATE ---
+    await this.redis.hset(`sync:${productId}`, {
+      inventory: 'pending',
+      search: 'pending',
+    });
+
+    await this.redis.expire(`sync:${productId}`, 300); 
+
+    // --- EMIT EVENTS ---
+    this.kafka.emit('inventory.sync.requested', {
+      productId,
+      stock: dto.stock,
+      ownerId: userId
+    });
+
+    this.kafka.emit('search.sync.requested', {
+      productId,
+      name: created.name,
+      price: created.price,
+      categoryIds: created.categoryIds||[],
+      imageUrl: created.images?.[0]||null,
+    });
+
     return { success: true, data: created };
+  }
+
+  // =========================
+  // LISTEN TO SYNC RESULT
+  // =========================
+  @MessagePattern('inventory.synced')
+  async handleInventorySynced(@Payload() data: any) {
+    const productId = data.productId;
+    await this.redis.hset(`sync:${productId}`, 'inventory', 'done');
+    await this.checkAndEmitFinal(productId);
+  }
+
+  @MessagePattern('search.synced')
+  async handleSearchSynced(@Payload() data: any) {
+    const productId = data.productId;
+    await this.redis.hset(`sync:${productId}`, 'search', 'done');
+    await this.checkAndEmitFinal(productId);
+  }
+
+  // =========================
+  // CHECK COMPLETE
+  // =========================
+  async checkAndEmitFinal(productId: string) {
+    const sync = await this.redis.hgetall(`sync:${productId}`);
+
+    if (sync.inventory === 'done' && sync.search === 'done') {
+      this.kafka.emit('noti.product.created', {
+        productId,
+        message: 'Product fully synced',
+      });
+
+      // cleanup
+      await this.redis.del(`sync:${productId}`);
+    }
   }
 
   /** Lấy tất cả sản phẩm (có filter, paginate, sort) */
@@ -106,6 +174,13 @@ export class AppService {
       });
     }
 
+    console.log("🔥 DELETE DEBUG:", {
+      productId: id,
+      productOwnerId: product.ownerId,
+      receivedUserId: userId,
+      equal: product.ownerId.toString() === userId
+    });
+
     if (product.ownerId.toString() !== userId) {
       throw new RpcException({
         statusCode: 403,
@@ -113,7 +188,20 @@ export class AppService {
       });
     }
 
-    await this.productModel.findByIdAndDelete(id);
+    if (product.status === ProductStatus.DELETED) {
+      return {
+        success: true,
+        message: 'Product already deleted',
+      };
+    }
+
+    product.status = ProductStatus.DELETED;
+    product.isActive = false;         // optional: hide from listing
+    await product.save();
+
+    this.kafka.emit('cart.productDisabled', { productId: id });
+
+    this.kafka.emit('search.removeDocument', { productId: id });
 
     return {
       success: true,
