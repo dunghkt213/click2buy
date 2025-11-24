@@ -12,24 +12,27 @@ export class CartController {
   @MessagePattern('cart.getAll')
   @UseGuards(JwtKafkaAuthGuard)
   getCarts(@Payload() data: any, @CurrentUser() user: any) {
-    return this.cartService.getCarts(user.id);
+    const userId = user?.sub || user?.id;
+    return this.cartService.getCarts(userId);
   }
 
   /** Thêm sản phẩm */
   @MessagePattern('cart.add')
   @UseGuards(JwtKafkaAuthGuard)
-  addItem(@Payload() data: any,@CurrentUser() user: any) {
-    const { dto } = data;
-    return this.cartService.addItem(user.id, dto);
+  addItem(@Payload() data: any, @CurrentUser() user: any) {
+    const userId = user?.sub || user?.id;
+    return this.cartService.addItem(userId, data);
   }
 
   /** Cập nhật 1 item */
   @MessagePattern('cart.update')
   @UseGuards(JwtKafkaAuthGuard)
   updateItem(@Payload() data: any, @CurrentUser() user: any) {
+    const userId = user?.sub || user?.id;
     const { sellerId, productId, dto } = data;
+
     return this.cartService.updateItem(
-      user.id,
+      userId,
       sellerId,
       productId,
       dto.quantity,
@@ -41,9 +44,11 @@ export class CartController {
   @MessagePattern('cart.remove')
   @UseGuards(JwtKafkaAuthGuard)
   removeItem(@Payload() data: any, @CurrentUser() user: any) {
+    const userId = user?.sub || user?.id;
     const { sellerId, productId } = data;
+
     return this.cartService.removeItem(
-      user.id,
+      userId,
       sellerId,
       productId,
     );

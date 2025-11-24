@@ -35,7 +35,7 @@ export class CartGateway {
   }
 
   /** Thêm sản phẩm vào cart */
-  @Post('add')
+  @Post('')
   addItem(
     @Headers('authorization') auth: string,
     @Body()
@@ -46,22 +46,18 @@ export class CartGateway {
       sellerId: string;
     },
   ) {
-    return this.kafka.send('cart.add', { auth, dto });
+    return this.kafka.send('cart.add', { auth, ...dto });
   }
 
   /** Cập nhật item */
-  @Patch(':sellerId/update/:productId')
+  @Patch('update')
   updateItem(
     @Headers('authorization') auth: string,
-    @Param('sellerId') sellerId: string,
-    @Param('productId') productId: string,
-    @Body() dto: { quantity: number; price: number },
+    @Body() dto: { sellerId: string, productId: string, quantity: number; price: number },
   ) {
     return this.kafka.send('cart.update', {
       auth,
-      sellerId,
-      productId,
-      dto,
+      ...dto
     });
   }
 

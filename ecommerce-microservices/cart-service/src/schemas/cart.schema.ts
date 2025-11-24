@@ -3,6 +3,7 @@ import { Document } from 'mongoose';
 
 export type CartDocument = Cart & Document;
 
+@Schema({ _id: false})
 export class CartItem {
   @Prop({ required: true })
   productId: string;
