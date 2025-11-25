@@ -44,4 +44,13 @@ export class AppController {
     return this.appService.adjustStock(data.productId, data.delta, data.ownerId);
   }
 
+  /**
+   * Lắng nghe sự kiện order.confirmed từ seller-analytics-service
+   * Khi Seller duyệt đơn hàng -> Trừ tồn kho thật (availableStock)
+   */
+  @MessagePattern('order.confirmed')
+  confirmOrderAndDeductStock(@Payload() data: any) {
+    return this.appService.confirmOrderAndDeductStock(data);
+  }
+
 }
