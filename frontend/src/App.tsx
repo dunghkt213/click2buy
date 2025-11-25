@@ -1,28 +1,29 @@
-import React, { useState, useRef } from 'react';
+import { AnimatePresence, motion, useInView } from 'framer-motion';
+import React, { useRef, useState } from 'react';
 // Layout Components
+import { Footer } from './components/layout/Footer';
 import { Header } from './components/layout/Header';
 import { Hero } from './components/layout/Hero';
-import { Footer } from './components/layout/Footer';
 
 // Shared Components  
-import { 
-  CheckoutModal 
+import {
+    CheckoutModal
 } from './components/modal';
-import { 
-  Categories
-} from './components/shared';
-import { 
-  ProductGrid
+import {
+    ProductGrid
 } from './components/product';
+import {
+    Categories
+} from './components/shared';
 
 // Sidebar Components
 import {
-  CartSidebar,
-  FilterSidebar,
-  NotificationSidebar,
-  WishlistSidebar,
-  PromotionSidebar,
-  SupportSidebar
+    CartSidebar,
+    FilterSidebar,
+    NotificationSidebar,
+    PromotionSidebar,
+    SupportSidebar,
+    WishlistSidebar
 } from './components/sidebars';
 
 // Auth Components
@@ -53,23 +54,61 @@ import { StoreRegistrationModal } from './components/modal/StoreRegistrationModa
 import { HotDealsSection } from './components/product/HotDealsSection';
 
 // Hooks
-import { useCart, useWishlist, useNotifications } from './hooks';
+import { useCart, useNotifications, useWishlist } from './hooks';
 
 // Types & Data
-import { FilterState, Promotion, FAQItem, SupportTicket, User, Order, OrderItem, StoreProduct, StoreStats, StoreInfo } from './types';
-import { 
-  initialCartItems, 
-  initialNotifications, 
-  initialPromotions, 
-  initialFAQs, 
-  initialSupportTickets,
-  initialUser,
-  initialOrders,
-  initialStoreProducts,
-  initialStoreStats,
-  initialStoreInfo
+import {
+    initialCartItems,
+    initialFAQs,
+    initialNotifications,
+    initialOrders,
+    initialPromotions,
+    initialSupportTickets,
+    initialUser
 } from './data/mockData';
 import { generateTicketId } from './lib/utils';
+import { FAQItem, FilterState, Order, Promotion, StoreInfo, StoreProduct, SupportTicket, User } from './types';
+
+const motionEase = [0.4, 0, 0.2, 1] as const;
+
+const PageTransition = ({ children }: { children: React.ReactNode }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 24 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -24 }}
+    transition={{ duration: 0.35, ease: motionEase }}
+  >
+    {children}
+  </motion.div>
+);
+
+const RevealSection = ({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const isInView = useInView(ref, { once: true, amount: 0.2 });
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      initial={{ opacity: 0, y: 32 }}
+      animate={
+        isInView
+          ? { opacity: 1, y: 0, transition: { duration: 0.5, delay } }
+          : undefined
+      }
+    >
+      {children}
+    </motion.div>
+  );
+};
 
 export default function App() {
   // Ref để scroll đến phần sản phẩm
@@ -131,8 +170,7 @@ export default function App() {
     getSelectedItems,
     toggleSelectItem,
     selectAllItems,
-    deselectAllItems,
-    clearCart
+    deselectAllItems
   } = useCart(initialCartItems);
 
   const {
@@ -155,7 +193,7 @@ export default function App() {
   } = useNotifications(initialNotifications);
 
   // Other states
-  const [promotions, setPromotions] = useState<Promotion[]>(initialPromotions);
+  const [promotions] = useState<Promotion[]>(initialPromotions);
   const [faqs] = useState<FAQItem[]>(initialFAQs);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(initialSupportTickets);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
@@ -231,9 +269,11 @@ export default function App() {
 
   // Support functions
   const handleSubmitTicket = (subject: string, message: string, category: string) => {
+    const truncatedMessage = message ? `${message.slice(0, 60)}${message.length > 60 ? '…' : ''}` : '';
+    const formattedSubject = `[${category}] ${subject}${truncatedMessage ? ` - ${truncatedMessage}` : ''}`;
     const newTicket: SupportTicket = {
       id: generateTicketId(supportTickets.length),
-      subject,
+      subject: formattedSubject,
       status: 'open',
       priority: 'medium',
       createdAt: new Date().toISOString().split('T')[0],
@@ -340,11 +380,11 @@ export default function App() {
   };
 
   const handleReview = (orderId: string) => {
-    alert('Chức năng đánh giá sẽ được phát triển sau');
+    alert(`Chức năng đánh giá cho đơn ${orderId} sẽ được phát triển sau`);
   };
 
   const handleContactShop = (orderId: string) => {
-    alert('Chức năng liên hệ shop sẽ được phát triển sau');
+    alert(`Liên hệ shop cho đơn ${orderId} sẽ được phát triển sau`);
   };
 
   // Store functions
@@ -423,202 +463,202 @@ export default function App() {
     alert('Sản phẩm đã được xóa!');
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      {isMyStorePageOpen ? (
-        <>
-          <Header 
-            cartItemsCount={getTotalItems()}
-            wishlistItemsCount={wishlistItems.length}
-            unreadNotifications={getUnreadCount()}
-            onCartClick={() => setIsCartPageOpen(true)}
-            onWishlistClick={() => setIsWishlistOpen(true)}
-            onNotificationsClick={() => setIsNotificationOpen(true)}
-            onFilterClick={() => setIsFilterOpen(true)}
-            onPromotionClick={() => setIsPromotionOpen(true)}
-            onSupportClick={() => setIsSupportOpen(true)}
-            onStoreClick={handleStoreClick}
-            onLogoClick={handleLogoClick}
-            isLoggedIn={isLoggedIn}
-            user={user}
-            onLogin={handleLogin}
-            onRegister={handleRegister}
-            onLogout={handleLogout}
-            onProfileClick={handleProfileClick}
-            onOrdersClick={handleOrdersClick}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onSearchClick={() => {
-              if (searchQuery.trim()) {
-                setIsSearchOpen(true);
-              }
-            }}
-            cartIconRef={cartIconRef}
-            wishlistIconRef={wishlistIconRef}
-            cartItems={cartItems}
-            totalPrice={getTotalPrice()}
-          />
-          
-          <main className="pt-16 min-h-screen">
-            <MyStorePage
-              storeProducts={storeProducts}
-              storeOrders={orders.filter(o => o.status !== 'cancelled')}
-              onAddProduct={handleAddProduct}
-              onUpdateProduct={handleUpdateProduct}
-              onDeleteProduct={handleDeleteProduct}
-              onUpdateOrderStatus={(orderId, status) => {
-                setOrders(prev => prev.map(order => 
-                  order.id === orderId 
-                    ? { 
-                        ...order, 
-                        status: status as any,
-                        updatedAt: new Date().toISOString(),
-                        timeline: [
-                          ...order.timeline,
-                          {
-                            status: status as any,
-                            timestamp: new Date().toISOString(),
-                            description: `Đơn hàng đã chuyển sang trạng thái ${status}`
-                          }
-                        ]
-                      }
-                    : order
-                ));
-              }}
-            />
-          </main>
+  const sharedHeader = (
+    <Header 
+      cartItemsCount={getTotalItems()}
+      wishlistItemsCount={wishlistItems.length}
+      unreadNotifications={getUnreadCount()}
+      onCartClick={() => setIsCartPageOpen(true)}
+      onWishlistClick={() => setIsWishlistOpen(true)}
+      onNotificationsClick={() => setIsNotificationOpen(true)}
+      onFilterClick={() => setIsFilterOpen(true)}
+      onPromotionClick={() => setIsPromotionOpen(true)}
+      onSupportClick={() => setIsSupportOpen(true)}
+      onStoreClick={handleStoreClick}
+      onLogoClick={handleLogoClick}
+      isLoggedIn={isLoggedIn}
+      user={user}
+      onLogin={handleLogin}
+      onRegister={handleRegister}
+      onLogout={handleLogout}
+      onProfileClick={handleProfileClick}
+      onOrdersClick={handleOrdersClick}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      onSearchClick={() => {
+        if (searchQuery.trim()) {
+          setIsSearchOpen(true);
+        }
+      }}
+      cartIconRef={cartIconRef}
+      wishlistIconRef={wishlistIconRef}
+      cartItems={cartItems}
+      totalPrice={getTotalPrice()}
+    />
+  );
 
-          <Footer />
-        </>
-      ) : isOrdersPageOpen ? (
-        <OrdersPage
-          orders={orders}
-          onBack={() => setIsOrdersPageOpen(false)}
-          onViewDetail={handleViewOrderDetail}
-          onCancelOrder={handleCancelOrder}
-          onReorder={handleReorder}
-          onReview={handleReview}
-          onContactShop={handleContactShop}
-        />
-      ) : isCartPageOpen ? (
-        <CartPage
-          items={cartItems}
-          onUpdateQuantity={updateQuantity}
-          onRemoveItem={removeFromCart}
-          onToggleSelectItem={toggleSelectItem}
-          onSelectAllItems={selectAllItems}
-          onDeselectAllItems={deselectAllItems}
-          selectedTotalPrice={getSelectedTotalPrice()}
-          selectedItems={getSelectedItems()}
-          onCheckout={handleCheckout}
-          onBack={() => setIsCartPageOpen(false)}
-        />
-      ) : !isSearchOpen ? (
-        <>
-          <Header 
-            cartItemsCount={getTotalItems()}
-            wishlistItemsCount={wishlistItems.length}
-            unreadNotifications={getUnreadCount()}
-            onCartClick={() => setIsCartPageOpen(true)}
-            onWishlistClick={() => setIsWishlistOpen(true)}
-            onNotificationsClick={() => setIsNotificationOpen(true)}
-            onFilterClick={() => setIsFilterOpen(true)}
-            onPromotionClick={() => setIsPromotionOpen(true)}
-            onSupportClick={() => setIsSupportOpen(true)}
-            onStoreClick={handleStoreClick}
-            onLogoClick={handleLogoClick}
-            isLoggedIn={isLoggedIn}
-            user={user}
-            onLogin={handleLogin}
-            onRegister={handleRegister}
-            onLogout={handleLogout}
-            onProfileClick={handleProfileClick}
-            onOrdersClick={handleOrdersClick}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onSearchClick={() => {
-              if (searchQuery.trim()) {
-                setIsSearchOpen(true);
-              }
-            }}
-            cartIconRef={cartIconRef}
-            wishlistIconRef={wishlistIconRef}
-            cartItems={cartItems}
-            totalPrice={getTotalPrice()}
+  let pageKey = 'home';
+  let pageContent: React.ReactNode = (
+    <>
+      {sharedHeader}
+      
+      <main className="pt-16">
+        <RevealSection>
+          <Hero />
+        </RevealSection>
+        
+        <RevealSection delay={0.1}>
+          <Categories 
+            onCategorySelect={(category) => setFilters(prev => ({ ...prev, category }))} 
+            onCategoryClick={scrollToProducts}
           />
-          
-          <main className="pt-16">
-            <Hero />
-            
-            <Categories 
-              onCategorySelect={(category) => setFilters(prev => ({ ...prev, category }))} 
-              onCategoryClick={scrollToProducts}
-            />
-            
-            {/* Hot Deals Section */}
-            <HotDealsSection
-              onAddToCart={addToCart}
-              onViewDetail={handleViewProductDetail}
-              onAddToWishlist={addToWishlist}
-              isInWishlist={isInWishlist}
-              onTriggerFlyingIcon={handleTriggerFlyingIcon}
-            />
-            
-            <div ref={productSectionRef} className="container mx-auto px-4 py-8">
-              <div className="flex gap-8">
-                <FilterSidebar 
-                  isOpen={isFilterOpen}
-                  onClose={() => setIsFilterOpen(false)}
+        </RevealSection>
+
+        <RevealSection delay={0.2}>
+          <HotDealsSection
+            onAddToCart={addToCart}
+            onViewDetail={handleViewProductDetail}
+            onAddToWishlist={addToWishlist}
+            isInWishlist={isInWishlist}
+            onTriggerFlyingIcon={handleTriggerFlyingIcon}
+          />
+        </RevealSection>
+        
+        <RevealSection delay={0.3}>
+          <div ref={productSectionRef} className="container mx-auto px-4 py-8">
+            <div className="flex gap-8">
+              <FilterSidebar 
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                filters={filters}
+                onFiltersChange={setFilters}
+              />
+              
+              <div className="flex-1">
+                <ProductGrid 
                   filters={filters}
-                  onFiltersChange={setFilters}
+                  onAddToCart={addToCart}
+                  onViewDetail={handleViewProductDetail}
+                  onAddToWishlist={addToWishlist}
+                  isInWishlist={isInWishlist}
+                  onTriggerFlyingIcon={handleTriggerFlyingIcon}
                 />
-                
-                <div className="flex-1">
-                  <ProductGrid 
-                    filters={filters}
-                    onAddToCart={addToCart}
-                    onViewDetail={handleViewProductDetail}
-                    onAddToWishlist={addToWishlist}
-                    isInWishlist={isInWishlist}
-                    onTriggerFlyingIcon={handleTriggerFlyingIcon}
-                  />
-                </div>
               </div>
             </div>
-          </main>
+          </div>
+        </RevealSection>
+      </main>
 
-          <Footer />
-        </>
-      ) : (
-        <SearchModal
-          isOpen={isSearchOpen}
-          onClose={() => {
-            setIsSearchOpen(false);
-            setSearchQuery('');
-          }}
-          onAddToCart={addToCart}
-          initialSearchQuery={searchQuery}
-          cartItemsCount={getTotalItems()}
-          wishlistItemsCount={wishlistItems.length}
-          unreadNotifications={getUnreadCount()}
-          onCartClick={() => setIsCartOpen(true)}
-          onWishlistClick={() => setIsWishlistOpen(true)}
-          onNotificationsClick={() => setIsNotificationOpen(true)}
-          onPromotionClick={() => setIsPromotionOpen(true)}
-          onSupportClick={() => setIsSupportOpen(true)}
-          isLoggedIn={isLoggedIn}
-          user={user}
-          onLogin={handleLogin}
-          onRegister={handleRegister}
-          onLogout={handleLogout}
-          onProfileClick={handleProfileClick}
-          onOrdersClick={handleOrdersClick}
-          onViewDetail={handleViewProductDetail}
-          onAddToWishlist={addToWishlist}
-          isInWishlist={isInWishlist}
-          onTriggerFlyingIcon={handleTriggerFlyingIcon}
-        />
-      )}
+      <Footer />
+    </>
+  );
+
+  if (isMyStorePageOpen) {
+    pageKey = 'my-store';
+    pageContent = (
+      <>
+        {sharedHeader}
+        <main className="pt-16 min-h-screen">
+          <MyStorePage
+            storeProducts={storeProducts}
+            storeOrders={orders.filter(o => o.status !== 'cancelled')}
+            onAddProduct={handleAddProduct}
+            onUpdateProduct={handleUpdateProduct}
+            onDeleteProduct={handleDeleteProduct}
+            onUpdateOrderStatus={(orderId, status) => {
+              setOrders(prev => prev.map(order => 
+                order.id === orderId 
+                  ? { 
+                      ...order, 
+                      status: status as any,
+                      updatedAt: new Date().toISOString(),
+                      timeline: [
+                        ...order.timeline,
+                        {
+                          status: status as any,
+                          timestamp: new Date().toISOString(),
+                          description: `Đơn hàng đã chuyển sang trạng thái ${status}`
+                        }
+                      ]
+                    }
+                  : order
+              ));
+            }}
+          />
+        </main>
+        <Footer />
+      </>
+    );
+  } else if (isOrdersPageOpen) {
+    pageKey = 'orders';
+    pageContent = (
+      <OrdersPage
+        orders={orders}
+        onBack={() => setIsOrdersPageOpen(false)}
+        onViewDetail={handleViewOrderDetail}
+        onCancelOrder={handleCancelOrder}
+        onReorder={handleReorder}
+        onReview={handleReview}
+        onContactShop={handleContactShop}
+      />
+    );
+  } else if (isCartPageOpen) {
+    pageKey = 'cart';
+    pageContent = (
+      <CartPage
+        items={cartItems}
+        onUpdateQuantity={updateQuantity}
+        onRemoveItem={removeFromCart}
+        onToggleSelectItem={toggleSelectItem}
+        onSelectAllItems={selectAllItems}
+        onDeselectAllItems={deselectAllItems}
+        selectedTotalPrice={getSelectedTotalPrice()}
+        selectedItems={getSelectedItems()}
+        onCheckout={handleCheckout}
+        onBack={() => setIsCartPageOpen(false)}
+      />
+    );
+  } else if (isSearchOpen) {
+    pageKey = 'search';
+    pageContent = (
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => {
+          setIsSearchOpen(false);
+          setSearchQuery('');
+        }}
+        onAddToCart={addToCart}
+        initialSearchQuery={searchQuery}
+        cartItemsCount={getTotalItems()}
+        wishlistItemsCount={wishlistItems.length}
+        unreadNotifications={getUnreadCount()}
+        onCartClick={() => setIsCartOpen(true)}
+        onWishlistClick={() => setIsWishlistOpen(true)}
+        onNotificationsClick={() => setIsNotificationOpen(true)}
+        onPromotionClick={() => setIsPromotionOpen(true)}
+        onSupportClick={() => setIsSupportOpen(true)}
+        isLoggedIn={isLoggedIn}
+        user={user}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onLogout={handleLogout}
+        onProfileClick={handleProfileClick}
+        onOrdersClick={handleOrdersClick}
+        onViewDetail={handleViewProductDetail}
+        onAddToWishlist={addToWishlist}
+        isInWishlist={isInWishlist}
+        onTriggerFlyingIcon={handleTriggerFlyingIcon}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <AnimatePresence mode="wait">
+        <PageTransition key={pageKey}>
+          {pageContent}
+        </PageTransition>
+      </AnimatePresence>
 
       <CartSidebar
         isOpen={isCartOpen}

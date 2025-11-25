@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import {
   BookOpen,
   ChevronRight,
@@ -46,6 +47,19 @@ export function SupportSidebar({
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketMessage, setTicketMessage] = useState('');
   const [ticketCategory, setTicketCategory] = useState('general');
+  const motionEase = [0.4, 0, 0.2, 1] as const;
+  const containerVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: motionEase } }
+  };
+  const listVariants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } }
+  };
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: motionEase } }
+  };
 
   const supportCategories = [
     { id: 'orders', name: 'Đơn hàng', icon: Truck },
@@ -103,57 +117,72 @@ export function SupportSidebar({
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full sm:w-[500px] flex flex-col p-0 overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-border bg-card">
-          <SheetHeader>
-            <SheetTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <Headphones className="w-5 h-5 text-white" />
+        <motion.div
+          className="flex flex-col h-full"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-border bg-card">
+            <SheetHeader>
+              <SheetTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <Headphones className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2>Trợ giúp & Hỗ trợ</h2>
+                    <SheetDescription>
+                      Chúng tôi luôn sẵn sàng hỗ trợ bạn
+                    </SheetDescription>
+                  </div>
                 </div>
-                <div>
-                  <h2>Trợ giúp & Hỗ trợ</h2>
-                  <SheetDescription>
-                    Chúng tôi luôn sẵn sàng hỗ trợ bạn
-                  </SheetDescription>
-                </div>
-              </div>
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                Online
-              </Badge>
-            </SheetTitle>
-          </SheetHeader>
-        </div>
-
-        {/* Contact Info Banner */}
-        <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border-b border-border">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-blue-600" />
-              <div>
-                <p className="font-medium">Hotline 24/7</p>
-                <p className="text-muted-foreground">1900-1234</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-green-600" />
-              <div>
-                <p className="font-medium">Thời gian phản hồi</p>
-                <p className="text-muted-foreground">&lt; 30 phút</p>
-              </div>
-            </div>
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  Online
+                </Badge>
+              </SheetTitle>
+            </SheetHeader>
           </div>
-        </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="faq" className="flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-3 mx-6 mt-4">
-            <TabsTrigger value="faq">FAQ</TabsTrigger>
-            <TabsTrigger value="contact">Liên hệ</TabsTrigger>
-            <TabsTrigger value="tickets">Ticket</TabsTrigger>
-          </TabsList>
+          {/* Contact Info Banner */}
+          <motion.div
+            className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border-b border-border"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.05 } }}
+          >
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-blue-600" />
+                <div>
+                  <p className="font-medium">Hotline 24/7</p>
+                  <p className="text-muted-foreground">1900-1234</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-green-600" />
+                <div>
+                  <p className="font-medium">Thời gian phản hồi</p>
+                  <p className="text-muted-foreground">&lt; 30 phút</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
 
-          {/* FAQ Tab */}
+          {/* Tabs */}
+          <Tabs defaultValue="faq" className="flex-1 flex flex-col">
+            <motion.div
+              className="grid w-full grid-cols-3 mx-6 mt-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: motionEase } }}
+            >
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="faq">FAQ</TabsTrigger>
+                <TabsTrigger value="contact">Liên hệ</TabsTrigger>
+                <TabsTrigger value="tickets">Ticket</TabsTrigger>
+              </TabsList>
+            </motion.div>
+            {/* FAQ Tab */}
           <TabsContent value="faq" className="flex-1 flex flex-col mt-4">
             <div className="px-6">
               <div className="relative mb-4">
@@ -176,9 +205,15 @@ export function SupportSidebar({
                       <BookOpen className="w-4 h-4 text-blue-600" />
                       Câu hỏi phổ biến
                     </h3>
+                  <motion.div
+                    variants={listVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
                     {filteredFAQs.filter(faq => faq.isPopular).map((faq) => (
-                      <div 
-                        key={faq.id} 
+                      <motion.div 
+                        key={faq.id}
+                        variants={itemVariants}
                         className="p-4 border border-border rounded-xl mb-3 hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -188,8 +223,9 @@ export function SupportSidebar({
                           </div>
                           <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
+                  </motion.div>
                   </div>
 
                   <Separator />
@@ -197,11 +233,17 @@ export function SupportSidebar({
                   {/* All FAQs */}
                   <div>
                     <h3 className="font-semibold mb-3">Tất cả câu hỏi</h3>
-                    {filteredFAQs.filter(faq => !faq.isPopular).map((faq) => (
-                      <div 
-                        key={faq.id} 
-                        className="p-4 border border-border rounded-xl mb-3 hover:bg-muted/50 transition-colors"
-                      >
+                    <motion.div
+                      variants={listVariants}
+                      initial="hidden"
+                      animate="visible"
+                    >
+                      {filteredFAQs.filter(faq => !faq.isPopular).map((faq) => (
+                        <motion.div 
+                          key={faq.id}
+                          variants={itemVariants}
+                          className="p-4 border border-border rounded-xl mb-3 hover:bg-muted/50 transition-colors"
+                        >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
@@ -214,8 +256,9 @@ export function SupportSidebar({
                           </div>
                           <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         </div>
-                      </div>
-                    ))}
+                        </motion.div>
+                      ))}
+                    </motion.div>
                   </div>
                 </div>
               </div>
@@ -230,31 +273,42 @@ export function SupportSidebar({
                   {/* Quick Contact Methods */}
                   <div>
                     <h3 className="font-semibold mb-4">Liên hệ nhanh</h3>
-                    <div className="grid gap-3">
-                      <Button variant="outline" className="justify-start gap-3 h-auto p-4">
+                    <motion.div
+                      className="grid gap-3"
+                      variants={listVariants}
+                      initial="hidden"
+                      animate="visible"
+                    >
+                      <motion.div variants={itemVariants}>
+                        <Button variant="outline" className="justify-start gap-3 h-auto p-4">
                         <Phone className="w-5 h-5 text-blue-600" />
                         <div className="text-left">
                           <p className="font-medium">Gọi điện trực tiếp</p>
                           <p className="text-sm text-muted-foreground">1900-1234 (24/7)</p>
                         </div>
                       </Button>
+                      </motion.div>
                       
-                      <Button variant="outline" className="justify-start gap-3 h-auto p-4">
+                      <motion.div variants={itemVariants}>
+                        <Button variant="outline" className="justify-start gap-3 h-auto p-4">
                         <MessageSquare className="w-5 h-5 text-green-600" />
                         <div className="text-left">
                           <p className="font-medium">Chat trực tuyến</p>
                           <p className="text-sm text-muted-foreground">Phản hồi trong 5 phút</p>
                         </div>
                       </Button>
+                      </motion.div>
                       
-                      <Button variant="outline" className="justify-start gap-3 h-auto p-4">
+                      <motion.div variants={itemVariants}>
+                        <Button variant="outline" className="justify-start gap-3 h-auto p-4">
                         <Mail className="w-5 h-5 text-purple-600" />
                         <div className="text-left">
                           <p className="font-medium">Gửi email</p>
                           <p className="text-sm text-muted-foreground">support@click2buy.vn</p>
                         </div>
                       </Button>
-                    </div>
+                      </motion.div>
+                    </motion.div>
                   </div>
 
                   <Separator />
@@ -265,23 +319,29 @@ export function SupportSidebar({
                     <div className="space-y-4">
                       <div>
                         <label className="text-sm font-medium mb-2 block">Danh mục</label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <motion.div
+                          className="grid grid-cols-2 gap-2"
+                          variants={listVariants}
+                          initial="hidden"
+                          animate="visible"
+                        >
                           {supportCategories.map((category) => {
                             const IconComponent = category.icon;
                             return (
-                              <Button
-                                key={category.id}
-                                variant={ticketCategory === category.id ? "default" : "outline"}
-                                size="sm"
-                                className="justify-start gap-2"
-                                onClick={() => setTicketCategory(category.id)}
-                              >
-                                <IconComponent className="w-4 h-4" />
-                                {category.name}
-                              </Button>
+                              <motion.div key={category.id} variants={itemVariants}>
+                                <Button
+                                  variant={ticketCategory === category.id ? "default" : "outline"}
+                                  size="sm"
+                                  className="justify-start gap-2"
+                                  onClick={() => setTicketCategory(category.id)}
+                                >
+                                  <IconComponent className="w-4 h-4" />
+                                  {category.name}
+                                </Button>
+                              </motion.div>
                             );
                           })}
-                        </div>
+                        </motion.div>
                       </div>
                       
                       <div>
@@ -348,16 +408,26 @@ export function SupportSidebar({
               <div className="px-6">
                 <div className="space-y-4 pb-4">
                   {tickets.length === 0 ? (
-                    <div className="text-center py-8">
+                    <motion.div
+                      className="text-center py-8"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1, transition: { duration: 0.3 } }}
+                    >
                       <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground">Bạn chưa có ticket hỗ trợ nào</p>
-                    </div>
+                    </motion.div>
                   ) : (
-                    tickets.map((ticket) => (
-                      <div 
-                        key={ticket.id} 
-                        className="p-4 border border-border rounded-xl hover:bg-muted/50 transition-colors"
-                      >
+                    <motion.div
+                      variants={listVariants}
+                      initial="hidden"
+                      animate="visible"
+                    >
+                      {tickets.map((ticket) => (
+                        <motion.div 
+                          key={ticket.id}
+                          variants={itemVariants}
+                          className="p-4 border border-border rounded-xl hover:bg-muted/50 transition-colors"
+                        >
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <h4 className="font-medium text-sm">{ticket.subject}</h4>
                           <Badge className={getStatusColor(ticket.status)}>
@@ -379,8 +449,9 @@ export function SupportSidebar({
                             {ticket.createdAt}
                           </span>
                         </div>
-                      </div>
-                    ))
+                        </motion.div>
+                      ))}
+                    </motion.div>
                   )}
                 </div>
               </div>
@@ -388,12 +459,17 @@ export function SupportSidebar({
           </TabsContent>
         </Tabs>
 
-        {/* Footer */}
-        <div className="bg-muted/30 border-t border-border p-6">
-          <Button variant="outline" className="w-full" onClick={onClose}>
-            Đóng
-          </Button>
-        </div>
+          {/* Footer */}
+          <motion.div
+            className="bg-muted/30 border-t border-border p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.3 } }}
+          >
+            <Button variant="outline" className="w-full" onClick={onClose}>
+              Đóng
+            </Button>
+          </motion.div>
+        </motion.div>
       </SheetContent>
     </Sheet>
   );

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -123,30 +124,60 @@ export function MyStorePage({
     return 0;
   };
 
+  const motionEase = [0.4, 0, 0.2, 1] as const;
+  const sectionVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: motionEase } }
+  };
+  const listVariants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } }
+  };
+  const itemVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: motionEase } }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Page Header */}
-      <div className="mb-8">
+      <motion.div
+        className="mb-8"
+        variants={sectionVariants}
+        initial="hidden"
+        animate="visible"
+      >
         <h1 className="text-3xl font-bold mb-2">Cửa hàng của tôi</h1>
         <p className="text-muted-foreground">Quản lý sản phẩm và đơn hàng của bạn</p>
-      </div>
+      </motion.div>
 
       {/* Main Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="products" className="gap-2">
-            <Package className="w-4 h-4" />
-            Sản phẩm ({storeProducts.length})
-          </TabsTrigger>
-          <TabsTrigger value="orders" className="gap-2">
-            <Truck className="w-4 h-4" />
-            Đơn hàng ({storeOrders.length})
-          </TabsTrigger>
-        </TabsList>
+        <motion.div
+          variants={sectionVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <TabsList className="mb-6">
+            <TabsTrigger value="products" className="gap-2">
+              <Package className="w-4 h-4" />
+              Sản phẩm ({storeProducts.length})
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="gap-2">
+              <Truck className="w-4 h-4" />
+              Đơn hàng ({storeOrders.length})
+            </TabsTrigger>
+          </TabsList>
+        </motion.div>
 
         {/* Products Tab */}
         <TabsContent value="products" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <motion.div
+            className="flex items-center justify-between"
+            variants={sectionVariants}
+            initial="hidden"
+            animate="visible"
+          >
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -166,7 +197,7 @@ export function MyStorePage({
                 Thêm sản phẩm
               </Button>
             </div>
-          </div>
+          </motion.div>
 
           <Card>
             <div className="overflow-x-auto">
@@ -181,9 +212,13 @@ export function MyStorePage({
                     <th className="p-4">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody>
+                <motion.tbody
+                  variants={listVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {filteredProducts.map((product) => (
-                    <tr key={product.id} className="border-b hover:bg-muted/30">
+                    <motion.tr key={product.id} className="border-b hover:bg-muted/30" variants={itemVariants}>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
@@ -250,9 +285,9 @@ export function MyStorePage({
                           </Button>
                         </div>
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))}
-                </tbody>
+                </motion.tbody>
               </table>
             </div>
           </Card>
@@ -262,42 +297,52 @@ export function MyStorePage({
         <TabsContent value="orders" className="space-y-4">
           {/* Order Status Tabs */}
           <Tabs value={orderTab} onValueChange={(v) => setOrderTab(v as OrderTab)}>
-            <TabsList>
-              <TabsTrigger value="pending" className="gap-2">
-                <Clock className="w-4 h-4" />
-                Chờ xử lý
-                {getOrderCount('pending') > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                    {getOrderCount('pending')}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="shipping" className="gap-2">
-                <Truck className="w-4 h-4" />
-                Đang giao
-                {getOrderCount('shipping') > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                    {getOrderCount('shipping')}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="completed" className="gap-2">
-                <CheckCircle className="w-4 h-4" />
-                Hoàn thành
-                {getOrderCount('completed') > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                    {getOrderCount('completed')}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
+            <motion.div
+              variants={sectionVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <TabsList>
+                <TabsTrigger value="pending" className="gap-2">
+                  <Clock className="w-4 h-4" />
+                  Chờ xử lý
+                  {getOrderCount('pending') > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {getOrderCount('pending')}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="shipping" className="gap-2">
+                  <Truck className="w-4 h-4" />
+                  Đang giao
+                  {getOrderCount('shipping') > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {getOrderCount('shipping')}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="completed" className="gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Hoàn thành
+                  {getOrderCount('completed') > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {getOrderCount('completed')}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+            </motion.div>
 
             {/* Order Lists */}
             {['pending', 'shipping', 'completed'].map((tab) => (
               <TabsContent key={tab} value={tab} className="space-y-4">
                 {filteredOrders.length === 0 ? (
                   <Card className="p-12">
-                    <div className="text-center">
+                    <motion.div
+                      className="text-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1, transition: { duration: 0.3 } }}
+                    >
                       <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
                       <h3 className="text-lg mb-2">Chưa có đơn hàng</h3>
                       <p className="text-muted-foreground">
@@ -305,11 +350,18 @@ export function MyStorePage({
                         {tab === 'shipping' && 'Chưa có đơn hàng đang giao'}
                         {tab === 'completed' && 'Chưa có đơn hàng hoàn thành'}
                       </p>
-                    </div>
+                    </motion.div>
                   </Card>
                 ) : (
-                  filteredOrders.map((order) => (
-                    <Card key={order.id} className="overflow-hidden">
+                  <motion.div
+                    variants={listVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="space-y-4"
+                  >
+                    {filteredOrders.map((order) => (
+                      <motion.div key={order.id} variants={itemVariants}>
+                    <Card className="overflow-hidden">
                       <div className="p-4 bg-muted/30 border-b">
                         <div className="flex items-center justify-between">
                           <div>
@@ -410,7 +462,9 @@ export function MyStorePage({
                         </div>
                       </div>
                     </Card>
-                  ))
+                      </motion.div>
+                    ))}
+                  </motion.div>
                 )}
               </TabsContent>
             ))}

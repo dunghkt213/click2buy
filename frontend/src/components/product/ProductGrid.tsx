@@ -1,8 +1,9 @@
+import { motion } from 'framer-motion';
+import { Filter, Grid, List } from 'lucide-react';
 import React from 'react';
-import { ProductCard } from './ProductCard';
-import { Product, FilterState } from 'types';
+import { FilterState, Product } from 'types';
 import { Button } from '../ui/button';
-import { Grid, List, Filter } from 'lucide-react';
+import { ProductCard } from './ProductCard';
 
 interface ProductGridProps {
   filters: FilterState;
@@ -16,6 +17,21 @@ interface ProductGridProps {
 
 export function ProductGrid({ filters, onAddToCart, searchQuery = '', onViewDetail, onAddToWishlist, isInWishlist, onTriggerFlyingIcon }: ProductGridProps) {
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
+  const motionEase = React.useMemo(() => [0.4, 0, 0.2, 1] as const, []);
+  const containerVariants = React.useMemo(() => ({
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren: 0.06,
+        delayChildren: 0.05,
+      },
+    },
+  }), []);
+
+  const itemVariants = React.useMemo(() => ({
+    hidden: { opacity: 0, y: 24 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: motionEase } },
+  }), [motionEase]);
 
   // Mock product data
   const allProducts: Product[] = [
@@ -243,24 +259,31 @@ export function ProductGrid({ filters, onAddToCart, searchQuery = '', onViewDeta
           </p>
         </div>
       ) : (
-        <div className={`grid gap-6 ${
-          viewMode === 'grid' 
-            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
-            : 'grid-cols-1'
-        }`}>
+        <motion.div
+          layout
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className={`grid gap-6 ${
+            viewMode === 'grid' 
+              ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+              : 'grid-cols-1'
+          }`}
+        >
           {filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAddToCart={onAddToCart}
-              viewMode={viewMode}
-              onViewDetail={onViewDetail}
-              onAddToWishlist={onAddToWishlist}
-              isInWishlist={isInWishlist ? isInWishlist(product.id) : false} // SỬA: Gọi hàm isInWishlist với product.id
-              onTriggerFlyingIcon={onTriggerFlyingIcon}
-            />
+            <motion.div key={product.id} variants={itemVariants} layout>
+              <ProductCard
+                product={product}
+                onAddToCart={onAddToCart}
+                viewMode={viewMode}
+                onViewDetail={onViewDetail}
+                onAddToWishlist={onAddToWishlist}
+                isInWishlist={isInWishlist ? isInWishlist(product.id) : false} // SỬA: Gọi hàm isInWishlist với product.id
+                onTriggerFlyingIcon={onTriggerFlyingIcon}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );
