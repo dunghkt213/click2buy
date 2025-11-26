@@ -11,7 +11,7 @@ export class PaymentController {
     private readonly paymentService: PaymentService,
   ) {}
 
-  @MessagePattern('payment.create')
+  @MessagePattern('order.created')
   create(@Body() dto: any) {
     return this.paymentService.create(dto);
   }

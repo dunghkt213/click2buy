@@ -17,14 +17,13 @@ export class AppService {
     private readonly inventoryModel: Model<InventoryDocument>,
   ) {}
 
-async reserveStock(data: { items: { productId: string; quantity: number }[] }) {
+async reserveStock(data: any ) {
   console.log('reservestock', data)
-
+  const { products,userId,orderIds, paymentMethod, total } = data;
   const results = [];
-
-  for (const { productId, quantity } of data.items) {
+  for (const { productId, quantity } of products) {
     const inventory = await this.inventoryModel.findOne({ productId });
-
+    
     if (!inventory) {
       results.push({
         productId,

@@ -25,7 +25,6 @@ export class CartService {
     dto: { productId: string; quantity: number; price: number; sellerId: string }
   ) {
     const { productId, quantity, price, sellerId } = dto;
-
     if (!productId || !sellerId) {
       throw new BadRequestException("productId và sellerId là bắt buộc");
     }

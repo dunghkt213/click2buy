@@ -17,7 +17,7 @@ export class PaymentService {
   ) {}
 
 async create(data: any) {
-  const { orderIds, paymentMethod, total } = data;
+  const { products,userId,orderIds, paymentMethod, total } = data;
 
   console.log('payment.create payload:', data);
 
@@ -35,6 +35,7 @@ async create(data: any) {
   for (const orderId of orderIds) {
 
     const paymentData = {
+      userId,
       orderId,
       paymentMethod,
       total,
@@ -47,10 +48,11 @@ async create(data: any) {
     createdPayments.push(created);
 
     // Emit sự kiện payment.created cho từng orderId
-    this.kafka.emit('payment.created', {
+    this.kafka.emit('payment.success', {
       ...paymentData,
       paymentId: created._id.toString(),
     });
+    console.log('payment.success', paymentData)
   }
   return {
     success: true,

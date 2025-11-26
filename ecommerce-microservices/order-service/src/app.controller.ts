@@ -35,10 +35,6 @@ async createOrders(@Payload() data: any, @CurrentUser() user: any) {
   }
 } 
 
-  @MessagePattern('payment.created')
-  updateStatus(@Payload() data: any) {
-    return this.appService.updateOrderStatus_success(data);
-  }
 
   @MessagePattern('order.timeout')
   timeout(@Payload() data: any) {

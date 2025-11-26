@@ -8,6 +8,9 @@ export type PaymentDocument = Payment & Document;
 export class Payment {
 
   @Prop({ required: true })
+  userId: string;
+
+  @Prop({ required: true })
   orderId: string;
 
   @Prop({ required: true, enum: ['COD', 'BANKING'] })

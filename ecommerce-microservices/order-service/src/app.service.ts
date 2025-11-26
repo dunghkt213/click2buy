@@ -97,14 +97,10 @@ async createOrders(input: {
 
   }
   await this.kafka.emit('order.created', {
-    products
-  });
-  
-  // ---- 5. Tính tổng tất cả orders để tạo payment ----
-
-  await this.kafka.emit('payment.create', {
+    userId,
     orderIds,
     paymentMethod,
+    products,
     total: totalAllOrders,
   });
   return { success: true, orderIds };
