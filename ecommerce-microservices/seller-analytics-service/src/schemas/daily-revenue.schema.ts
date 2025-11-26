@@ -1,23 +1,26 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
 
 export type DailyRevenueDocument = DailyRevenue & Document;
 
 /**
- * Schema lưu doanh thu theo ngày
- * Được cập nhật khi nhận event order.delivery.success
+ * Daily revenue aggregation per seller.
+ * Stored by day (00:00 UTC) for easier charting.
  */
 @Schema({ timestamps: true })
 export class DailyRevenue {
-  @Prop({ required: true, unique: true, index: true })
-  date: string; // Format: YYYY-MM-DD (set về đầu ngày)
+  @Prop({ required: true, index: true })
+  sellerId: string;
+
+  @Prop({ required: true, index: true })
+  date: Date; // normalized to start of day
 
   @Prop({ default: 0 })
-  totalRevenue: number; // Tổng doanh thu trong ngày
+  totalRevenue: number;
 
   @Prop({ default: 0 })
-  orderCount: number; // Số lượng đơn hàng thành công
+  totalOrders: number;
 }
 
 export const DailyRevenueSchema = SchemaFactory.createForClass(DailyRevenue);
-
+DailyRevenueSchema.index({ sellerId: 1, date: 1 }, { unique: true });

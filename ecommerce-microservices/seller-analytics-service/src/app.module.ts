@@ -2,24 +2,17 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule, InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
-import { ClientsModule, Transport } from '@nestjs/microservices';
 
-// Schemas
-import {
-  OrderSnapshot,
-  OrderSnapshotSchema,
-} from './schemas/order-snapshot.schema';
 import {
   DailyRevenue,
   DailyRevenueSchema,
 } from './schemas/daily-revenue.schema';
+import {
+  ProductAnalytics,
+  ProductAnalyticsSchema, 
+} from './schemas/product-analytics.schema';
 
-// Services
-import { OrderService } from './services/order.service';
-import { AnalyticsService } from './services/analytics.service';
-
-// Controllers
-import { SellerController } from './controllers/seller.controller';
+import { AnalyticsService } from './analytics.service';
 import { AnalyticsController } from './controllers/analytics.controller';
 import { KafkaConsumerController } from './controllers/kafka-consumer.controller';
 
@@ -54,39 +47,17 @@ import { KafkaConsumerController } from './controllers/kafka-consumer.controller
 
     // 3️⃣ Đăng ký MongoDB schemas
     MongooseModule.forFeature([
-      { name: OrderSnapshot.name, schema: OrderSnapshotSchema },
       { name: DailyRevenue.name, schema: DailyRevenueSchema },
-    ]),
-
-    // 4️⃣ Đăng ký Kafka Producer để emit events
-    ClientsModule.registerAsync([
-      {
-        name: 'KAFKA_PRODUCER',
-        imports: [ConfigModule],
-        inject: [ConfigService],
-        useFactory: async (config: ConfigService) => ({
-          transport: Transport.KAFKA,
-          options: {
-            client: {
-              clientId: 'seller-analytics-producer',
-              brokers: ['click2buy_kafka:9092'],
-            },
-            consumer: {
-              groupId: 'seller-analytics-producer-group',
-            },
-          },
-        }),
-      },
+      { name: ProductAnalytics.name, schema: ProductAnalyticsSchema },
     ]),
   ],
 
   controllers: [
-    SellerController,
     AnalyticsController,
     KafkaConsumerController, // Kafka consumer controller
   ],
 
-  providers: [OrderService, AnalyticsService],
+  providers: [AnalyticsService],
 })
 export class AppModule implements OnModuleInit {
   constructor(@InjectConnection() private readonly connection: Connection) {}
