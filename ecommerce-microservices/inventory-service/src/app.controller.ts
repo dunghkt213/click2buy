@@ -11,6 +11,10 @@ export class AppController {
   reserveStock(@Payload() data: any) {
     return this.appService.reserveStock(data);
   }
+  @MessagePattern('order.success')
+  commitStock(@Payload() data: any) {
+    return this.appService.commitStock(data);
+  }
 
   @MessagePattern('payment.cancelled')
   releaseStock(@Payload() data: any) {

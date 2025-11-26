@@ -93,6 +93,9 @@ export class Product {
   @Prop({ default: 0 })
   ratingAvg?: number;
 
+  @Prop({ default: 0 })
+  discount?: number;
+
   @Prop({ type: WarehouseAddress })
   warehouseAddress?: WarehouseAddress;
 
