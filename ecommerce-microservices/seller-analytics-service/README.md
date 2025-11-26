@@ -1,104 +1,79 @@
 # Seller Analytics Service
 
-Microservice chịu trách nhiệm quản lý đơn hàng cho Seller và báo cáo doanh thu trong hệ thống Click2Buy E-commerce.
+Pure analytics microservice that aggregates seller performance metrics for Click2Buy.
 
 ## 🎯 Chức năng chính
 
-### 1. Event-Driven (Kafka Consumers)
-- **order.created**: Lưu snapshot đơn hàng với status = PENDING
-- **order.delivery.success**: Cộng dồn doanh thu và số lượng đơn hàng theo ngày
+1. **Event-Driven**
+   - Consumes `order.confirmed` events to update daily revenue & product level statistics.
 
-### 2. Seller Order Management API
-- `GET /seller/orders`: Lấy danh sách đơn hàng (phân trang, lọc theo status)
-- `PUT /seller/orders/:id/confirm`: Duyệt đơn hàng → Emit `order.confirmed`
-- `PUT /seller/orders/:id/reject`: Từ chối đơn hàng → Emit `order.cancelled`
-
-### 3. Analytics API (Dashboard)
-- `GET /analytics/revenue?type=WEEK|MONTH`: Doanh thu theo tuần/tháng
+2. **Analytics APIs (read-only)**
+   - `GET /analytics/revenue?sellerId=xxx&type=WEEK|MONTH`
+   - `GET /analytics/top-products?sellerId=xxx&limit=5`
 
 ## 🏗️ Cấu trúc
 
 ```
 seller-analytics-service/
 ├── src/
-│   ├── schemas/          # MongoDB schemas
-│   │   ├── order-snapshot.schema.ts
-│   │   └── daily-revenue.schema.ts
-│   ├── services/         # Business logic
-│   │   ├── order.service.ts
+│   ├── schemas/
+│   │   ├── daily-revenue.schema.ts
+│   │   └── product-analytics.schema.ts
+│   ├── services/
 │   │   └── analytics.service.ts
-│   ├── controllers/     # HTTP & Kafka controllers
-│   │   ├── seller.controller.ts
+│   ├── controllers/
 │   │   ├── analytics.controller.ts
 │   │   └── kafka-consumer.controller.ts
 │   ├── app.module.ts
 │   └── main.ts
-├── Dockerfile
-├── package.json
-└── .env
+└── ...
 ```
 
 ## 🔧 Cấu hình
 
 ### Environment Variables (.env)
 ```env
-PORT=3006
+PORT=3009
 MONGO_URI=mongodb://click2buy_mongo:27017/click2buy_analytics
 ```
 
 ### Docker Compose
-Service được cấu hình trong `docker-compose.yml`:
-- Port: `3106:3006`
-- Depends on: `kafka`, `mongo`
-- Network: `click2buy_net`
+- Port mapping: `3109:3009`
+- Depends on `kafka`, `mongo`
 - Command: `npm install --legacy-peer-deps && npm run start:dev`
 
 ## 📊 MongoDB Collections
 
-### OrderSnapshot
-Lưu snapshot đơn hàng để phục vụ API `/seller/orders`:
-```typescript
-{
-  orderId: "order_123",
-  items: [{ productId, quantity, price }],
-  totalAmount: 50000,
-  status: "PENDING" | "CONFIRMED" | "CANCELLED",
-  createdAt: Date
-}
-```
-
 ### DailyRevenue
-Lưu doanh thu theo ngày:
-```typescript
+```ts
 {
-  date: "2024-01-15", // YYYY-MM-DD
-  totalRevenue: 1000000,
-  orderCount: 50
+  sellerId: string;
+  date: Date;        // normalized to 00:00:00
+  totalRevenue: number;
+  totalOrders: number;
 }
 ```
 
-## 🔄 Kafka Events
+### ProductAnalytics
+```ts
+{
+  sellerId: string;
+  productId: string;
+  productName?: string;
+  totalSold: number;
+  totalRevenue: number;
+}
+```
 
-### Consumed Events
-- `order.created`: Nhận từ order-service khi có đơn mới
-- `order.delivery.success`: Nhận khi đơn giao hàng thành công
+## 🔄 Kafka
 
-### Produced Events
-- `order.confirmed`: Emit khi Seller duyệt đơn → Inventory service trừ kho
-- `order.cancelled`: Emit khi Seller từ chối đơn
-
-## 🚀 API Gateway Integration
-
-API Gateway route các request sau về service này:
-- `/seller/*` → `SellerAnalyticsGateway`
-- `/analytics/*` → `SellerAnalyticsGateway`
-
-Sử dụng HTTP proxy (axios) để forward requests.
+- **Consumer Topic:** `order.confirmed`
+- **Payload:** `{ sellerId, totalAmount, confirmedAt, items: [{ productId, productName, quantity, price }] }`
+- Logic runs inside a Mongo transaction to keep revenue & product stats consistent.
 
 ## 📝 Notes
 
-- Service vừa là HTTP server (port 3006) vừa là Kafka microservice
-- MongoDB connection sử dụng `ConfigService` để tránh lỗi `uri undefined`
-- DailyRevenue được cập nhật khi nhận event `order.delivery.success`
-- API `/analytics/revenue` trả về đầy đủ các ngày, ngày không có đơn sẽ có `totalRevenue: 0`
+- Service only reads/aggregates data – no longer handles seller order operations.
+- APIs always require `sellerId` to scope analytics.
+- Revenue API fills missing days with zeros to keep charts continuous.
 
