@@ -1,4 +1,4 @@
-import { ProductCondition, WarehouseAddress } from '../../../../backend/src/product/schemas/product.schema';
+import { ProductCondition, WarehouseAddress } from '../schemas/product.schema';
 
 export class CreateProductDto {
   name: string;

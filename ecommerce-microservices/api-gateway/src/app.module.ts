@@ -7,7 +7,10 @@ import { UserGateway } from './gateways/user.gateway';
 import { ProductGateway } from './gateways/product.gateway';
 import { CartGateway } from './gateways/cart.gateway';
 import { ReviewGateway } from './gateways/review.gateway';
-
+import { MediaGateway } from './gateways/media.gateway';
+import { MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware';
+import { OrderGateway } from './gateways/order.gateway';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -40,8 +43,14 @@ import { ReviewGateway } from './gateways/review.gateway';
     ProductGateway,
     CartGateway,
     ReviewGateway,
+    MediaGateway,
+    OrderGateway
   ],
 
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}
