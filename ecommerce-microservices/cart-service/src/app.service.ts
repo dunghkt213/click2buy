@@ -1,13 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cart } from './schemas/cart.schema';
-
+import { ClientKafka } from '@nestjs/microservices';
+import { CreateOrderDto } from './dto/create-order.dto';
 @Injectable()
 export class CartService {
   constructor(
     @InjectModel(Cart.name)
     private readonly cartModel: Model<Cart>,
+    @Inject('KAFKA_PRODUCER')
+    private readonly kafka: ClientKafka,
   ) {}
 
   /** Lấy tất cả cart chia theo seller của user */
@@ -54,9 +57,9 @@ export class CartService {
     return cart.save();
   }
 
-
   /** Cập nhật */
   async updateItem(userId: string, sellerId: string, productId: string, quantity: number, price: number) {
+    console.log('userId: ',userId, typeof(userId))
     let cart = await this.cartModel.findOne({ userId, sellerId }).lean(false);
 
     if (!cart) {
@@ -78,16 +81,67 @@ export class CartService {
     return cart.save();
   }
 
-  /** Xóa 1 sản phẩm khỏi cart seller */
-  async removeItem(userId: string, sellerId: string, productId: string) {
-    let cart = await this.cartModel.findOne({ userId, sellerId }).lean(false);
+  async removeItem(
+  userId: string,
+  sellerId: string,
+  productId: string
+) {
+  // 1. Tìm cart theo user + seller
+  let cart = await this.cartModel.findOne({ userId, sellerId });
+
+  if (!cart) {
+    throw new NotFoundException("Cart not found");
+  }
+
+  // 2. Kiểm tra xem product có tồn tại trong cart không
+  const existed = cart.items.some(i => i.productId === productId);
+  if (!existed) {
+    throw new NotFoundException("Item not found in cart");
+  }
+
+  // 3. Xóa product ra khỏi mảng
+  cart.items = cart.items.filter(i => i.productId !== productId);
+
+  // 4. Nếu giỏ hàng trống → xóa nguyên cart
+  if (cart.items.length === 0) {
+    await cart.deleteOne();
+    return { success: true, message: "Cart removed because it became empty" };
+  }
+
+  // 5. Nếu vẫn còn items → lưu lại
+  await cart.save();
+  return { success: true, message: "Item removed from cart" };
+}
+
+
+  async updateQuantity(
+  userId: string,
+  sellerId: string,
+  productId: string,
+  quantity: number 
+  ) {
+    let cart = await this.cartModel.findOne({ userId, sellerId });
 
     if (!cart) {
-      cart = new this.cartModel({ userId, sellerId, items: [] });
-      await cart.save();
+      throw new NotFoundException('Cart not found');
     }
 
-    cart.items = cart.items.filter(i => i.productId !== productId);
+    const item = cart.items.find(i => i.productId === productId);
+
+    if (!item) {
+      throw new NotFoundException('Item not found');
+    }
+
+    // cập nhật số lượng
+    item.quantity = quantity;
+
+    // nếu quantity giảm xuống 0 hoặc thấp hơn → xóa item
+    if (item.quantity < 1) {
+      cart.items = cart.items.filter(i => i.productId !== productId);
+    }
+
     return cart.save();
   }
+  
 }
+

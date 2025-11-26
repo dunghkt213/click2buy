@@ -12,26 +12,53 @@ import { ClientKafka } from '@nestjs/microservices';
 export class PaymentService {
   constructor(
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
-    @Inject('PAYMENT_SERVICE')
+    @Inject('KAFKA_PRODUCER')
     private readonly kafka: ClientKafka,
   ) {}
 
-  async create(data: CreatePaymentDto) {
-    let paidAmount = 0;
+async create(data: any) {
+  const { orderIds, paymentMethod, total } = data;
 
-    if(data.paymentMethod === 'COD') {
-      paidAmount = 0;
-    } else if(data.paymentMethod === 'BANKING') {
-      paidAmount = data.total;
-      console.log(' Method BANKING dang trong qua trinh phat trien:');
-    }
-    this.kafka.emit('payment.success', {...data, paidAmount});
-    return this.paymentModel.create({
-      ...data,
+  console.log('payment.create payload:', data);
+
+  // Xác định paidAmount theo paymentMethod (áp dụng cho mỗi order)
+  let paidAmount = 0;
+
+  if (paymentMethod === 'BANKING') {
+    paidAmount = total;
+  }
+
+  // Mảng để lưu danh sách payments tạo thành công
+  const createdPayments = [];
+
+  // For từng orderId để tạo payment riêng
+  for (const orderId of orderIds) {
+
+    const paymentData = {
+      orderId,
+      paymentMethod,
+      total,
       paidAmount,
       status: 'SUCCESS',
+    };
+
+    const created = await this.paymentModel.create(paymentData);
+
+    createdPayments.push(created);
+
+    // Emit sự kiện payment.created cho từng orderId
+    this.kafka.emit('payment.created', {
+      ...paymentData,
+      paymentId: created._id.toString(),
     });
   }
+  return {
+    success: true,
+    count: createdPayments.length,
+    payments: createdPayments,
+  };
+}
+
   
   async update(id: string, data: UpdatePaymentDto) {
     return this.paymentModel.findByIdAndUpdate(id, data, { new: true });

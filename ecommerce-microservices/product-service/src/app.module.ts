@@ -7,13 +7,13 @@ import { Product, ProductSchema } from './schemas/product.schema';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { redisProvider } from './redis.provider';
 
 @Module({
   imports: [
     AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
-    
-
+  
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -34,7 +34,7 @@ import { AuthModule } from './auth/auth.module';
   
     ClientsModule.registerAsync([
       {
-        name: 'PRODUCT_SERVICE',
+        name: 'KAFKA_SERVICE',
         imports: [ConfigModule],
         inject: [ConfigService],
         useFactory: async (config: ConfigService) => ({
@@ -54,7 +54,7 @@ import { AuthModule } from './auth/auth.module';
   ],
 
   controllers: [AppController],
-  providers: [AppService],
+  providers: [redisProvider, AppService],
 })
 export class AppModule implements OnModuleInit {
   constructor(@InjectConnection() private readonly connection: Connection) {}

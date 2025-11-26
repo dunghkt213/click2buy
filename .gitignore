@@ -21,3 +21,4 @@ Thumbs.db
 # Ignore IDE folders
 .vscode/
 .idea/
+google-service-account.json

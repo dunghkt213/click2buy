@@ -26,7 +26,7 @@ export class AuthGateway {
         throw new BadRequestException(result.message || 'Login failed');
       }
     const { user, accessToken, refreshTokenInfo } = result.data;
-
+  
   // 👇 Set cookie refresh_token (rotation-ready)
   res.cookie('refresh_token', refreshTokenInfo.value, {
     httpOnly: true,

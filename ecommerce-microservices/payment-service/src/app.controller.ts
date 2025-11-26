@@ -11,13 +11,13 @@ export class PaymentController {
     private readonly paymentService: PaymentService,
   ) {}
 
-  @MessagePattern('inventory.reserved')
-  create(@Body() dto: CreatePaymentDto) {
+  @MessagePattern('payment.create')
+  create(@Body() dto: any) {
     return this.paymentService.create(dto);
   }
 
   @MessagePattern('payment.findAll')
-  findAll(@Query() query: QueryPaymentDto) {
+  findAll(@Query() query: any) {
     return this.paymentService.findAll(query);
   }
   

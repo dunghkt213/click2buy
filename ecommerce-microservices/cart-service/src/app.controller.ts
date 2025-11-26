@@ -1,4 +1,4 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Controller, UseGuards, BadRequestException} from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CartService } from './app.service';
 import { JwtKafkaAuthGuard } from './auth/jwt-kafka.guard';
@@ -29,14 +29,14 @@ export class CartController {
   @UseGuards(JwtKafkaAuthGuard)
   updateItem(@Payload() data: any, @CurrentUser() user: any) {
     const userId = user?.sub || user?.id;
-    const { sellerId, productId, dto } = data;
-
+    const { sellerId, productId, quantity, price} = data;
+    
     return this.cartService.updateItem(
       userId,
       sellerId,
       productId,
-      dto.quantity,
-      dto.price,
+      quantity,
+      price,
     );
   }
 
@@ -53,4 +53,18 @@ export class CartController {
       productId,
     );
   }
+  @MessagePattern('cart.productQuantity')
+  @UseGuards(JwtKafkaAuthGuard)
+  updateQuantity(@Payload() data: any, @CurrentUser() user: any) {
+    const userId = user?.sub || user?.id;
+    const { sellerId, productId,quantity} = data;
+
+    return this.cartService.updateQuantity(
+      userId,
+      sellerId,
+      productId,
+      quantity
+    );
+  }
+
 }
