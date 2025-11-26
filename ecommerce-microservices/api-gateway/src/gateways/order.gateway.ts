@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Headers,  } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Headers, BadRequestException } from '@nestjs/common';
 import  {ClientKafka}from '@nestjs/microservices';
 import {Inject} from '@nestjs/common/decorators/core/inject.decorator';
 
@@ -12,7 +12,12 @@ export class OrderGateway {
   }
 
   @Post()
-  create(@Body() dto: any, ) {
-    return this.kafka.send('order.create', dto );
+  create(@Body() dto: any, @Headers('authorization') auth?: string) {
+    
+    try {
+      return this.kafka.send('order.create', {...dto, auth });
+    } catch(err){
+      return  new BadRequestException(err.message || 'Service error');
+    }
   }
 }

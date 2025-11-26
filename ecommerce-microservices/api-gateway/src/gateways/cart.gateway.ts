@@ -24,10 +24,11 @@ export class CartGateway {
     this.kafka.subscribeToResponseOf('cart.add');
     this.kafka.subscribeToResponseOf('cart.update');
     this.kafka.subscribeToResponseOf('cart.remove');
-
+    this.kafka.subscribeToResponseOf('cart.productQuantity');
+    this.kafka.subscribeToResponseOf('cart.createOrder')
     await this.kafka.connect();
   }
-
+  
   /** Lấy tất cả giỏ hàng theo seller */
   @Get()
   getCarts(@Headers('authorization') auth?: string) {
@@ -35,7 +36,7 @@ export class CartGateway {
   }
 
   /** Thêm sản phẩm vào cart */
-  @Post('add')
+  @Post('')
   addItem(
     @Headers('authorization') auth: string,
     @Body()
@@ -46,36 +47,47 @@ export class CartGateway {
       sellerId: string;
     },
   ) {
-    return this.kafka.send('cart.add', { auth, dto });
+    return this.kafka.send('cart.add', { auth, ...dto });
   }
 
   /** Cập nhật item */
-  @Patch(':sellerId/update/:productId')
+  @Patch('update')
   updateItem(
     @Headers('authorization') auth: string,
-    @Param('sellerId') sellerId: string,
-    @Param('productId') productId: string,
-    @Body() dto: { quantity: number; price: number },
+    @Body() dto: { sellerId: string, productId: string, quantity: number; price: number },
   ) {
     return this.kafka.send('cart.update', {
       auth,
-      sellerId,
-      productId,
-      dto,
+      ...dto
     });
   }
 
   /** Xóa sản phẩm */
-  @Delete(':sellerId/remove/:productId')
+  @Delete('product')
   removeItem(
     @Headers('authorization') auth: string,
-    @Param('sellerId') sellerId: string,
-    @Param('productId') productId: string,
+    @Body() dto: { sellerId: string, productId: string},
   ) {
     return this.kafka.send('cart.remove', {
       auth,
-      sellerId,
-      productId,
+      ...dto
     });
   }
+  @Patch('productQuantity')
+  updateQuantity(
+    @Headers('authorization') auth: string,
+    @Body() dto: { sellerId: string, productId: string, quantity: number},
+    ) {
+    return this.kafka.send('cart.productQuantity', {
+      auth,
+      ...dto
+    });
+    }
+  @Post('order')
+  createOrder(
+    @Headers('authorization') auth: string,
+    @Body('items') dto :{items: any[], paymentMethod: string}
+  ) {
+    return this.kafka.send('cart.createOrder', { auth, ...dto });
+}
 }

@@ -11,6 +11,9 @@ import { ReviewGateway } from './gateways/review.gateway';
 import { MediaGateway } from './gateways/media.gateway';
 import { SellerAnalyticsGateway } from './gateways/seller-analytics.gateway';
 
+import { MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware';
+import { OrderGateway } from './gateways/order.gateway';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -48,8 +51,13 @@ import { SellerAnalyticsGateway } from './gateways/seller-analytics.gateway';
     ReviewGateway,
     MediaGateway,
     SellerAnalyticsGateway, // Route /seller/* và /analytics/* về seller-analytics-service
+    OrderGateway
   ],
 
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}

@@ -53,7 +53,7 @@ export class AppService {
     return jwt.sign(
       { sub: userId, role: userRole },
       secret,
-      { expiresIn: process.env.ACCESS_EXPIRES_IN || '5m' as any },
+      { expiresIn: process.env.ACCESS_EXPIRES_IN || '100m' as any },
     );
   }
 

@@ -8,7 +8,6 @@ import { Inventory, InventoryDocument, InventoryStatus } from './schemas/invento
 
 @Injectable()
 export class AppService {
-  private readonly logger = new Logger(AppService.name);
 
   constructor(
     @Inject('KAFKA_PRODUCER')
@@ -18,39 +17,83 @@ export class AppService {
     private readonly inventoryModel: Model<InventoryDocument>,
   ) {}
 
-  async reserveStock(data: any) {
-    this.logger.log('reserve stock', data);
-
-    const results = [];
-
-    for (const item of data.items) {
-      const { productId, quantity } = item;
-
-      let inventory = await this.inventoryModel.findOne({ productId });
-
-      if (!inventory) {
-        this.logger.warn(`Product ${productId} not found during reservation`);
-        continue; // Bỏ qua item này, không làm crash server
-      }
-
-      inventory.availableStock -= quantity;
-
-      inventory.reservedStock += quantity;
-
-      await inventory.save();
+async reserveStock(data: any ) {
+  console.log('reservestock', data)
+  const { products,userId,orderIds, paymentMethod, total } = data;
+  const results = [];
+  for (const { productId, quantity } of products) {
+    const inventory = await this.inventoryModel.findOne({ productId });
+    
+    if (!inventory) {
+      results.push({
+        productId,
+        success: false,
+        message: 'Inventory not found',
+      });
+      continue;
     }
 
-    // 🔥 Emit event cho Order-Service
-    this.kafka.emit('inventory.reserved', data);
-    console.log('Emitted inventory.reserved event for orderId:', data);
-    return { success: true, items: results };
+    // Trừ available, tăng reserved
+    inventory.availableStock -= quantity;
+    inventory.reservedStock += quantity;
+
+    await inventory.save();
+
+    results.push({
+      productId,
+      success: true,
+      reserved: quantity,
+    });
   }
+
+  return { success: true, results };
+}
+
+async commitStock(data: { order: any }) {
+  const { order } = data;
+
+  console.log('commit stock for order', order);
+
+  const results = [];
+
+  for (const { productId, quantity } of order.items) {
+    const inventory = await this.inventoryModel.findOne({ productId });
+
+    if (!inventory) {
+      results.push({
+        productId,
+        success: false,
+        message: 'Inventory not found'
+      });
+      continue;
+    }
+
+    // Giảm reserved vì hàng đã bán thành công
+    inventory.reservedStock -= quantity;
+
+    await inventory.save();
+
+    results.push({
+      productId,
+      success: true,
+      committed: quantity,
+      newAvailable: inventory.availableStock,
+      newReserved: inventory.reservedStock
+    });
+  }
+
+  return {
+    success: true,
+    orderId: order._id,
+    results
+  };
+}
 
   /**
    * Khi payment thất bại hoặc hủy đơn hàng
    */
   async releaseStock(data: any) {
-    this.logger.log('release stock', data);
+    console.log('release stock', data);
 
     for (const item of data.items) {
       const { productId, quantity } = item;
