@@ -1,9 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import path from 'path'
+import react from '@vitejs/plugin-react'
+import path, { dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { dirname } from 'path'
+import { defineConfig } from 'vite'
 
 // Tạo __dirname theo chuẩn ESM
 const __filename = fileURLToPath(import.meta.url)
@@ -18,7 +17,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5173,
     open: true,
     watch: {
       // Giảm tần suất watch để tránh lock file trên Windows

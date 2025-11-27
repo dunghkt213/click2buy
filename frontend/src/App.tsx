@@ -7,23 +7,23 @@ import { Hero } from './components/layout/Hero';
 
 // Shared Components  
 import {
-    CheckoutModal
+  CheckoutModal
 } from './components/modal';
 import {
-    ProductGrid
+  ProductGrid
 } from './components/product';
 import {
-    Categories
+  Categories
 } from './components/shared';
 
 // Sidebar Components
 import {
-    CartSidebar,
-    FilterSidebar,
-    NotificationSidebar,
-    PromotionSidebar,
-    SupportSidebar,
-    WishlistSidebar
+  CartSidebar,
+  FilterSidebar,
+  NotificationSidebar,
+  PromotionSidebar,
+  SupportSidebar,
+  WishlistSidebar
 } from './components/sidebars';
 
 // Auth Components
@@ -58,14 +58,14 @@ import { useCart, useNotifications, useWishlist } from './hooks';
 
 // Types & Data
 import {
-    initialCartItems,
-    initialFAQs,
-    initialNotifications,
-    initialOrders,
-    initialPromotions,
-    initialSupportTickets,
-    initialUser
+  initialCartItems,
+  initialFAQs,
+  initialNotifications,
+  initialOrders,
+  initialPromotions,
+  initialSupportTickets,
 } from './data/mockData';
+import { authApi, authStorage, AuthSuccessPayload } from './lib/authApi';
 import { generateTicketId } from './lib/utils';
 import { FAQItem, FilterState, Order, Promotion, StoreInfo, StoreProduct, SupportTicket, User } from './types';
 
@@ -196,8 +196,8 @@ export default function App() {
   const [promotions] = useState<Promotion[]>(initialPromotions);
   const [faqs] = useState<FAQItem[]>(initialFAQs);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(initialSupportTickets);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [user, setUser] = useState<User | undefined>(initialUser);
+  const [user, setUser] = useState<User | undefined>(() => authStorage.getUser());
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!(authStorage.getUser() && authStorage.getToken()));
   const [filters, setFilters] = useState<FilterState>({
     category: 'all',
     priceRange: [0, 50000000],
@@ -217,19 +217,28 @@ export default function App() {
     setIsAuthOpen(true);
   };
 
-  const handleLoginSuccess = (userData: User) => {
+  const handleLoginSuccess = ({ user: userData, accessToken }: AuthSuccessPayload) => {
     setIsLoggedIn(true);
     setUser(userData);
+    authStorage.save(userData, accessToken);
   };
 
-  const handleRegisterSuccess = (userData: User) => {
+  const handleRegisterSuccess = ({ user: userData, accessToken }: AuthSuccessPayload) => {
     setIsLoggedIn(true);
     setUser(userData);
+    authStorage.save(userData, accessToken);
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUser(undefined);
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error('Failed to logout from API', error);
+    } finally {
+      authStorage.clear();
+      setIsLoggedIn(false);
+      setUser(undefined);
+    }
   };
 
   const handleProfileClick = () => {

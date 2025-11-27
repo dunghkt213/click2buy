@@ -7,15 +7,15 @@ import { Checkbox } from '../ui/checkbox';
 import { Separator } from '../ui/separator';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { authApi, mapAuthResponse, AuthSuccessPayload } from '../../lib/authApi';
 
 interface LoginFormData {
-  email: string;
+  username: string;
   password: string;
-  remember: boolean;
 }
 
 interface LoginFormProps {
-  onSuccess: (user: any) => void;
+  onSuccess: (payload: AuthSuccessPayload) => void;
   onClose: () => void;
 }
 
@@ -27,22 +27,18 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful login
-      const mockUser = {
-        id: '1',
-        name: 'Nguyễn Văn A',
-        email: data.email,
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
-      };
-      
+      const response = await authApi.login({
+        username: data.username.trim(),
+        password: data.password,
+      });
+
+      const payload = mapAuthResponse(response);
       toast.success('Đăng nhập thành công!');
-      onSuccess(mockUser);
+      onSuccess(payload);
       onClose();
     } catch (error) {
-      toast.error('Đăng nhập thất bại. Vui lòng thử lại.');
+      const message = error instanceof Error ? error.message : 'Đăng nhập thất bại. Vui lòng thử lại.';
+      toast.error(message);
     }
   };
 
@@ -59,25 +55,25 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email / Số điện thoại</Label>
+          <Label htmlFor="username">Tên đăng nhập / Email</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              id="email"
+              id="username"
               type="text"
-              placeholder="Nhập email hoặc số điện thoại"
+              placeholder="Nhập tên đăng nhập hoặc email"
               className="pl-10"
-              {...register('email', { 
-                required: 'Vui lòng nhập email hoặc số điện thoại',
-                pattern: {
-                  value: /^([a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|([0-9]{10,11})$/,
-                  message: 'Email hoặc số điện thoại không hợp lệ'
+              {...register('username', { 
+                required: 'Vui lòng nhập tên đăng nhập hoặc email',
+                minLength: {
+                  value: 3,
+                  message: 'Tên đăng nhập phải có ít nhất 3 ký tự'
                 }
               })}
             />
           </div>
-          {errors.email && (
-            <p className="text-sm text-red-500">{errors.email.message}</p>
+          {errors.username && (
+            <p className="text-sm text-red-500">{errors.username.message}</p>
           )}
         </div>
 

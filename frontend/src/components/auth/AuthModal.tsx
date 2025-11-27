@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent } from "../ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../ui/dialog";
 import {
   Tabs,
   TabsContent,
@@ -8,13 +8,14 @@ import {
 } from "../ui/tabs";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
+import { AuthSuccessPayload } from "../../lib/authApi";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultTab?: "login" | "register";
-  onLoginSuccess: (user: any) => void;
-  onRegisterSuccess: (user: any) => void;
+  onLoginSuccess: (payload: AuthSuccessPayload) => void;
+  onRegisterSuccess: (payload: AuthSuccessPayload) => void;
 }
 
 export function AuthModal({
@@ -39,6 +40,10 @@ export function AuthModal({
 
           {/* Right side - Form */}
           <div className="flex-1 p-8 md:p-12">
+            <DialogTitle className="sr-only">Xác thực tài khoản</DialogTitle>
+            <DialogDescription className="sr-only">
+              Đăng nhập hoặc đăng ký để tiếp tục sử dụng Click2Buy
+            </DialogDescription>
             <Tabs
               value={activeTab}
               onValueChange={(value) =>

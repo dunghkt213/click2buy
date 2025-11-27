@@ -7,18 +7,18 @@ import { Checkbox } from '../ui/checkbox';
 import { Separator } from '../ui/separator';
 import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
 import { toast } from 'sonner';
+import { authApi, mapAuthResponse, AuthSuccessPayload } from '../../lib/authApi';
 
 interface RegisterFormData {
-  fullName: string;
+  username: string;
   email: string;
   phone: string;
   password: string;
   confirmPassword: string;
-  agreeToTerms: boolean;
 }
 
 interface RegisterFormProps {
-  onSuccess: (user: any) => void;
+  onSuccess: (payload: AuthSuccessPayload) => void;
   onClose: () => void;
   onSwitchToLogin: () => void;
 }
@@ -39,23 +39,21 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock successful registration
-      const mockUser = {
-        id: '1',
-        name: data.fullName,
-        email: data.email,
+      const response = await authApi.register({
+        username: data.username.trim(),
+        email: data.email.trim(),
         phone: data.phone,
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + data.fullName
-      };
-      
+        password: data.password,
+        role: 'customer',
+      });
+
+      const payload = mapAuthResponse(response);
       toast.success('Đăng ký thành công! Chào mừng bạn đến với ShopMart.');
-      onSuccess(mockUser);
+      onSuccess(payload);
       onClose();
     } catch (error) {
-      toast.error('Đăng ký thất bại. Vui lòng thử lại.');
+      const message = error instanceof Error ? error.message : 'Đăng ký thất bại. Vui lòng thử lại.';
+      toast.error(message);
     }
   };
 
@@ -72,25 +70,25 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="fullName">Họ và tên</Label>
+          <Label htmlFor="username">Tên đăng nhập</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              id="fullName"
+              id="username"
               type="text"
-              placeholder="Nhập họ và tên"
+              placeholder="Nhập tên đăng nhập"
               className="pl-10"
-              {...register('fullName', { 
-                required: 'Vui lòng nhập họ và tên',
+              {...register('username', { 
+                required: 'Vui lòng nhập tên đăng nhập',
                 minLength: {
-                  value: 2,
-                  message: 'Họ và tên phải có ít nhất 2 ký tự'
+                  value: 3,
+                  message: 'Tên đăng nhập phải có ít nhất 3 ký tự'
                 }
               })}
             />
           </div>
-          {errors.fullName && (
-            <p className="text-sm text-red-500">{errors.fullName.message}</p>
+          {errors.username && (
+            <p className="text-sm text-red-500">{errors.username.message}</p>
           )}
         </div>
 
