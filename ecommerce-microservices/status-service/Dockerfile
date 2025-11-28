@@ -1,12 +1,19 @@
-FROM node:20-alpine
+# -----------------------------
+# Stage 1: Base
+# -----------------------------
+FROM node:18-alpine
 
+# Tạo thư mục làm việc trong container
 WORKDIR /app
 
-# Copy package.json trước
+# Copy package.json trước để cài dependencies
 COPY package*.json ./
 
-# Cài đặt dependency (sẽ bao gồm kafkajs)
-RUN npm install --legacy-peer-deps
+# Cài dependencies
+RUN npm install
 
-EXPOSE 3000
+# Expose cổng nếu cần (Nest thường là 3000, nhưng microservice có thể không cần)
+EXPOSE 3001
+
+# Lệnh chạy cho môi trường dev
 CMD ["npm", "run", "start:dev"]
