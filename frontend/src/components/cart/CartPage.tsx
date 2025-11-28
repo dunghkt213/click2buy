@@ -1,14 +1,14 @@
-import React, { useState } from 'react'; // THÊM: useState
-import { Button } from '../ui/button';
-import { Checkbox } from '../ui/checkbox';
-import { Separator } from '../ui/separator';
-import { Card } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { ArrowLeft, Minus, Plus, Trash2, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
+import { useState } from 'react'; // THÊM: useState
 import { CartItem } from 'types';
 import { formatPrice } from '../../lib/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { CheckoutModal } from '../modal/CheckoutModal'; // THÊM: Import CheckoutModal
+import { CheckoutModal } from '../payment/CheckoutModal'; // THÊM: Import CheckoutModal
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
+import { Separator } from '../ui/separator';
 
 interface CartPageProps {
   items: CartItem[];

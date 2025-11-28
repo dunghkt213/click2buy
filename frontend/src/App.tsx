@@ -8,7 +8,7 @@ import { Hero } from './components/layout/Hero';
 // Shared Components  
 import {
   CheckoutModal
-} from './components/modal';
+} from './components/search';
 import {
   ProductGrid
 } from './components/product';
@@ -30,25 +30,25 @@ import {
 import { AuthModal } from './components/auth';
 
 // Search Components
-import { SearchModal } from './components/modal/SearchModal';
+import { SearchModal } from './components/search/SearchModal';
 
 // Product Detail Modal
-import { ProductDetailModal } from './components/product/ProductDetailModal';
+import { ProductDetailModal } from './components/review/ProductDetailModal';
 
 // Flying Icon
 import { FlyingIcon, FlyingIconConfig } from './components/animation/FlyingIcon';
 
 // Cart Page
-import { CartPage } from './components/pages/CartPage';
+import { CartPage } from './components/cart/CartPage';
 
 // Orders Page
-import { OrdersPage } from './components/pages/OrdersPage';
+import { OrdersPage } from './components/order/OrdersPage';
 
 // My Store Page
-import { MyStorePage } from './components/pages/MyStorePage';
+import { MyStorePage } from './components/store/MyStorePage';
 
 // Store Registration Modal
-import { StoreRegistrationModal } from './components/modal/StoreRegistrationModal';
+import { StoreRegistrationModal } from './components/store/StoreRegistrationModal';
 
 // Hot Deals Section
 import { HotDealsSection } from './components/product/HotDealsSection';

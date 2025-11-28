@@ -1,5 +1,5 @@
 // Re-export all sidebars from parent components directory
-export { CartSidebar } from '../sidebars/CartSidebar';
+export { CartSidebar } from '../cart/CartSidebar';
 export { FilterSidebar } from '../sidebars/FilterSidebar';
 export { NotificationSidebar } from '../sidebars/NotificationSidebar';
 export { PromotionSidebar } from '../sidebars/PromotionSidebar';

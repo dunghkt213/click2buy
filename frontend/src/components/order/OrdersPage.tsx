@@ -20,7 +20,7 @@ import {
 import { Order, OrderStatus } from 'types';
 import { formatPrice } from '../../lib/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { OrderDetailModal } from '../modal/OrderDetailModal';
+import { OrderDetailModal } from './OrderDetailModal';
 
 interface OrdersPageProps {
   orders: Order[];

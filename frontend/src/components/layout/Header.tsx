@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../ui/popover'; // THÊM: Import Popover
-import { CartPreview } from '../modal/CartPreview'; // THÊM: Import CartPreview
+import { CartPreview } from '../cart/CartPreview'; // THÊM: Import CartPreview
 
 interface HeaderProps {
   cartItemsCount: number;
