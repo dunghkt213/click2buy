@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Cài đặt dependency (sẽ bao gồm kafkajs)
-RUN npm install --legacy-peer-deps
+RUN npm install
 
 EXPOSE 3000
 CMD ["npm", "run", "start:dev"]

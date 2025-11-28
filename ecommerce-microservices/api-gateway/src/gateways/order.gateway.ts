@@ -8,6 +8,7 @@ export class OrderGateway {
 
   async onModuleInit() {
     this.kafka.subscribeToResponseOf('order.create');
+    this.kafka.subscribeToResponseOf('order.getAllOrderForSaller');
     await this.kafka.connect();
   }
 
@@ -20,4 +21,15 @@ export class OrderGateway {
       return  new BadRequestException(err.message || 'Service error');
     }
   }
+
+  @Get('seller')
+  getCart(@Headers('authorization') auth?: string) {
+    
+    try {
+      return this.kafka.send('order.getAllOrderForSaller', {auth});
+    } catch(err){
+      return  new BadRequestException(err.message || 'Service error');
+    }
+  }
+
 }

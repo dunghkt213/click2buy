@@ -34,6 +34,13 @@ async getProductInfo(productId: string) {
     .toPromise();
 }
 
+async getAllOrderForSaller (ownerId: string) {
+  try {
+    return this.orderModel.find({ownerId});
+  } catch(err){
+    throw err.message;
+  }
+}
 
 async createOrders(input: {
   userId: string;
@@ -88,7 +95,7 @@ async createOrders(input: {
       items,
       total,
       paymentMethod,
-      status: 'PENDING',
+      status: 'PENDING_PAYMENT',
       expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });
     totalAllOrders = totalAllOrders + total;
@@ -115,47 +122,28 @@ async createOrders(input: {
     return orders.reduce((sum, o) => sum + o.total, 0);
   }
 
-  async updateOrderStatus_success(dto: {
-    orderIds: string[];
+  async updateOrderStatus_paymentSuccess(dto: {
+    userId:string
+    orderId: string;
     paymentMethod: string;
     total: number;
     paidAmount: number;
+    status: string,
+    paymentId:string
   }) {
-    const { orderIds, paymentMethod, total, paidAmount } = dto;
-
-    // Xác định status mới
-    let newStatus = 'PENDING';
-
-    if (paymentMethod === 'COD') {
-      newStatus = 'PENDING_COD';
-    } else {
-        newStatus = 'PAID';
-    }
+    const { orderId, paymentMethod, total, paidAmount,status,paymentId } = dto;
 
     // Lưu danh sách order đã update
-    const updatedOrders = [];
-
+    const newStatus="PENDING_ACCEPT"
     // Cập nhật từng order
-    for (const orderId of orderIds) {
-      const order = await this.orderModel.findById(orderId);
-      if (!order) continue;
+    const order = await this.orderModel.findById(orderId);
 
-      order.status = newStatus;
-      await order.save();
+    order.status = newStatus;
+    await order.save();
 
-      updatedOrders.push(order);
-
-      // Emit sự kiện order.status.updated cho từng order
-      this.kafka.emit('order.success', {
-        order
-      });
-    }
-    console.log('update_status',updatedOrders)
     return {
       success: true,
-      status: newStatus,
-      updated: updatedOrders.length,
-      orders: updatedOrders,
+      status: newStatus
     };
   }
 
