@@ -1,5 +1,8 @@
 "use client";
 import {
+  clamp
+} from "./chunk-TCQMTAGU.js";
+import {
   usePrevious
 } from "./chunk-AW24YK6G.js";
 import {
@@ -9,14 +12,11 @@ import {
   createCollection
 } from "./chunk-QJZOA3JG.js";
 import {
-  useControllableState
-} from "./chunk-IXUNNYXN.js";
-import {
-  clamp
-} from "./chunk-TCQMTAGU.js";
-import {
   useDirection
 } from "./chunk-VSVPIETK.js";
+import {
+  useControllableState
+} from "./chunk-IXUNNYXN.js";
 import {
   composeEventHandlers
 } from "./chunk-P4S5NJOQ.js";
