@@ -8,9 +8,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { Order, OrderSchema } from './schemas/order.schema';
 import { redisProvider } from './redis.provider';
-
+import { AuthModule } from './auth/auth.module';
 @Module({
   imports: [
+    AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
 
     MongooseModule.forRootAsync({

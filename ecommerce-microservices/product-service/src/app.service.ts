@@ -120,16 +120,17 @@ export class AppService {
 
   /** Lấy 1 sản phẩm */
   async findOne(id: string) {
-    const product = await this.productModel.findById(id).lean();
-
-    if (!product) {
-      throw new RpcException({
-        statusCode: 404,
-        message: 'Product not found',
+    console.log('product_id',id)
+    try{
+      const product = await this.productModel.findById(id).lean();
+      return  product ;
+    }
+    catch(err){
+      return new RpcException({
+        statusCode: 403,
+        message: 'not found product',
       });
     }
-
-    return { success: true, data: product };
   }
 
   /** Update sản phẩm (chỉ owner mới chỉnh được) */
