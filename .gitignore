@@ -22,4 +22,4 @@ Thumbs.db
 .idea/
 google-service-account.json
 
-.package-lock.json
+package-lock.json
