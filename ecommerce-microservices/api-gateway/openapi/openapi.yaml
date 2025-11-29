@@ -13,6 +13,7 @@ paths:
       responses:
         "201":
           description: ""
+      summary: Đăng nhập & nhận accessToken + refreshToken
       tags: &a1
         - AuthGateway
   /auth/register:
@@ -28,6 +29,7 @@ paths:
       responses:
         "201":
           description: ""
+      summary: Đăng ký tài khoản mới
       tags: *a1
   /auth/refresh:
     post:
@@ -36,6 +38,7 @@ paths:
       responses:
         "201":
           description: ""
+      summary: Làm mới Access Token bằng Refresh Token (lấy từ cookie)
       tags: *a1
   /auth/logout:
     post:
@@ -44,6 +47,7 @@ paths:
       responses:
         "201":
           description: ""
+      summary: Đăng xuất & xoá refresh token
       tags: *a1
   /users:
     post:
@@ -54,9 +58,16 @@ paths:
           in: header
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserDto"
       responses:
         "201":
           description: ""
+      summary: Tạo người dùng mới
       tags: &a2
         - UserGateway
     get:
@@ -67,9 +78,52 @@ paths:
           in: header
           schema:
             type: string
+        - description: Từ khóa tìm kiếm (username, email hoặc phone)
+          required: false
+          name: search
+          in: query
+          schema:
+            example: john
+            type: string
+        - description: Lọc theo vai trò người dùng (USER, SELLER, ADMIN)
+          required: false
+          name: role
+          in: query
+          schema:
+            example: customer
+            type: string
+        - description: Lọc theo trạng thái hoạt động
+          required: false
+          name: isActive
+          in: query
+          schema:
+            example: "true"
+            type: string
+        - description: Số trang muốn lấy (mặc định 1)
+          required: false
+          name: page
+          in: query
+          schema:
+            example: "1"
+            type: string
+        - description: Số item mỗi trang (mặc định 10)
+          required: false
+          name: limit
+          in: query
+          schema:
+            example: "10"
+            type: string
+        - description: 'Sort theo field, dấu "-" để sort DESC. Ví dụ: "-createdAt,username"'
+          required: false
+          name: sort
+          in: query
+          schema:
+            example: -createdAt,username
+            type: string
       responses:
         "200":
           description: ""
+      summary: Lấy danh sách người dùng (search/filter/pagination)
       tags: *a2
   /users/{id}:
     get:
@@ -79,6 +133,7 @@ paths:
           required: true
           in: path
           schema:
+            example: 67467bd24993cd524ff1a120
             type: string
         - name: authorization
           required: true
@@ -88,6 +143,7 @@ paths:
       responses:
         "200":
           description: ""
+      summary: Lấy thông tin một người dùng theo ID
       tags: *a2
     put:
       operationId: UserGateway_update
@@ -96,15 +152,23 @@ paths:
           required: true
           in: path
           schema:
+            example: 67467bd24993cd524ff1a120
             type: string
         - name: authorization
           required: true
           in: header
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserDto"
       responses:
         "200":
           description: ""
+      summary: Cập nhật thông tin người dùng
       tags: *a2
     delete:
       operationId: UserGateway_deactivate
@@ -113,6 +177,7 @@ paths:
           required: true
           in: path
           schema:
+            example: 67467bd24993cd524ff1a120
             type: string
         - name: authorization
           required: true
@@ -122,6 +187,7 @@ paths:
       responses:
         "200":
           description: ""
+      summary: Vô hiệu hóa / deactivate người dùng
       tags: *a2
   /products:
     post:
@@ -346,17 +412,38 @@ paths:
           in: header
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewDto"
       responses:
         "201":
           description: ""
+      security:
+        - bearer: []
+      summary: Tạo review mới cho sản phẩm
       tags: &a5
         - ReviewGateway
     get:
       operationId: ReviewGateway_findAll
-      parameters: []
+      parameters:
+        - name: rating
+          required: false
+          in: query
+          description: Lọc theo rating 1–5
+          schema:
+            example: 5
+        - name: productId
+          required: false
+          in: query
+          schema:
+            example: 67467bd24993cd524ff1a120
       responses:
         "200":
           description: ""
+      summary: Lấy danh sách tất cả review (search, filter)
       tags: *a5
   /reviews/{id}:
     get:
@@ -366,10 +453,12 @@ paths:
           required: true
           in: path
           schema:
+            example: 67467bd24993cd524ff1a120
             type: string
       responses:
         "200":
           description: ""
+      summary: Lấy chi tiết 1 review theo ID
       tags: *a5
     patch:
       operationId: ReviewGateway_update
@@ -378,15 +467,25 @@ paths:
           required: true
           in: path
           schema:
+            example: 67467bd24993cd524ff1a120
             type: string
         - name: authorization
           required: true
           in: header
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReviewDto"
       responses:
         "200":
           description: ""
+      security:
+        - bearer: []
+      summary: Cập nhật 1 review theo ID
       tags: *a5
     delete:
       operationId: ReviewGateway_remove
@@ -395,6 +494,7 @@ paths:
           required: true
           in: path
           schema:
+            example: 67467bd24993cd524ff1a120
             type: string
         - name: authorization
           required: true
@@ -404,6 +504,9 @@ paths:
       responses:
         "200":
           description: ""
+      security:
+        - bearer: []
+      summary: Xoá review
       tags: *a5
   /media/upload:
     post:
@@ -435,10 +538,92 @@ components:
   schemas:
     LoginDto:
       type: object
-      properties: {}
+      properties:
+        username:
+          type: string
+          description: Tên đăng nhập của người dùng
+          example: john_doe
+        password:
+          type: string
+          description: Mật khẩu của người dùng
+          example: "123456"
+          minLength: 6
+      required:
+        - username
+        - password
     RegisterDto:
       type: object
-      properties: {}
+      properties:
+        username:
+          type: string
+          description: Tên đăng nhập của người dùng
+          example: john_doe
+        email:
+          type: string
+          description: Email người dùng
+          example: john@gmail.com
+        role:
+          type: string
+          enum:
+            - USER
+            - SELLER
+            - ADMIN
+          description: Vai trò của tài khoản (USER, SELLER, ADMIN)
+          example: USER
+        password:
+          type: string
+          minLength: 6
+          description: Mật khẩu plaintext — backend sẽ tự hash thành passwordHash
+          example: "123456"
+        phone:
+          type: string
+          description: Số điện thoại người dùng
+          example: "0987654321"
+        avatar:
+          type: string
+          description: URL avatar đại diện của người dùng
+          example: https://cdn.example.com/avatar/john.png
+      required:
+        - username
+        - email
+        - role
+        - password
+    CreateUserDto:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Tên đăng nhập của người dùng
+          example: john_doe
+        email:
+          type: string
+          description: Email người dùng
+          example: john@example.com
+        password:
+          type: string
+          description: Mật khẩu plaintext — server sẽ tự hash
+          example: "123456"
+          minLength: 6
+        phone:
+          type: string
+          description: Số điện thoại của người dùng
+          example: "0987654321"
+        avatar:
+          type: string
+          description: Ảnh đại diện của người dùng
+          example: https://cdn.example.com/avatar/user.png
+      required:
+        - username
+        - email
+        - password
+    UpdateUserDto:
+      type: object
+      properties:
+        password:
+          type: string
+          description: Mật khẩu mới (tùy chọn). Nếu gửi thì phải ≥ 6 ký tự.
+          example: newpassword123
+          minLength: 6
     WarehouseAddress:
       type: object
       properties:
@@ -604,3 +789,49 @@ components:
           description: Số lượng điều chỉnh. >= 0 là nhập thêm, < 0 là giảm
       required:
         - amount
+    CreateReviewDto:
+      type: object
+      properties:
+        productId:
+          type: string
+          description: ID của sản phẩm cần đánh giá (Mongo ObjectId)
+          example: 67467bd24993cd524ff1a120
+        rating:
+          type: number
+          description: Điểm rating từ 1 đến 5
+          example: 5
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          description: Bình luận của người dùng (không bắt buộc)
+          example: Sản phẩm rất tốt, giao nhanh.
+      required:
+        - productId
+        - rating
+    UpdateReviewDto:
+      type: object
+      properties:
+        rating:
+          type: number
+          description: Điểm review (1 – 5).
+          example: 4
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          description: Nội dung bình luận của người dùng.
+          example: Giao hàng nhanh, sản phẩm rất đẹp.
+        isApproved:
+          type: boolean
+          description: Trạng thái phê duyệt review bởi admin (true = duyệt, false = từ
+            chối).
+          example: true
+        images:
+          description: Danh sách URL hình ảnh người dùng upload cho review.
+          example:
+            - https://cdn.example.com/reviews/img1.jpg
+            - https://cdn.example.com/reviews/img2.jpg
+          type: array
+          items:
+            type: string
