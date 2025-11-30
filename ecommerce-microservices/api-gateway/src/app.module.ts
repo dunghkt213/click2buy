@@ -10,6 +10,7 @@ import { CartGateway } from './gateways/cart.gateway';
 import { ReviewGateway } from './gateways/review.gateway';
 import { MediaGateway } from './gateways/media.gateway';
 import { SellerAnalyticsGateway } from './gateways/seller-analytics.gateway';
+import { AuthModule } from './auth/auth.module';
 
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware';
@@ -20,6 +21,9 @@ import { OrderGateway } from './gateways/order.gateway';
 
     // HttpModule để proxy HTTP requests đến seller-analytics-service
     HttpModule,
+
+    // Auth Module cho Passport strategies (Google, Facebook)
+    AuthModule,
 
     ClientsModule.register([
       {
