@@ -1,13 +1,18 @@
 import { Controller, UseGuards, BadRequestException} from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
+import { InjectModel } from '@nestjs/mongoose';
 import { AppService } from './app.service';
+import { Model } from 'mongoose';
+import { Order } from './schemas/order.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-status.dto';
 import { JwtKafkaAuthGuard } from './auth/jwt-kafka.guard';
 import { CurrentUser } from './auth/current-user.decorator';
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+  ) {}
 
 
 @MessagePattern('order.create')
@@ -35,11 +40,23 @@ async createOrders(@Payload() data: any, @CurrentUser() user: any) {
   }
 } 
 
+@MessagePattern('order.getAllOrderForSaller')
+@UseGuards(JwtKafkaAuthGuard)
+async getAllOrderForSaller(@CurrentUser() user: any) {
+  const ownerId = user?.sub || user?.id;
+  return this.appService.getAllOrderForSaller(ownerId)
+} 
 
-  @MessagePattern('order.timeout')
-  timeout(@Payload() data: any) {
-    console.log('Order timeout received in order-service:', data);
-    return true
-  }
+
+@MessagePattern('order.timeout')
+timeout(@Payload() data: any) {
+  console.log('Order timeout received in order-service:', data);
+  return true
+}
+
+@MessagePattern('payment.success')
+async updateOrderStatus(@Payload() data:any) {
+  return this.appService.updateOrderStatus_paymentSuccess(data)
+} 
   
 }
