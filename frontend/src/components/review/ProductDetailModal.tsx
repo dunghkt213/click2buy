@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { X, Star, ShoppingCart, Heart, Share2, ThumbsUp, ChevronLeft, ChevronRight, Package, Shield, TruckIcon } from 'lucide-react';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Avatar } from '../ui/avatar';
-import { Progress } from '../ui/progress';
-import { Separator } from '../ui/separator';
-import { ScrollArea } from '../ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { ChevronLeft, ChevronRight, Heart, Package, Share2, Shield, ShoppingCart, Star, ThumbsUp, TruckIcon, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Product, ProductReview } from 'types';
+import { mapReviewResponse, reviewApi } from '../../lib/reviewApi';
+import { Avatar } from '../ui/avatar';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Progress } from '../ui/progress';
+import { ScrollArea } from '../ui/scroll-area';
+import { Separator } from '../ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 interface ProductDetailModalProps {
   isOpen: boolean;
@@ -26,57 +27,46 @@ export function ProductDetailModal({
 }: ProductDetailModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+
+  // Load reviews khi modal mở
+  useEffect(() => {
+    if (isOpen && product?.id) {
+      loadReviews();
+    }
+  }, [isOpen, product?.id]);
+
+  const loadReviews = async () => {
+    try {
+      setLoadingReviews(true);
+      const data = await reviewApi.findAll({ productId: product.id });
+      const mappedReviews = data.map(mapReviewResponse);
+      setReviews(mappedReviews);
+    } catch (error) {
+      console.error('Failed to load reviews:', error);
+      // Fallback to empty array if API fails
+      setReviews([]);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   if (!isOpen || !product) return null;
 
   // Mock data cho nhiều ảnh sản phẩm
   const productImages = product.images || [product.image, product.image, product.image];
 
-  // Mock data cho đánh giá chi tiết
-  const ratingBreakdown = [
-    { stars: 5, count: 1250, percentage: 75 },
-    { stars: 4, count: 280, percentage: 17 },
-    { stars: 3, count: 83, percentage: 5 },
-    { stars: 2, count: 33, percentage: 2 },
-    { stars: 1, count: 17, percentage: 1 },
-  ];
-
-  // Mock data cho reviews
-  const mockReviews: ProductReview[] = [
-    {
-      id: '1',
-      userId: 'u1',
-      userName: 'Nguyễn Văn A',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=1',
-      rating: 5,
-      comment: 'Sản phẩm rất tốt, đúng như mô tả. Giao hàng nhanh, đóng gói cẩn thận. Tôi rất hài lòng với sản phẩm này!',
-      date: '2024-01-15',
-      helpful: 24,
-      isVerifiedPurchase: true,
-    },
-    {
-      id: '2',
-      userId: 'u2',
-      userName: 'Trần Thị B',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=2',
-      rating: 4,
-      comment: 'Chất lượng tốt, giá cả hợp lý. Chỉ tiếc là màu sắc hơi khác so với hình ảnh một chút.',
-      date: '2024-01-12',
-      helpful: 15,
-      isVerifiedPurchase: true,
-    },
-    {
-      id: '3',
-      userId: 'u3',
-      userName: 'Lê Văn C',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=3',
-      rating: 5,
-      comment: 'Tuyệt vời! Đã mua lần 2 rồi, sẽ tiếp tục ủng hộ shop.',
-      date: '2024-01-10',
-      helpful: 8,
-      isVerifiedPurchase: true,
-    },
-  ];
+  // Calculate rating breakdown from reviews
+  const ratingBreakdown = [5, 4, 3, 2, 1].map(stars => {
+    const count = reviews.filter(r => r.rating === stars).length;
+    const total = reviews.length || 1;
+    return {
+      stars,
+      count,
+      percentage: Math.round((count / total) * 100),
+    };
+  });
 
   // Thông số kỹ thuật
   const specifications = product.specifications || {
@@ -419,7 +409,16 @@ export function ProductDetailModal({
 
                 {/* Reviews List */}
                 <div className="space-y-6">
-                  {mockReviews.map((review) => (
+                  {loadingReviews ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Đang tải đánh giá...
+                    </div>
+                  ) : reviews.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Chưa có đánh giá nào cho sản phẩm này
+                    </div>
+                  ) : (
+                    reviews.map((review) => (
                     <div key={review.id} className="border-b border-border pb-6">
                       <div className="flex items-start gap-3">
                         <Avatar className="w-10 h-10">
@@ -457,7 +456,8 @@ export function ProductDetailModal({
                         </div>
                       </div>
                     </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </TabsContent>
             </Tabs>

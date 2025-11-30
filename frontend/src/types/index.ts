@@ -19,6 +19,8 @@ export interface Product {
   timeLeft?: string; // THÊM: Thời gian còn lại của deal
   images?: string[]; // THÊM: Nhiều ảnh sản phẩm
   specifications?: { [key: string]: string }; // THÊM: Thông số kỹ thuật
+  ownerId?: string; // ID của người bán (từ backend)
+  sellerId?: string; // Alias cho ownerId để dùng trong cart
 }
 
 // THÊM: Review/Comment types

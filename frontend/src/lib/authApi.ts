@@ -1,7 +1,5 @@
 import { User } from '../types';
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+import { request } from './api/apiClient';
 
 const AUTH_USER_KEY = 'click2buy:authUser';
 const AUTH_TOKEN_KEY = 'click2buy:accessToken';
@@ -41,34 +39,6 @@ export interface RegisterPayload {
   role?: string;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
-
-  let payload: any = null;
-  try {
-    payload = await response.json();
-  } catch {
-    // ignore JSON parse errors, will handle below
-  }
-
-  if (!response.ok) {
-    const message =
-      payload?.message ||
-      payload?.error ||
-      payload?.data?.message ||
-      'Yêu cầu thất bại. Vui lòng thử lại.';
-    throw new Error(message);
-  }
-
-  return payload as T;
-}
 
 export function normalizeUser(backendUser: BackendUser): User {
   const fallbackName =
@@ -96,15 +66,23 @@ export const authApi = {
     request<AuthSuccessResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
+      requireAuth: false,
     }),
   register: (payload: RegisterPayload) =>
     request<AuthSuccessResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
+      requireAuth: false,
+    }),
+  refresh: () =>
+    request<{ accessToken: string; message: string }>('/auth/refresh', {
+      method: 'POST',
+      requireAuth: false,
     }),
   logout: () =>
     request<{ success: boolean; message: string }>('/auth/logout', {
       method: 'POST',
+      requireAuth: false,
     }),
 };
 

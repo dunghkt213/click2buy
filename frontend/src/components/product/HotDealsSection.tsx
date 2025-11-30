@@ -1,9 +1,11 @@
-import React from 'react';
+import { Clock, Eye, Flame, Heart, ShoppingCart } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { Product } from 'types';
+import { productApi } from '../../lib/productApi';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Flame, Clock, ShoppingCart, Heart, Eye } from 'lucide-react';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { Product } from 'types';
 
 interface HotDealsSectionProps {
   onAddToCart: (product: Product) => void;
@@ -20,8 +22,38 @@ export function HotDealsSection({
   isInWishlist,
   onTriggerFlyingIcon
 }: HotDealsSectionProps) {
-  // Mock hot deals products
-  const hotDeals: Product[] = [
+  const [hotDeals, setHotDeals] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Load hot deals products từ API
+  useEffect(() => {
+    loadHotDeals();
+  }, []);
+
+  const loadHotDeals = async () => {
+    try {
+      setLoading(true);
+      // Load products với filter isSale hoặc isBestSeller
+      const products = await productApi.getAll({
+        // Có thể filter theo category hoặc các tiêu chí khác
+      });
+      // Filter để lấy các sản phẩm có sale hoặc best seller
+      const deals = products
+        .filter(p => p.isSale || p.isBestSeller)
+        .slice(0, 4); // Lấy 4 sản phẩm đầu tiên
+      setHotDeals(deals);
+    } catch (error: any) {
+      console.error('Failed to load hot deals:', error);
+      toast.error('Không thể tải sản phẩm hot deals');
+      // Fallback to empty array
+      setHotDeals([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock hot deals products (fallback)
+  const mockHotDeals: Product[] = [
     {
       id: 'hot-1',
       name: 'iPhone 15 Pro Max 256GB',

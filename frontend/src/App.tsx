@@ -7,11 +7,11 @@ import { Hero } from './components/layout/Hero';
 
 // Shared Components  
 import {
-  CheckoutModal
-} from './components/search';
-import {
   ProductGrid
 } from './components/product';
+import {
+  CheckoutModal
+} from './components/search';
 import {
   Categories
 } from './components/shared';
@@ -54,18 +54,19 @@ import { StoreRegistrationModal } from './components/store/StoreRegistrationModa
 import { HotDealsSection } from './components/product/HotDealsSection';
 
 // Hooks
-import { useCart, useNotifications, useWishlist } from './hooks';
+import { useNotifications, useWishlist } from './hooks';
+import { useCartApi } from './hooks/useCartApi';
 
 // Types & Data
+import { toast } from 'sonner';
 import {
-  initialCartItems,
   initialFAQs,
   initialNotifications,
-  initialOrders,
   initialPromotions,
   initialSupportTickets,
 } from './data/mockData';
 import { authApi, authStorage, AuthSuccessPayload } from './lib/authApi';
+import { mapOrderResponse, orderApi } from './lib/orderApi';
 import { generateTicketId } from './lib/utils';
 import { FAQItem, FilterState, Order, Promotion, StoreInfo, StoreProduct, SupportTicket, User } from './types';
 
@@ -145,7 +146,8 @@ export default function App() {
 
   // State cho orders page
   const [isOrdersPageOpen, setIsOrdersPageOpen] = useState(false);
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   // State cho my store page
   const [isMyStorePageOpen, setIsMyStorePageOpen] = useState(false);
@@ -158,20 +160,54 @@ export default function App() {
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
   const [storeProducts, setStoreProducts] = useState<StoreProduct[]>([]);
 
-  // Custom hooks
+  // Custom hooks - Sử dụng useCartApi để kết nối với backend
   const {
     cartItems,
-    addToCart,
-    removeFromCart,
-    updateQuantity,
+    loading: cartLoading,
+    addToCart: addToCartApi,
+    removeFromCart: removeFromCartApi,
+    updateQuantity: updateQuantityApi,
     getTotalItems,
     getTotalPrice,
     getSelectedTotalPrice,
     getSelectedItems,
     toggleSelectItem,
     selectAllItems,
-    deselectAllItems
-  } = useCart(initialCartItems);
+    deselectAllItems,
+    refreshCart
+  } = useCartApi();
+  
+  // Wrapper cho addToCart để tương thích với interface hiện tại
+  const addToCart = async (product: any) => {
+    // Lấy sellerId từ product (ownerId từ backend)
+    const sellerId = product.sellerId || product.ownerId || product.userId;
+    
+    console.log('Add to cart - Product:', product);
+    console.log('Add to cart - SellerId:', sellerId);
+    
+    if (!sellerId) {
+      toast.error('Không tìm thấy thông tin người bán. Vui lòng thử lại.');
+      console.error('Product missing sellerId/ownerId:', product);
+      return;
+    }
+    
+    try {
+      await addToCartApi(product, sellerId);
+    } catch (error: any) {
+      console.error('Add to cart error:', error);
+      // Error đã được xử lý trong useCartApi
+    }
+  };
+  
+  const removeFromCart = async (productId: string) => {
+    // useCartApi sẽ tự động tìm sellerId từ cartItems
+    await removeFromCartApi(productId);
+  };
+  
+  const updateQuantity = async (productId: string, quantity: number) => {
+    // useCartApi sẽ tự động tìm sellerId từ cartItems
+    await updateQuantityApi(productId, quantity);
+  };
 
   const {
     wishlistItems,
@@ -245,8 +281,24 @@ export default function App() {
     console.log('Profile clicked');
   };
 
-  const handleOrdersClick = () => {
+  const handleOrdersClick = async () => {
     setIsOrdersPageOpen(true);
+    // Load orders từ API khi mở orders page
+    if (isLoggedIn) {
+      try {
+        setLoadingOrders(true);
+        // Lưu ý: Backend có thể có API để lấy orders của user, hiện tại dùng getAllForSeller
+        // Cần kiểm tra backend có API /orders/user không
+        const backendOrders = await orderApi.getAllForSeller();
+        const mappedOrders = backendOrders.map(mapOrderResponse);
+        setOrders(mappedOrders);
+      } catch (error: any) {
+        console.error('Failed to load orders:', error);
+        toast.error('Không thể tải danh sách đơn hàng');
+      } finally {
+        setLoadingOrders(false);
+      }
+    }
   };
 
   const handleViewProduct = (productId: string) => {
@@ -292,11 +344,54 @@ export default function App() {
   };
 
   // Checkout functions
-  const handleCheckout = (checkoutData: any) => {
-    console.log('Checkout data:', checkoutData);
-    alert('Đặt hàng thành công! Cảm ơn bạn đã mua sắm tại ShopMart.');
-    const selectedItemIds = getSelectedItems().map(item => item.id);
-    selectedItemIds.forEach(id => removeFromCart(id));
+  const handleCheckout = async (checkoutData: any) => {
+    try {
+      // Transform checkoutData thành format của orderApi
+      const orderDto = {
+        items: checkoutData.items.map((item: any) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.price,
+          sellerId: (item as any).sellerId || 'default-seller', // Cần sellerId từ product
+        })),
+        shippingAddress: {
+          name: checkoutData.shippingAddress.name,
+          phone: checkoutData.shippingAddress.phone,
+          address: checkoutData.shippingAddress.address,
+          ward: checkoutData.shippingAddress.ward,
+          district: checkoutData.shippingAddress.district,
+          city: checkoutData.shippingAddress.city,
+        },
+        paymentMethod: checkoutData.paymentMethod.type,
+        shippingMethod: checkoutData.shippingMethod?.name || 'standard',
+        note: checkoutData.note,
+      };
+      
+      const newOrder = await orderApi.create(orderDto);
+      const mappedOrder = mapOrderResponse(newOrder);
+      
+      toast.success('Đặt hàng thành công! Cảm ơn bạn đã mua sắm tại ShopMart.');
+      
+      // Xóa các items đã checkout khỏi giỏ hàng
+      const selectedItems = getSelectedItems();
+      for (const item of selectedItems) {
+        // removeFromCartApi sẽ tự động tìm sellerId từ cartItems
+        await removeFromCartApi(item.id);
+      }
+      
+      // Refresh cart để cập nhật UI
+      await refreshCart();
+      
+      // Đóng checkout modal
+      setIsCheckoutOpen(false);
+      
+      // Có thể redirect đến orders page hoặc order detail
+      setIsOrdersPageOpen(true);
+      setOrders(prev => [mappedOrder, ...prev]);
+    } catch (error: any) {
+      console.error('Checkout failed:', error);
+      toast.error(error.message || 'Đặt hàng thất bại. Vui lòng thử lại.');
+    }
   };
 
   // Hàm xử lý xem chi tiết sản phẩm
@@ -489,6 +584,8 @@ export default function App() {
       user={user}
       onLogin={handleLogin}
       onRegister={handleRegister}
+      cartItems={cartItems}
+      totalPrice={getTotalPrice()}
       onLogout={handleLogout}
       onProfileClick={handleProfileClick}
       onOrdersClick={handleOrdersClick}
@@ -501,8 +598,6 @@ export default function App() {
       }}
       cartIconRef={cartIconRef}
       wishlistIconRef={wishlistIconRef}
-      cartItems={cartItems}
-      totalPrice={getTotalPrice()}
     />
   );
 

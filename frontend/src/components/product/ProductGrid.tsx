@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
 import { Filter, Grid, List } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { FilterState, Product } from 'types';
+import { productApi } from '../../lib/productApi';
 import { Button } from '../ui/button';
 import { ProductCard } from './ProductCard';
-import { productApi, mapProductResponse } from '../../lib/productApi';
-import { toast } from 'sonner';
 
 interface ProductGridProps {
   filters: FilterState;
@@ -43,22 +43,18 @@ export function ProductGrid({
 
   // Fetch products từ backend
   useEffect(() => {
-  setLoading(true);
-  productApi.getAll()
-    .then((res) => {
-      const products = res.map(mapProductResponse);
-      setAllProducts(products);
-
-      // ✅ Thông báo thành công
-      toast.success(`Tải ${products.length} sản phẩm thành công!`);
-      console.log('Products loaded:', products); // in ra console để kiểm tra
-    })
-    .catch((err) => {
-      console.error(err);
-      toast.error('Không thể tải sản phẩm từ server');
-    })
-    .finally(() => setLoading(false));
-}, []);
+    setLoading(true);
+    productApi.getAll()
+      .then((products) => {
+        setAllProducts(products);
+        console.log('Products loaded:', products);
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error('Không thể tải sản phẩm từ server');
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
 
   // Filter products

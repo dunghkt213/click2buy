@@ -1,80 +1,182 @@
-import axios from "axios";
-import { Product } from "../types"; // đường dẫn bạn chỉnh lại tuỳ project
-
-// Base URL đi qua API Gateway giống authApi
-const API_BASE = import.meta.env.VITE_API_GATEWAY_URL || "http://localhost:3000";
-
-const client = axios.create({
-  baseURL: `${API_BASE}/products`,
-  withCredentials: true,
-});
+import { Product } from "../types";
+import { request } from './api/apiClient';
 
 // -------------------------------
 // Mapping response về đúng Product types
 // -------------------------------
 export function mapProductResponse(data: any): Product {
-  return {
+  const mapped: Product = {
     id: data._id || data.id,
     name: data.name,
-    price: data.price,
-    originalPrice: data.originalPrice,
+    price: data.price || data.salePrice,
+    originalPrice: data.originalPrice || data.price,
     discount: data.discount,
-    image: data.image,
-    images: data.images,
-    category: data.category,
-    rating: data.rating || 0,
+    image: data.image || (data.images && data.images[0]) || '',
+    images: data.images || (data.image ? [data.image] : []),
+    category: data.category || (data.categoryIds && data.categoryIds[0]) || '',
+    rating: data.rating || data.ratingAvg || 0,
     reviews: data.reviews || 0,
     description: data.description || "",
     brand: data.brand || "",
-    inStock: data.inStock ?? true,
+    inStock: data.inStock ?? (data.isActive !== false),
     isNew: data.isNew,
-    isSale: data.isSale,
+    isSale: data.isSale || (data.salePrice && data.salePrice < data.price),
     isBestSeller: data.isBestSeller,
     soldCount: data.soldCount,
     timeLeft: data.timeLeft,
-    specifications: data.specifications,
+    specifications: data.specifications || data.attributes,
+    // Lưu ownerId để dùng làm sellerId
+    ownerId: data.ownerId,
+    sellerId: data.ownerId || data.sellerId, // ownerId là sellerId
   };
+  
+  // Debug log để kiểm tra
+  if (!mapped.ownerId && !mapped.sellerId) {
+    console.warn('Product missing ownerId/sellerId:', data);
+  }
+  
+  return mapped;
 }
 
 // -------------------------------
 // Lấy danh sách sản phẩm
 // -------------------------------
-async function getAll(): Promise<Product[]> {
-  try {
-    const res = await client.get("/");
-    // Kiểm tra xem backend trả về object có data không
-    const products = Array.isArray(res.data) ? res.data : res.data?.data;
-    if (!products || !Array.isArray(products)) throw new Error("Dữ liệu sản phẩm không hợp lệ");
-    return products.map(mapProductResponse);
-  } catch (err: any) {
-    throw new Error(err.response?.data?.message || "Không thể tải danh sách sản phẩm");
+async function getAll(query?: { 
+  category?: string; 
+  minPrice?: number; 
+  maxPrice?: number; 
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<Product[]> {
+  const params = new URLSearchParams();
+  if (query?.category) params.append('category', query.category);
+  if (query?.minPrice) params.append('minPrice', query.minPrice.toString());
+  if (query?.maxPrice) params.append('maxPrice', query.maxPrice.toString());
+  if (query?.search) params.append('search', query.search);
+  if (query?.page) params.append('page', query.page.toString());
+  if (query?.limit) params.append('limit', query.limit.toString());
+  
+  const queryString = params.toString();
+  const response = await request<any>(`/products${queryString ? `?${queryString}` : ''}`, {
+    method: 'GET',
+    requireAuth: false,
+  });
+  
+  // Backend có thể trả về { success: true, data: [...] } hoặc array trực tiếp
+  const products = response?.data || response;
+  
+  if (!products || !Array.isArray(products)) {
+    throw new Error("Dữ liệu sản phẩm không hợp lệ");
   }
+  
+  return products.map(mapProductResponse);
 }
 
 // -------------------------------
 // Lấy 1 sản phẩm chi tiết
 // -------------------------------
 async function getById(id: string): Promise<Product> {
-  try {
-    const res = await client.get(`/${id}`);
-    return mapProductResponse(res.data?.data || res.data);
-  } catch (err: any) {
-    throw new Error(err.response?.data?.message || "Không thể tải chi tiết sản phẩm");
-  }
+  const data = await request<any>(`/products/${id}`, {
+    method: 'GET',
+    requireAuth: false,
+  });
+  return mapProductResponse(data);
 }
 
 // -------------------------------
-// Lấy sản phẩm flash sale, best seller, new...
+// Tìm kiếm sản phẩm
 // -------------------------------
-async function getHighlighted(type: "flash-sale" | "best-seller" | "new"): Promise<Product[]> {
-  try {
-    const res = await client.get(`/highlight/${type}`);
-    const products = Array.isArray(res.data) ? res.data : res.data?.data;
-    if (!products || !Array.isArray(products)) throw new Error("Dữ liệu nổi bật không hợp lệ");
-    return products.map(mapProductResponse);
-  } catch (err: any) {
-    throw new Error(err.response?.data?.message || "Không thể tải dữ liệu nổi bật");
+async function search(query: { 
+  search?: string;
+  keyword?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  rating?: number;
+  brands?: string[];
+  inStock?: boolean;
+  sortBy?: 'price' | 'rating' | 'newest' | 'popular';
+  sortOrder?: 'asc' | 'desc';
+}): Promise<Product[]> {
+  const response = await request<any>('/products/search', {
+    method: 'POST',
+    body: JSON.stringify({
+      keyword: query.search || query.keyword,
+      category: query.category,
+      minPrice: query.minPrice,
+      maxPrice: query.maxPrice,
+      rating: query.rating,
+      brands: query.brands,
+      inStock: query.inStock,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    }),
+    requireAuth: false,
+  });
+  
+  // Backend có thể trả về { success: true, data: [...] } hoặc array trực tiếp
+  const products = response?.data || response;
+  
+  if (!products || !Array.isArray(products)) {
+    throw new Error("Dữ liệu tìm kiếm không hợp lệ");
   }
+  
+  return products.map(mapProductResponse);
+}
+
+// -------------------------------
+// Tạo sản phẩm mới (seller)
+// -------------------------------
+async function create(dto: {
+  name: string;
+  description: string;
+  price: number;
+  originalPrice?: number;
+  category: string;
+  images: string[];
+  stock: number;
+  brand?: string;
+  specifications?: { [key: string]: string };
+}): Promise<Product> {
+  const data = await request<any>('/products', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+    requireAuth: true,
+  });
+  return mapProductResponse(data);
+}
+
+// -------------------------------
+// Cập nhật sản phẩm (seller)
+// -------------------------------
+async function update(id: string, dto: {
+  name?: string;
+  description?: string;
+  price?: number;
+  originalPrice?: number;
+  category?: string;
+  images?: string[];
+  stock?: number;
+  brand?: string;
+  specifications?: { [key: string]: string };
+}): Promise<Product> {
+  const data = await request<any>(`/products/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(dto),
+    requireAuth: true,
+  });
+  return mapProductResponse(data);
+}
+
+// -------------------------------
+// Xóa sản phẩm (seller)
+// -------------------------------
+async function remove(id: string): Promise<{ success: boolean; message: string }> {
+  return request<{ success: boolean; message: string }>(`/products/${id}`, {
+    method: 'DELETE',
+    requireAuth: true,
+  });
 }
 
 // -------------------------------
@@ -83,5 +185,8 @@ async function getHighlighted(type: "flash-sale" | "best-seller" | "new"): Promi
 export const productApi = {
   getAll,
   getById,
-  getHighlighted,
+  search,
+  create,
+  update,
+  remove,
 };

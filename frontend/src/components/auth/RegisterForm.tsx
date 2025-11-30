@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import { Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { authApi, AuthSuccessPayload, mapAuthResponse } from '../../lib/authApi';
 import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Checkbox } from '../ui/checkbox';
 import { Separator } from '../ui/separator';
-import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
-import { toast } from 'sonner';
-import { authApi, mapAuthResponse, AuthSuccessPayload } from '../../lib/authApi';
 
 interface RegisterFormData {
   username: string;
