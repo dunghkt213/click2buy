@@ -15,6 +15,8 @@ interface ProductGridProps {
   onAddToWishlist?: (product: Product) => void;
   isInWishlist?: (productId: string) => boolean;
   onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void;
+  isLoggedIn?: boolean; // THÊM: Kiểm tra đăng nhập
+  onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
 
 export function ProductGrid({
@@ -25,6 +27,8 @@ export function ProductGrid({
   onAddToWishlist,
   isInWishlist,
   onTriggerFlyingIcon,
+  isLoggedIn = false,
+  onLogin,
 }: ProductGridProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -124,6 +128,8 @@ export function ProductGrid({
                 onAddToWishlist={onAddToWishlist}
                 isInWishlist={isInWishlist ? isInWishlist(product.id) : false}
                 onTriggerFlyingIcon={onTriggerFlyingIcon}
+                isLoggedIn={isLoggedIn}
+                onLogin={onLogin}
               />
             </motion.div>
           ))}

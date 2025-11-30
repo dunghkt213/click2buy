@@ -22,6 +22,8 @@ interface ProductCardProps {
   onAddToWishlist?: (product: Product) => void; // THÊM: Callback khi thêm vào wishlist
   isInWishlist?: boolean; // THÊM: Check xem sản phẩm đã có trong wishlist chưa
   onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void; // THÊM: Trigger flying animation
+  isLoggedIn?: boolean; // THÊM: Kiểm tra đăng nhập
+  onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
 
 export function ProductCard({ 
@@ -31,7 +33,9 @@ export function ProductCard({
   onViewDetail, 
   onAddToWishlist, 
   isInWishlist = false,
-  onTriggerFlyingIcon 
+  onTriggerFlyingIcon,
+  isLoggedIn = false,
+  onLogin
 }: ProductCardProps) {
   // SỬA: Không dùng local state nữa, sử dụng isInWishlist từ props
   const [isHovered, setIsHovered] = useState(false);
@@ -42,6 +46,13 @@ export function ProductCard({
 
   // THÊM: Handler cho wishlist
   const handleWishlistClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      e.stopPropagation();
+      onLogin?.();
+      return;
+    }
+    
     // Trigger flying animation
     if (onTriggerFlyingIcon) {
       onTriggerFlyingIcon('heart', e.currentTarget);
@@ -54,6 +65,13 @@ export function ProductCard({
 
   // THÊM: Handler cho add to cart
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      e.stopPropagation();
+      onLogin?.();
+      return;
+    }
+    
     // Trigger flying animation
     if (onTriggerFlyingIcon) {
       onTriggerFlyingIcon('cart', e.currentTarget);

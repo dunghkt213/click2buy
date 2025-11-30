@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useInView } from 'framer-motion';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 // Layout Components
 import { Footer } from './components/layout/Footer';
 import { Header } from './components/layout/Header';
@@ -27,7 +27,7 @@ import {
 } from './components/sidebars';
 
 // Auth Components
-import { AuthModal } from './components/auth';
+import { AuthModal, AuthCallback } from './components/auth';
 
 // Search Components
 import { SearchModal } from './components/search/SearchModal';
@@ -234,6 +234,7 @@ export default function App() {
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(initialSupportTickets);
   const [user, setUser] = useState<User | undefined>(() => authStorage.getUser());
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!(authStorage.getUser() && authStorage.getToken()));
+  const [showAuthCallback, setShowAuthCallback] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     category: 'all',
     priceRange: [0, 50000000],
@@ -241,6 +242,17 @@ export default function App() {
     rating: 0,
     inStock: true,
   });
+
+  // Check for OAuth callback URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    // Check if we're on /auth/callback path
+    if (window.location.pathname === '/auth/callback' || token) {
+      setShowAuthCallback(true);
+    }
+  }, []);
 
   // Account functions
   const handleLogin = () => {
@@ -257,12 +269,32 @@ export default function App() {
     setIsLoggedIn(true);
     setUser(userData);
     authStorage.save(userData, accessToken);
+    // Reload trang sau khi đăng nhập thành công
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
   const handleRegisterSuccess = ({ user: userData, accessToken }: AuthSuccessPayload) => {
     setIsLoggedIn(true);
     setUser(userData);
     authStorage.save(userData, accessToken);
+    // Reload trang sau khi đăng ký thành công
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
+
+  const handleAuthCallbackSuccess = (userData: User, token: string) => {
+    setIsLoggedIn(true);
+    setUser(userData);
+    authStorage.save(userData, token);
+    setShowAuthCallback(false);
+    // Clear URL params và reload trang
+    window.history.replaceState({}, '', '/');
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
   const handleLogout = async () => {
@@ -274,6 +306,10 @@ export default function App() {
       authStorage.clear();
       setIsLoggedIn(false);
       setUser(undefined);
+      // Reload trang sau khi đăng xuất
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     }
   };
 
@@ -625,6 +661,8 @@ export default function App() {
             onAddToWishlist={addToWishlist}
             isInWishlist={isInWishlist}
             onTriggerFlyingIcon={handleTriggerFlyingIcon}
+            isLoggedIn={isLoggedIn}
+            onLogin={handleLogin}
           />
         </RevealSection>
         
@@ -646,6 +684,8 @@ export default function App() {
                   onAddToWishlist={addToWishlist}
                   isInWishlist={isInWishlist}
                   onTriggerFlyingIcon={handleTriggerFlyingIcon}
+                  isLoggedIn={isLoggedIn}
+                  onLogin={handleLogin}
                 />
               </div>
             </div>
@@ -833,12 +873,18 @@ export default function App() {
         onRegisterSuccess={handleRegisterSuccess}
       />
 
+      {showAuthCallback && (
+        <AuthCallback onSuccess={handleAuthCallbackSuccess} />
+      )}
+
       <ProductDetailModal
         isOpen={isProductDetailOpen}
         onClose={() => setIsProductDetailOpen(false)}
         product={selectedProduct}
         onAddToCart={addToCart}
         onAddToWishlist={addToWishlist}
+        isLoggedIn={isLoggedIn}
+        onLogin={handleLogin}
       />
 
       <FlyingIcon

@@ -9,6 +9,8 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Separator } from '../ui/separator';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+
 interface RegisterFormData {
   username: string;
   email: string;
@@ -57,8 +59,12 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
     }
   };
 
-  const handleSocialRegister = (provider: string) => {
-    toast.info(`Đăng ký bằng ${provider} đang được phát triển`);
+  const handleSocialRegister = (provider: 'google' | 'facebook') => {
+    // Redirect đến backend OAuth endpoint
+    // Backend sẽ tự động redirect đến Google/Facebook OAuth page
+    const url = `${API_BASE_URL}/auth/${provider}`;
+    console.log(`Redirecting to ${provider} OAuth:`, url);
+    window.location.href = url;
   };
 
   return (
@@ -243,7 +249,7 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
           type="button"
           variant="outline" 
           className="w-full"
-          onClick={() => handleSocialRegister('Google')}
+          onClick={() => handleSocialRegister('google')}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -270,7 +276,7 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
           type="button"
           variant="outline" 
           className="w-full"
-          onClick={() => handleSocialRegister('Facebook')}
+          onClick={() => handleSocialRegister('facebook')}
         >
           <svg className="mr-2 h-4 w-4" fill="#1877F2" viewBox="0 0 24 24">
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>

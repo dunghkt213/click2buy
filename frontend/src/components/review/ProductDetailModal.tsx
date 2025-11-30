@@ -16,6 +16,8 @@ interface ProductDetailModalProps {
   product: Product;
   onAddToCart: (product: Product) => void;
   onAddToWishlist?: (product: Product) => void;
+  isLoggedIn?: boolean; // THÊM: Kiểm tra đăng nhập
+  onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
 
 export function ProductDetailModal({
@@ -24,6 +26,8 @@ export function ProductDetailModal({
   product,
   onAddToCart,
   onAddToWishlist,
+  isLoggedIn = false,
+  onLogin,
 }: ProductDetailModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -89,9 +93,21 @@ export function ProductDetailModal({
   };
 
   const handleAddToCart = () => {
+    if (!isLoggedIn) {
+      onLogin?.();
+      return;
+    }
     for (let i = 0; i < quantity; i++) {
       onAddToCart(product);
     }
+  };
+
+  const handleAddToWishlist = () => {
+    if (!isLoggedIn) {
+      onLogin?.();
+      return;
+    }
+    onAddToWishlist?.(product);
   };
 
   const soldCount = product.soldCount || Math.floor(Math.random() * 10000);
@@ -305,7 +321,7 @@ export function ProductDetailModal({
                     variant="ghost"
                     size="sm"
                     className="flex-1 gap-2"
-                    onClick={() => onAddToWishlist?.(product)}
+                    onClick={handleAddToWishlist}
                   >
                     <Heart className="w-4 h-4" />
                     Yêu thích

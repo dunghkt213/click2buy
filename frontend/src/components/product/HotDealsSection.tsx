@@ -13,6 +13,8 @@ interface HotDealsSectionProps {
   onAddToWishlist: (product: Product) => void;
   isInWishlist: (productId: string) => boolean;
   onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void;
+  isLoggedIn?: boolean; // THÊM: Kiểm tra đăng nhập
+  onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
 
 export function HotDealsSection({
@@ -20,7 +22,9 @@ export function HotDealsSection({
   onViewDetail,
   onAddToWishlist,
   isInWishlist,
-  onTriggerFlyingIcon
+  onTriggerFlyingIcon,
+  isLoggedIn = false,
+  onLogin
 }: HotDealsSectionProps) {
   const [hotDeals, setHotDeals] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -121,6 +125,13 @@ export function HotDealsSection({
   ];
 
   const handleAddToCart = (product: Product, e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      e.stopPropagation();
+      onLogin?.();
+      return;
+    }
+    
     onAddToCart(product);
     if (onTriggerFlyingIcon) {
       onTriggerFlyingIcon('cart', e.currentTarget);
@@ -128,6 +139,13 @@ export function HotDealsSection({
   };
 
   const handleAddToWishlist = (product: Product, e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      e.stopPropagation();
+      onLogin?.();
+      return;
+    }
+    
     onAddToWishlist(product);
     if (onTriggerFlyingIcon) {
       onTriggerFlyingIcon('heart', e.currentTarget);

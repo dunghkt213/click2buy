@@ -5,9 +5,12 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Separator } from '../ui/separator';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { authApi, mapAuthResponse, AuthSuccessPayload } from '../../lib/authApi';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
 
 interface LoginFormData {
   username: string;
@@ -19,11 +22,20 @@ interface LoginFormProps {
   onClose: () => void;
 }
 
+interface OtpFormData {
+  phone: string;
+  otp: string;
+}
+
 export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('');
   
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormData>();
+  const { register: registerOtp, handleSubmit: handleSubmitOtp, formState: { errors: otpErrors, isSubmitting: isSubmittingOtp } } = useForm<OtpFormData>();
 
   const onSubmit = async (data: LoginFormData) => {
     try {
@@ -42,8 +54,50 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    toast.info(`Đăng nhập bằng ${provider} đang được phát triển`);
+  const handleSocialLogin = (provider: 'google' | 'facebook') => {
+    // Redirect đến backend OAuth endpoint
+    // Backend sẽ tự động redirect đến Google/Facebook OAuth page
+    const url = `${API_BASE_URL}/auth/${provider}`;
+    console.log(`Redirecting to ${provider} OAuth:`, url);
+    window.location.href = url;
+  };
+
+  const handleSendOtp = async (data: { phone: string }) => {
+    try {
+      const response = await authApi.sendOtp({ phone: data.phone });
+      setOtpSent(true);
+      setOtpPhone(data.phone);
+      
+      // Trong dev mode, OTP sẽ có trong response
+      if (response.otp) {
+        console.log('🔐 OTP Code (Dev Mode):', response.otp);
+        toast.info(`OTP đã được gửi. Mã OTP (Dev): ${response.otp}`, {
+          duration: 10000,
+        });
+      } else {
+        toast.success('OTP đã được gửi đến số điện thoại của bạn');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể gửi OTP. Vui lòng thử lại.';
+      toast.error(message);
+    }
+  };
+
+  const handleVerifyOtp = async (data: OtpFormData) => {
+    try {
+      const response = await authApi.verifyOtp({
+        phone: data.phone,
+        otp: data.otp,
+      });
+
+      const payload = mapAuthResponse(response);
+      toast.success('Đăng nhập thành công!');
+      onSuccess(payload);
+      onClose();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Mã OTP không đúng. Vui lòng thử lại.';
+      toast.error(message);
+    }
   };
 
   return (
@@ -53,7 +107,14 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
         <p className="text-center text-muted-foreground">Đăng nhập để tiếp tục</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <Tabs value={loginMethod} onValueChange={(v) => setLoginMethod(v as 'password' | 'otp')} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="password">Mật khẩu</TabsTrigger>
+          <TabsTrigger value="otp">SMS OTP</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="password" className="mt-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="username">Tên đăng nhập / Email</Label>
           <div className="relative">
@@ -130,14 +191,112 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
           </button>
         </div>
 
-        <Button 
-          type="submit" 
-          className="w-full bg-orange-600 hover:bg-orange-700"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
-        </Button>
-      </form>
+            <Button 
+              type="submit" 
+              className="w-full bg-orange-600 hover:bg-orange-700"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            </Button>
+          </form>
+        </TabsContent>
+
+        <TabsContent value="otp" className="mt-4">
+          {!otpSent ? (
+            <form onSubmit={handleSubmitOtp((data) => handleSendOtp({ phone: data.phone }))} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="otpPhone">Số điện thoại</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="otpPhone"
+                    type="tel"
+                    placeholder="+84987654321"
+                    className="pl-10"
+                    {...registerOtp('phone', { 
+                      required: 'Vui lòng nhập số điện thoại',
+                      pattern: {
+                        value: /^\+?[0-9]{10,15}$/,
+                        message: 'Số điện thoại không hợp lệ'
+                      }
+                    })}
+                  />
+                </div>
+                {otpErrors.phone && (
+                  <p className="text-sm text-red-500">{otpErrors.phone.message}</p>
+                )}
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full bg-orange-600 hover:bg-orange-700"
+                disabled={isSubmittingOtp}
+              >
+                {isSubmittingOtp ? 'Đang gửi...' : 'Gửi mã OTP'}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmitOtp(handleVerifyOtp)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="otpPhoneDisplay">Số điện thoại</Label>
+                <Input
+                  id="otpPhoneDisplay"
+                  type="tel"
+                  value={otpPhone}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="otpCode">Mã OTP</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="otpCode"
+                    type="text"
+                    placeholder="Nhập mã OTP 6 số"
+                    className="pl-10"
+                    maxLength={6}
+                    {...registerOtp('otp', { 
+                      required: 'Vui lòng nhập mã OTP',
+                      pattern: {
+                        value: /^[0-9]{6}$/,
+                        message: 'Mã OTP phải là 6 chữ số'
+                      }
+                    })}
+                  />
+                </div>
+                {otpErrors.otp && (
+                  <p className="text-sm text-red-500">{otpErrors.otp.message}</p>
+                )}
+                <input type="hidden" {...registerOtp('phone')} value={otpPhone} />
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setOtpSent(false);
+                    setOtpPhone('');
+                  }}
+                >
+                  Quay lại
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="flex-1 bg-orange-600 hover:bg-orange-700"
+                  disabled={isSubmittingOtp}
+                >
+                  {isSubmittingOtp ? 'Đang xác thực...' : 'Xác thực OTP'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <div className="relative">
         <Separator />
@@ -151,7 +310,7 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
           type="button"
           variant="outline" 
           className="w-full"
-          onClick={() => handleSocialLogin('Google')}
+          onClick={() => handleSocialLogin('google')}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -178,7 +337,7 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
           type="button"
           variant="outline" 
           className="w-full"
-          onClick={() => handleSocialLogin('Facebook')}
+          onClick={() => handleSocialLogin('facebook')}
         >
           <svg className="mr-2 h-4 w-4" fill="#1877F2" viewBox="0 0 24 24">
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>

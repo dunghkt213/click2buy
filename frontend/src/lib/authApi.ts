@@ -39,6 +39,21 @@ export interface RegisterPayload {
   role?: string;
 }
 
+export interface SendOtpPayload {
+  phone: string;
+}
+
+export interface SendOtpResponse {
+  success: boolean;
+  message: string;
+  otp?: string; // Chỉ có trong dev mode
+}
+
+export interface VerifyOtpPayload {
+  phone: string;
+  otp: string;
+}
+
 
 export function normalizeUser(backendUser: BackendUser): User {
   const fallbackName =
@@ -82,6 +97,19 @@ export const authApi = {
   logout: () =>
     request<{ success: boolean; message: string }>('/auth/logout', {
       method: 'POST',
+      requireAuth: false,
+    }),
+  // SMS OTP Login
+  sendOtp: (payload: SendOtpPayload) =>
+    request<SendOtpResponse>('/auth/login-sms', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      requireAuth: false,
+    }),
+  verifyOtp: (payload: VerifyOtpPayload) =>
+    request<AuthSuccessResponse>('/auth/verify-sms', {
+      method: 'POST',
+      body: JSON.stringify(payload),
       requireAuth: false,
     }),
 };

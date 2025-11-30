@@ -142,7 +142,13 @@ export function Header({
               variant="ghost" 
               size="sm" 
               className="hidden md:flex relative"
-              onClick={onStoreClick}
+              onClick={() => {
+                if (!isLoggedIn) {
+                  onLogin();
+                } else {
+                  onStoreClick();
+                }
+              }}
             >
               <Store className="w-4 h-4" />
             </Button>
@@ -152,10 +158,16 @@ export function Header({
               variant="ghost" 
               size="sm" 
               className="hidden md:flex relative"
-              onClick={onNotificationsClick}
+              onClick={() => {
+                if (!isLoggedIn) {
+                  onLogin();
+                } else {
+                  onNotificationsClick();
+                }
+              }}
             >
               <Bell className="w-4 h-4" />
-              {unreadNotifications > 0 && (
+              {isLoggedIn && unreadNotifications > 0 && (
                 <Badge 
                   variant="destructive" 
                   className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
@@ -170,11 +182,17 @@ export function Header({
               variant="ghost" 
               size="sm" 
               className="hidden md:flex relative"
-              onClick={onWishlistClick}
+              onClick={() => {
+                if (!isLoggedIn) {
+                  onLogin();
+                } else {
+                  onWishlistClick();
+                }
+              }}
               ref={wishlistIconRef}
             >
               <Heart className="w-4 h-4" />
-              {wishlistItemsCount > 0 && (
+              {isLoggedIn && wishlistItemsCount > 0 && (
                 <Badge 
                   variant="secondary" 
                   className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-primary/10 text-primary"
@@ -187,18 +205,24 @@ export function Header({
             {/* Cart */}
             <div 
               className="relative"
-              onMouseEnter={() => setIsCartPreviewOpen(true)}
+              onMouseEnter={() => isLoggedIn && setIsCartPreviewOpen(true)}
               onMouseLeave={() => setIsCartPreviewOpen(false)}
             >
               <Button 
                 variant="ghost" 
                 size="sm" 
                 className="relative"
-                onClick={onCartClick}
+                onClick={() => {
+                  if (!isLoggedIn) {
+                    onLogin();
+                  } else {
+                    onCartClick();
+                  }
+                }}
                 ref={cartIconRef}
               >
                 <ShoppingCart className="w-4 h-4" />
-                {cartItemsCount > 0 && (
+                {isLoggedIn && cartItemsCount > 0 && (
                   <Badge 
                     variant="destructive" 
                     className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
