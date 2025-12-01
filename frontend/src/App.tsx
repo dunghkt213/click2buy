@@ -57,6 +57,9 @@ import { HotDealsSection } from './components/product/HotDealsSection';
 import { useNotifications, useWishlist } from './hooks';
 import { useCartApi } from './hooks/useCartApi';
 
+// API
+import { productApi } from './lib/productApi';
+
 // Types & Data
 import { toast } from 'sonner';
 import {
@@ -529,6 +532,17 @@ export default function App() {
 
   // Store functions
   const handleStoreClick = () => {
+    // Kiểm tra role: nếu là seller thì không cần đăng ký, mở trực tiếp cửa hàng
+    if (user?.role === 'seller') {
+      setIsMyStorePageOpen(true);
+      // Nếu chưa có store info, set hasStore = true để có thể sử dụng
+      if (!hasStore) {
+        setHasStore(true);
+      }
+      return;
+    }
+    
+    // Nếu là customer hoặc chưa có role, kiểm tra hasStore
     if (!hasStore) {
       setIsStoreRegistrationOpen(true);
     } else {
@@ -564,21 +578,60 @@ export default function App() {
     alert('Chúc mừng! Cửa hàng của bạn đã được tạo thành công!');
   };
 
-  const handleAddProduct = (product: Omit<StoreProduct, 'id'>) => {
-    const newProduct: StoreProduct = {
-      ...product,
-      id: `product-${Date.now()}`
-    };
-    setStoreProducts(prev => [newProduct, ...prev]);
-    
-    if (storeInfo) {
-      setStoreInfo({
-        ...storeInfo,
-        totalProducts: storeProducts.length + 1
+  const handleAddProduct = async (product: Omit<StoreProduct, 'id'>) => {
+    try {
+      // Chuẩn bị images array
+      const images = product.images && product.images.length > 0 
+        ? product.images 
+        : product.image 
+          ? [product.image] 
+          : [];
+      
+      // Gọi API POST product
+      const createdProduct = await productApi.create({
+        name: product.name,
+        description: product.description || '',
+        price: product.price,
+        originalPrice: product.originalPrice,
+        category: product.category,
+        images: images,
+        stock: product.stock,
+        brand: product.category || 'Unknown', // Sử dụng category làm brand tạm thời
+        specifications: {}, // Có thể mở rộng sau
       });
+
+      // Map response từ API về StoreProduct format
+      const newProduct: StoreProduct = {
+        id: createdProduct.id,
+        name: createdProduct.name,
+        price: createdProduct.price,
+        originalPrice: createdProduct.originalPrice,
+        stock: product.stock, // Backend có thể trả về stock, nhưng giữ nguyên từ form
+        sold: 0,
+        image: createdProduct.image,
+        images: createdProduct.images,
+        category: createdProduct.category,
+        description: createdProduct.description,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        rating: 0,
+        reviews: 0,
+      };
+
+      setStoreProducts(prev => [newProduct, ...prev]);
+      
+      if (storeInfo) {
+        setStoreInfo({
+          ...storeInfo,
+          totalProducts: storeProducts.length + 1
+        });
+      }
+      
+      toast.success('Sản phẩm đã được thêm thành công!');
+    } catch (error: any) {
+      console.error('Failed to add product:', error);
+      toast.error(error.message || 'Không thể thêm sản phẩm. Vui lòng thử lại.');
     }
-    
-    alert('Sản phẩm đã được thêm thành công!');
   };
 
   const handleUpdateProduct = (id: string, updates: Partial<StoreProduct>) => {

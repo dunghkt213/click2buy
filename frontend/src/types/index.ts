@@ -156,6 +156,7 @@ export interface User {
   avatar?: string;
   membershipLevel: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
   points: number;
+  role?: 'customer' | 'seller' | 'admin'; // THÊM: Role của user
 }
 
 // Promotion types

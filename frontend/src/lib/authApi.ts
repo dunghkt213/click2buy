@@ -66,6 +66,7 @@ export function normalizeUser(backendUser: BackendUser): User {
     avatar: backendUser.avatar,
     membershipLevel: 'Bronze',
     points: 0,
+    role: backendUser.role as 'customer' | 'seller' | 'admin' | undefined, // THÊM: Giữ lại role từ backend
   };
 }
 
