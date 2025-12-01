@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
-import { Card, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { 
-  Star, 
-  Heart, 
-  ShoppingCart, 
+import {
   Eye,
+  Heart,
   Share2,
+  ShoppingCart,
+  Star,
   Zap
 } from 'lucide-react';
+import React, { useState } from 'react';
 import { Product } from 'types';
+import { calculateDiscount, formatPrice } from '../../lib/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { formatPrice, calculateDiscount } from '../../lib/utils';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
 
 interface ProductCardProps {
   product: Product;
@@ -152,12 +152,12 @@ export function ProductCard({
 
               <div className="flex items-center gap-2">
                 <Button
-                  className="flex-1 gap-2"
+                  className="flex-1 gap-2 text-black [&>svg]:text-black"
                   onClick={handleAddToCart}
                   disabled={!product.inStock}
                 >
-                  <ShoppingCart className="w-4 h-4" />
-                  {product.inStock ? 'Thêm vào giỏ' : 'Hết hàng'}
+                  <ShoppingCart className="w-4 h-4 text-black" />
+                  <span className="text-black">{product.inStock ? 'Thêm vào giỏ' : 'Hết hàng'}</span>
                 </Button>
                 
                 <Button
@@ -254,12 +254,12 @@ export function ProductCard({
             isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
           }`}>
             <Button
-              className="w-full gap-2 bg-white/90 backdrop-blur-sm text-foreground hover:bg-white"
+              className="w-full gap-2 bg-white/90 backdrop-blur-sm text-black hover:bg-white hover:text-black [&>svg]:text-black"
               onClick={handleAddToCart}
               disabled={!product.inStock}
             >
-              <ShoppingCart className="w-4 h-4" />
-              Thêm vào giỏ
+              <ShoppingCart className="w-4 h-4 text-black" />
+              <span className="text-black">Thêm vào giỏ</span>
             </Button>
           </div>
         </div>

@@ -5,11 +5,16 @@ import { request } from './api/apiClient';
 // Mapping response về đúng Product types
 // -------------------------------
 export function mapProductResponse(data: any): Product {
+  // Ưu tiên salePrice làm giá bán, nếu không có thì dùng price
+  const salePrice = data.salePrice || data.sale_price;
+  const originalPrice = data.price || data.originalPrice;
+  const displayPrice = salePrice || originalPrice; // Giá hiển thị (ưu tiên salePrice)
+  
   const mapped: Product = {
     id: data._id || data.id,
     name: data.name,
-    price: data.price || data.salePrice,
-    originalPrice: data.originalPrice || data.price,
+    price: displayPrice, // Giá bán (ưu tiên salePrice)
+    originalPrice: salePrice ? originalPrice : undefined, // Giá gốc chỉ hiển thị khi có salePrice
     discount: data.discount,
     image: data.image || (data.images && data.images[0]) || '',
     images: data.images || (data.image ? [data.image] : []),
@@ -130,21 +135,34 @@ async function search(query: {
 // -------------------------------
 async function create(dto: {
   name: string;
-  description: string;
+  description?: string;
   price: number;
-  originalPrice?: number;
-  category: string;
-  images: string[];
-  stock: number;
-  brand?: string;
-  specifications?: { [key: string]: string };
+  salePrice?: number;
+  stock?: number;
+  brand: string;
+  condition?: 'new' | 'used';
+  categoryIds?: string[];
+  tags?: string[];
+  images?: string[];
+  attributes?: Record<string, any>;
+  variants?: Record<string, any>;
+  warehouseAddress?: {
+    line1: string;
+    line2?: string;
+    city: string;
+    province?: string;
+    country?: string;
+    postalCode?: string;
+  };
 }): Promise<Product> {
   const data = await request<any>('/products', {
     method: 'POST',
     body: JSON.stringify(dto),
     requireAuth: true,
   });
-  return mapProductResponse(data);
+  // Backend có thể trả về trực tiếp hoặc wrap trong data
+  const productData = data.data || data;
+  return mapProductResponse(productData);
 }
 
 // -------------------------------

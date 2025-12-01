@@ -59,6 +59,7 @@ import { useCartApi } from './hooks/useCartApi';
 
 // API
 import { productApi } from './lib/productApi';
+import { userApi, normalizeUser } from './lib/userApi';
 
 // Types & Data
 import { toast } from 'sonner';
@@ -257,6 +258,28 @@ export default function App() {
     }
   }, []);
 
+  // Fetch user info từ API khi component mount nếu user đã đăng nhập
+  useEffect(() => {
+    const fetchUserInfoOnMount = async () => {
+      if (isLoggedIn && user?.id) {
+        try {
+          const backendUser = await userApi.findOne(user.id);
+          const fullUserInfo = normalizeUser(backendUser);
+          setUser(fullUserInfo);
+          
+          // Nếu role là seller, tự động set hasStore = true
+          if (fullUserInfo.role === 'seller') {
+            setHasStore(true);
+          }
+        } catch (error) {
+          console.error('Failed to fetch user info on mount:', error);
+        }
+      }
+    };
+
+    fetchUserInfoOnMount();
+  }, [isLoggedIn, user?.id]);
+
   // Account functions
   const handleLogin = () => {
     setAuthTab('login');
@@ -268,31 +291,73 @@ export default function App() {
     setIsAuthOpen(true);
   };
 
-  const handleLoginSuccess = ({ user: userData, accessToken }: AuthSuccessPayload) => {
+  // Hàm fetch user info từ API và cập nhật state
+  const fetchAndUpdateUserInfo = async (userId: string) => {
+    try {
+      const backendUser = await userApi.findOne(userId);
+      const fullUserInfo = normalizeUser(backendUser);
+      setUser(fullUserInfo);
+      // Cập nhật lại user trong authStorage với đầy đủ thông tin
+      const token = authStorage.getToken();
+      if (token) {
+        authStorage.save(fullUserInfo, token);
+      }
+      
+      // Nếu role là seller, tự động set hasStore = true
+      if (fullUserInfo.role === 'seller') {
+        setHasStore(true);
+      }
+      
+      return fullUserInfo;
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+      return null;
+    }
+  };
+
+  const handleLoginSuccess = async ({ user: userData, accessToken }: AuthSuccessPayload) => {
     setIsLoggedIn(true);
     setUser(userData);
     authStorage.save(userData, accessToken);
+    
+    // Fetch đầy đủ thông tin user từ API (bao gồm role)
+    if (userData.id) {
+      await fetchAndUpdateUserInfo(userData.id);
+    }
+    
     // Reload trang sau khi đăng nhập thành công
     setTimeout(() => {
       window.location.reload();
     }, 500);
   };
 
-  const handleRegisterSuccess = ({ user: userData, accessToken }: AuthSuccessPayload) => {
+  const handleRegisterSuccess = async ({ user: userData, accessToken }: AuthSuccessPayload) => {
     setIsLoggedIn(true);
     setUser(userData);
     authStorage.save(userData, accessToken);
+    
+    // Fetch đầy đủ thông tin user từ API (bao gồm role)
+    if (userData.id) {
+      await fetchAndUpdateUserInfo(userData.id);
+    }
+    
     // Reload trang sau khi đăng ký thành công
     setTimeout(() => {
       window.location.reload();
     }, 500);
   };
 
-  const handleAuthCallbackSuccess = (userData: User, token: string) => {
+  const handleAuthCallbackSuccess = async (userData: User, token: string) => {
     setIsLoggedIn(true);
     setUser(userData);
     authStorage.save(userData, token);
     setShowAuthCallback(false);
+    
+    // Fetch đầy đủ thông tin user từ API (bao gồm role)
+    if (userData.id) {
+      await fetchAndUpdateUserInfo(userData.id);
+    }
+    
     // Clear URL params và reload trang
     window.history.replaceState({}, '', '/');
     setTimeout(() => {
@@ -578,41 +643,76 @@ export default function App() {
     alert('Chúc mừng! Cửa hàng của bạn đã được tạo thành công!');
   };
 
-  const handleAddProduct = async (product: Omit<StoreProduct, 'id'>) => {
+  const handleAddProduct = async (productFormData: {
+    name: string;
+    description: string;
+    price: number;
+    salePrice: number;
+    stock: number;
+    brand: string;
+    condition: 'new' | 'used';
+    categoryIds: string[];
+    tags: string[];
+    images: string[];
+    attributes: Record<string, any>;
+    variants: Record<string, any>;
+    warehouseAddress: {
+      line1: string;
+      city: string;
+      province: string;
+      country: string;
+      postalCode: string;
+    };
+    isActive: boolean;
+  }) => {
     try {
-      // Chuẩn bị images array
-      const images = product.images && product.images.length > 0 
-        ? product.images 
-        : product.image 
-          ? [product.image] 
-          : [];
-      
-      // Gọi API POST product
+      // Chuẩn bị warehouseAddress - chỉ gửi các field có giá trị
+      const warehouseAddress: any = {
+        line1: productFormData.warehouseAddress.line1,
+        city: productFormData.warehouseAddress.city,
+      };
+      if (productFormData.warehouseAddress.province) {
+        warehouseAddress.province = productFormData.warehouseAddress.province;
+      }
+      if (productFormData.warehouseAddress.country) {
+        warehouseAddress.country = productFormData.warehouseAddress.country;
+      }
+      if (productFormData.warehouseAddress.postalCode) {
+        warehouseAddress.postalCode = productFormData.warehouseAddress.postalCode;
+      }
+
+      // Gọi API POST product với đầy đủ thông tin
       const createdProduct = await productApi.create({
-        name: product.name,
-        description: product.description || '',
-        price: product.price,
-        originalPrice: product.originalPrice,
-        category: product.category,
-        images: images,
-        stock: product.stock,
-        brand: product.category || 'Unknown', // Sử dụng category làm brand tạm thời
-        specifications: {}, // Có thể mở rộng sau
+        name: productFormData.name,
+        description: productFormData.description || undefined,
+        price: productFormData.price,
+        salePrice: productFormData.salePrice > 0 ? productFormData.salePrice : undefined,
+        stock: productFormData.stock || undefined,
+        brand: productFormData.brand,
+        condition: productFormData.condition,
+        categoryIds: productFormData.categoryIds.length > 0 ? productFormData.categoryIds : undefined,
+        tags: productFormData.tags.length > 0 ? productFormData.tags : undefined,
+        images: productFormData.images.length > 0 ? productFormData.images : undefined,
+        attributes: Object.keys(productFormData.attributes).length > 0 ? productFormData.attributes : undefined,
+        variants: Object.keys(productFormData.variants).length > 0 ? productFormData.variants : undefined,
+        warehouseAddress: warehouseAddress.line1 && warehouseAddress.city ? warehouseAddress : undefined,
       });
 
-      // Map response từ API về StoreProduct format
+      // Map response từ API về StoreProduct format để hiển thị trong UI
+      // createdProduct.price đã được map từ salePrice nếu có, nếu không thì là price
+      // createdProduct.originalPrice là giá gốc (chỉ có khi có salePrice)
       const newProduct: StoreProduct = {
         id: createdProduct.id,
         name: createdProduct.name,
-        price: createdProduct.price,
-        originalPrice: createdProduct.originalPrice,
-        stock: product.stock, // Backend có thể trả về stock, nhưng giữ nguyên từ form
+        price: createdProduct.price, // Giá bán (đã ưu tiên salePrice trong mapProductResponse)
+        originalPrice: createdProduct.originalPrice || (productFormData.salePrice > 0 ? productFormData.price : undefined),
+        stock: productFormData.stock,
         sold: 0,
         image: createdProduct.image,
-        images: createdProduct.images,
-        category: createdProduct.category,
+        images: createdProduct.images || [],
+        category: productFormData.categoryIds.join(', ') || createdProduct.category,
         description: createdProduct.description,
-        status: 'active',
+        status: productFormData.isActive ? 'active' : 'inactive',
         createdAt: new Date().toISOString(),
         rating: 0,
         reviews: 0,

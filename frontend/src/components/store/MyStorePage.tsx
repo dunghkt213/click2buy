@@ -1,33 +1,58 @@
-import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '../ui/button';
-import { Card } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Label } from '../ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { ScrollArea } from '../ui/scroll-area';
 import {
-  Package,
-  Search,
-  Filter,
-  Edit,
-  Trash2,
-  Plus,
+  CheckCircle,
   Clock,
-  Truck,
-  CheckCircle
+  Edit,
+  Filter,
+  Package,
+  Plus,
+  Search,
+  Trash2,
+  Truck
 } from 'lucide-react';
-import { StoreProduct, Order } from 'types';
+import { useState } from 'react';
+import { Order, StoreProduct } from 'types';
 import { formatPrice } from '../../lib/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { ScrollArea } from '../ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Textarea } from '../ui/textarea';
+
+interface ProductFormData {
+  name: string;
+  description: string;
+  price: number;
+  salePrice: number;
+  stock: number;
+  brand: string;
+  condition: 'new' | 'used';
+  categoryIds: string[];
+  tags: string[];
+  images: string[];
+  attributes: Record<string, any>;
+  variants: Record<string, any>;
+  warehouseAddress: {
+    line1: string;
+    city: string;
+    province: string;
+    country: string;
+    postalCode: string;
+  };
+  isActive: boolean;
+}
 
 interface MyStorePageProps {
   storeProducts: StoreProduct[];
   storeOrders: Order[];
-  onAddProduct: (product: Omit<StoreProduct, 'id'>) => void;
+  onAddProduct: (productFormData: ProductFormData) => void;
   onUpdateProduct: (id: string, product: Partial<StoreProduct>) => void;
   onDeleteProduct: (id: string) => void;
   onUpdateOrderStatus: (orderId: string, status: string) => void;
@@ -53,32 +78,81 @@ export function MyStorePage({
   // Product form state
   const [productForm, setProductForm] = useState({
     name: '',
-    price: 0,
-    originalPrice: 0,
-    stock: 0,
-    category: '',
     description: '',
-    image: ''
+    price: 0,
+    salePrice: 0,
+    stock: 0,
+    brand: '',
+    condition: 'new' as 'new' | 'used',
+    categoryIds: [] as string[],
+    tags: [] as string[],
+    images: [] as string[],
+    attributes: {} as Record<string, any>,
+    variants: {} as Record<string, any>,
+    warehouseAddress: {
+      line1: '',
+      city: '',
+      province: '',
+      country: 'Vietnam',
+      postalCode: ''
+    },
+    isActive: true
+  });
+
+  // Raw input values để cho phép user gõ tự do
+  const [rawInputs, setRawInputs] = useState({
+    categories: '',
+    tags: '',
+    images: '',
+    attributes: '',
+    variants: ''
   });
 
   const handleAddProduct = () => {
-    onAddProduct({
-      ...productForm,
-      sold: 0,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      rating: 0,
-      reviews: 0
-    });
+    // Validate required fields
+    if (!productForm.name || !productForm.brand || !productForm.price || productForm.images.length === 0) {
+      alert('Vui lòng điền đầy đủ các trường bắt buộc: Tên sản phẩm, Thương hiệu, Giá gốc, và ít nhất một hình ảnh');
+      return;
+    }
+
+    if (productForm.categoryIds.length === 0) {
+      alert('Vui lòng nhập ít nhất một danh mục');
+      return;
+    }
+
+    // Pass form data directly to parent
+    onAddProduct(productForm);
     setIsAddProductOpen(false);
+    // Reset form
     setProductForm({
       name: '',
-      price: 0,
-      originalPrice: 0,
-      stock: 0,
-      category: '',
       description: '',
-      image: ''
+      price: 0,
+      salePrice: 0,
+      stock: 0,
+      brand: '',
+      condition: 'new',
+      categoryIds: [],
+      tags: [],
+      images: [],
+      attributes: {},
+      variants: {},
+      warehouseAddress: {
+        line1: '',
+        city: '',
+        province: '',
+        country: 'Vietnam',
+        postalCode: ''
+      },
+      isActive: true
+    });
+    // Reset raw inputs
+    setRawInputs({
+      categories: '',
+      tags: '',
+      images: '',
+      attributes: '',
+      variants: ''
     });
   };
 
@@ -92,14 +166,38 @@ export function MyStorePage({
 
   const openEditDialog = (product: StoreProduct) => {
     setSelectedProduct(product);
+    // Map StoreProduct to productForm format
+    const categoryIds = product.category ? product.category.split(',').map(c => c.trim()) : [];
+    const images = product.images || (product.image ? [product.image] : []);
     setProductForm({
       name: product.name,
-      price: product.price,
-      originalPrice: product.originalPrice || 0,
+      description: product.description || '',
+      price: product.originalPrice || product.price,
+      salePrice: product.price,
       stock: product.stock,
-      category: product.category,
-      description: product.description,
-      image: product.image
+      brand: '', // StoreProduct doesn't have brand, will need to be filled manually
+      condition: 'new',
+      categoryIds: categoryIds,
+      tags: [],
+      images: images,
+      attributes: {},
+      variants: {},
+      warehouseAddress: {
+        line1: '',
+        city: '',
+        province: '',
+        country: 'Vietnam',
+        postalCode: ''
+      },
+      isActive: product.status === 'active'
+    });
+    // Set raw inputs for display
+    setRawInputs({
+      categories: categoryIds.join(', '),
+      tags: '',
+      images: images.join('\n'),
+      attributes: '',
+      variants: ''
     });
     setIsEditProductOpen(true);
   };
@@ -474,72 +572,359 @@ export function MyStorePage({
 
       {/* Add Product Dialog */}
       <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Thêm sản phẩm mới</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[70vh] pr-4">
+          <ScrollArea className="max-h-[75vh] pr-4">
             <div className="space-y-4">
-              <div>
-                <Label>Tên sản phẩm</Label>
-                <Input
-                  value={productForm.name}
-                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                  placeholder="Nhập tên sản phẩm..."
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Thông tin cơ bản</h3>
                 <div>
-                  <Label>Giá bán</Label>
+                  <Label>Tên sản phẩm *</Label>
+                  <Input
+                    value={productForm.name}
+                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                    placeholder="Nhập tên sản phẩm..."
+                  />
+                </div>
+                <div>
+                  <Label>Mô tả</Label>
+                  <Textarea
+                    value={productForm.description}
+                    onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                    placeholder="Mô tả sản phẩm..."
+                    rows={3}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Thương hiệu *</Label>
+                    <Input
+                      value={productForm.brand}
+                      onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
+                      placeholder="Ví dụ: Adidas, Nike..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Tình trạng</Label>
+                    <Select
+                      value={productForm.condition}
+                      onValueChange={(value: 'new' | 'used') => setProductForm({ ...productForm, condition: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">Mới</SelectItem>
+                        <SelectItem value="used">Đã qua sử dụng</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-lg">Giá cả</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Giá gốc *</Label>
+                    <Input
+                      type="number"
+                      value={productForm.price || ''}
+                      onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) || 0 })}
+                      placeholder="3200000"
+                    />
+                  </div>
+                  <div>
+                    <Label>Giá khuyến mãi</Label>
+                    <Input
+                      type="number"
+                      value={productForm.salePrice || ''}
+                      onChange={(e) => setProductForm({ ...productForm, salePrice: Number(e.target.value) || 0 })}
+                      placeholder="2900000"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Inventory */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-lg">Kho hàng</h3>
+                <div>
+                  <Label>Số lượng trong kho *</Label>
                   <Input
                     type="number"
-                    value={productForm.price}
-                    onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
+                    value={productForm.stock || ''}
+                    onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) || 0 })}
+                    placeholder="120"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isActive"
+                    checked={productForm.isActive}
+                    onCheckedChange={(checked) => setProductForm({ ...productForm, isActive: checked === true })}
+                  />
+                  <Label htmlFor="isActive" className="cursor-pointer">Sản phẩm đang hoạt động</Label>
+                </div>
+              </div>
+
+              {/* Categories & Tags */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-lg">Phân loại</h3>
+                <div>
+                  <Label>Danh mục *</Label>
+                  <Input
+                    value={rawInputs.categories}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setRawInputs({ ...rawInputs, categories: value });
+                      // Parse khi user gõ (cho phép dấu cách trong giá trị)
+                      const categories = value ? value.split(',').map(c => c.trim()).filter(c => c) : [];
+                      setProductForm({ ...productForm, categoryIds: categories });
+                    }}
+                    onBlur={(e) => {
+                      // Khi blur, đảm bảo format đúng
+                      const value = e.target.value;
+                      const categories = value ? value.split(',').map(c => c.trim()).filter(c => c) : [];
+                      setRawInputs({ ...rawInputs, categories: categories.join(', ') });
+                      setProductForm({ ...productForm, categoryIds: categories });
+                    }}
+                    placeholder="giay, the-thao, phu-kien"
                   />
                 </div>
                 <div>
-                  <Label>Giá gốc (nếu có)</Label>
+                  <Label>Tags</Label>
                   <Input
-                    type="number"
-                    value={productForm.originalPrice}
-                    onChange={(e) => setProductForm({ ...productForm, originalPrice: Number(e.target.value) })}
+                    value={rawInputs.tags}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setRawInputs({ ...rawInputs, tags: value });
+                      const tags = value ? value.split(',').map(t => t.trim()).filter(t => t) : [];
+                      setProductForm({ ...productForm, tags });
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value;
+                      const tags = value ? value.split(',').map(t => t.trim()).filter(t => t) : [];
+                      setRawInputs({ ...rawInputs, tags: tags.join(', ') });
+                      setProductForm({ ...productForm, tags });
+                    }}
+                    placeholder="running, sport, adidas"
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              {/* Images */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-lg">Hình ảnh</h3>
                 <div>
-                  <Label>Số lượng trong kho</Label>
-                  <Input
-                    type="number"
-                    value={productForm.stock}
-                    onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })}
+                  <Label>URL hình ảnh *</Label>
+                  <Textarea
+                    value={rawInputs.images}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setRawInputs({ ...rawInputs, images: value });
+                      // Parse nhưng giữ nguyên dấu cách trong URL
+                      const images = value ? value.split('\n').map(img => img.trim()).filter(img => img) : [];
+                      setProductForm({ ...productForm, images });
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value;
+                      const images = value ? value.split('\n').map(img => img.trim()).filter(img => img) : [];
+                      setRawInputs({ ...rawInputs, images: images.join('\n') });
+                      setProductForm({ ...productForm, images });
+                    }}
+                    placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
+                    rows={4}
                   />
                 </div>
+              </div>
+
+              {/* Attributes */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-lg">Thuộc tính</h3>
                 <div>
-                  <Label>Danh mục</Label>
-                  <Input
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    placeholder="Ví dụ: electronics"
+                  <Label>Thuộc tính sản phẩm</Label>
+                  <Textarea
+                    value={rawInputs.attributes}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setRawInputs({ ...rawInputs, attributes: value });
+                      // Parse nhưng giữ nguyên dấu cách trong giá trị
+                      const attrs: Record<string, any> = {};
+                      value.split('\n').forEach(line => {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine) {
+                          const colonIndex = trimmedLine.indexOf(':');
+                          if (colonIndex > 0) {
+                            const key = trimmedLine.substring(0, colonIndex).trim();
+                            const val = trimmedLine.substring(colonIndex + 1).trim();
+                            if (key && val) {
+                              attrs[key] = val; // Giữ nguyên dấu cách trong value
+                            }
+                          }
+                        }
+                      });
+                      setProductForm({ ...productForm, attributes: attrs });
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value;
+                      const attrs: Record<string, any> = {};
+                      value.split('\n').forEach(line => {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine) {
+                          const colonIndex = trimmedLine.indexOf(':');
+                          if (colonIndex > 0) {
+                            const key = trimmedLine.substring(0, colonIndex).trim();
+                            const val = trimmedLine.substring(colonIndex + 1).trim();
+                            if (key && val) {
+                              attrs[key] = val;
+                            }
+                          }
+                        }
+                      });
+                      // Format lại để hiển thị đẹp
+                      const formatted = Object.entries(attrs).map(([k, v]) => `${k}: ${v}`).join('\n');
+                      setRawInputs({ ...rawInputs, attributes: formatted });
+                      setProductForm({ ...productForm, attributes: attrs });
+                    }}
+                    placeholder="color: white&#10;material: Primeknit&#10;cushion: Boost&#10;weight: 300g"
+                    rows={4}
                   />
                 </div>
               </div>
-              <div>
-                <Label>Mô tả</Label>
-                <Textarea
-                  value={productForm.description}
-                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                  placeholder="Mô tả sản phẩm..."
-                  rows={4}
-                />
+
+              {/* Variants */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-lg">Biến thể</h3>
+                <div>
+                  <Label>Biến thể sản phẩm</Label>
+                  <Textarea
+                    value={rawInputs.variants}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setRawInputs({ ...rawInputs, variants: value });
+                      // Parse nhưng giữ nguyên dấu cách trong giá trị
+                      const variants: Record<string, any> = {};
+                      value.split('\n').forEach(line => {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine) {
+                          const colonIndex = trimmedLine.indexOf(':');
+                          if (colonIndex > 0) {
+                            const key = trimmedLine.substring(0, colonIndex).trim();
+                            const val = trimmedLine.substring(colonIndex + 1).trim();
+                            if (key && val) {
+                              // Nếu có dấu phẩy, coi như array (nhưng giữ dấu cách trong mỗi giá trị)
+                              if (val.includes(',')) {
+                                variants[key] = val.split(',').map(v => v.trim());
+                              } else {
+                                variants[key] = val; // Giữ nguyên dấu cách
+                              }
+                            }
+                          }
+                        }
+                      });
+                      setProductForm({ ...productForm, variants });
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value;
+                      const variants: Record<string, any> = {};
+                      value.split('\n').forEach(line => {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine) {
+                          const colonIndex = trimmedLine.indexOf(':');
+                          if (colonIndex > 0) {
+                            const key = trimmedLine.substring(0, colonIndex).trim();
+                            const val = trimmedLine.substring(colonIndex + 1).trim();
+                            if (key && val) {
+                              if (val.includes(',')) {
+                                variants[key] = val.split(',').map(v => v.trim());
+                              } else {
+                                variants[key] = val;
+                              }
+                            }
+                          }
+                        }
+                      });
+                      // Format lại để hiển thị đẹp
+                      const formatted = Object.entries(variants).map(([k, v]) => {
+                        if (Array.isArray(v)) {
+                          return `${k}: ${v.join(', ')}`;
+                        }
+                        return `${k}: ${v}`;
+                      }).join('\n');
+                      setRawInputs({ ...rawInputs, variants: formatted });
+                      setProductForm({ ...productForm, variants });
+                    }}
+                    placeholder="size: 38,39,40,41,42&#10;color: white,black"
+                    rows={3}
+                  />
+                </div>
               </div>
-              <div>
-                <Label>URL hình ảnh</Label>
-                <Input
-                  value={productForm.image}
-                  onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                  placeholder="https://..."
-                />
+
+              {/* Warehouse Address */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-lg">Địa chỉ kho hàng</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Địa chỉ dòng 1 *</Label>
+                    <Input
+                      value={productForm.warehouseAddress.line1}
+                      onChange={(e) => setProductForm({
+                        ...productForm,
+                        warehouseAddress: { ...productForm.warehouseAddress, line1: e.target.value }
+                      })}
+                      placeholder="Kho tổng Bình Tân"
+                    />
+                  </div>
+                  <div>
+                    <Label>Thành phố *</Label>
+                    <Input
+                      value={productForm.warehouseAddress.city}
+                      onChange={(e) => setProductForm({
+                        ...productForm,
+                        warehouseAddress: { ...productForm.warehouseAddress, city: e.target.value }
+                      })}
+                      placeholder="Hồ Chí Minh"
+                    />
+                  </div>
+                  <div>
+                    <Label>Tỉnh/Thành phố</Label>
+                    <Input
+                      value={productForm.warehouseAddress.province}
+                      onChange={(e) => setProductForm({
+                        ...productForm,
+                        warehouseAddress: { ...productForm.warehouseAddress, province: e.target.value }
+                      })}
+                      placeholder="Bình Tân"
+                    />
+                  </div>
+                  <div>
+                    <Label>Quốc gia</Label>
+                    <Input
+                      value={productForm.warehouseAddress.country}
+                      onChange={(e) => setProductForm({
+                        ...productForm,
+                        warehouseAddress: { ...productForm.warehouseAddress, country: e.target.value }
+                      })}
+                      placeholder="Vietnam"
+                    />
+                  </div>
+                  <div>
+                    <Label>Mã bưu điện</Label>
+                    <Input
+                      value={productForm.warehouseAddress.postalCode}
+                      onChange={(e) => setProductForm({
+                        ...productForm,
+                        warehouseAddress: { ...productForm.warehouseAddress, postalCode: e.target.value }
+                      })}
+                      placeholder="72000"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </ScrollArea>
@@ -547,7 +932,9 @@ export function MyStorePage({
             <Button variant="outline" onClick={() => setIsAddProductOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleAddProduct}>Thêm sản phẩm</Button>
+            <Button onClick={handleAddProduct} disabled={!productForm.name || !productForm.brand || !productForm.price || productForm.images.length === 0}>
+              Thêm sản phẩm
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -577,11 +964,11 @@ export function MyStorePage({
                   />
                 </div>
                 <div>
-                  <Label>Giá gốc</Label>
+                  <Label>Giá khuyến mãi</Label>
                   <Input
                     type="number"
-                    value={productForm.originalPrice}
-                    onChange={(e) => setProductForm({ ...productForm, originalPrice: Number(e.target.value) })}
+                    value={productForm.salePrice || ''}
+                    onChange={(e) => setProductForm({ ...productForm, salePrice: Number(e.target.value) || 0 })}
                   />
                 </div>
               </div>
@@ -590,15 +977,18 @@ export function MyStorePage({
                   <Label>Số lượng trong kho</Label>
                   <Input
                     type="number"
-                    value={productForm.stock}
-                    onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })}
+                    value={productForm.stock || ''}
+                    onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) || 0 })}
                   />
                 </div>
                 <div>
-                  <Label>Danh mục</Label>
+                  <Label>Danh mục (phân cách bằng dấu phẩy)</Label>
                   <Input
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                    value={productForm.categoryIds.join(', ')}
+                    onChange={(e) => {
+                      const categories = e.target.value.split(',').map(c => c.trim()).filter(c => c);
+                      setProductForm({ ...productForm, categoryIds: categories });
+                    }}
                   />
                 </div>
               </div>
@@ -611,10 +1001,14 @@ export function MyStorePage({
                 />
               </div>
               <div>
-                <Label>URL hình ảnh</Label>
-                <Input
-                  value={productForm.image}
-                  onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
+                <Label>URL hình ảnh (mỗi URL một dòng)</Label>
+                <Textarea
+                  value={productForm.images.join('\n')}
+                  onChange={(e) => {
+                    const images = e.target.value.split('\n').map(img => img.trim()).filter(img => img);
+                    setProductForm({ ...productForm, images });
+                  }}
+                  rows={3}
                 />
               </div>
             </div>

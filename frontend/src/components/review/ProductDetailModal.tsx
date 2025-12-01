@@ -299,7 +299,7 @@ export function ProductDetailModal({
                 <div className="flex gap-3 mb-6">
                   <Button
                     variant="outline"
-                    className="flex-1 gap-2"
+                    className="flex-1 gap-2 text-black"
                     onClick={handleAddToCart}
                     disabled={!product.inStock}
                   >

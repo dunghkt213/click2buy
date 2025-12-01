@@ -223,7 +223,7 @@ export function WishlistSidebar({
                                 size="sm"
                                 onClick={() => onAddToCart(item)}
                                 disabled={!item.inStock}
-                                className="gap-1"
+                                className="gap-1 text-black"
                               >
                                 <ShoppingCart className="w-3 h-3" />
                                 Thêm

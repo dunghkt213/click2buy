@@ -39,6 +39,7 @@ export function normalizeUser(backendUser: BackendUser): User {
     avatar: backendUser.avatar,
     membershipLevel: 'Bronze',
     points: 0,
+    role: backendUser.role as 'customer' | 'seller' | 'admin' | undefined, // THÊM: Giữ lại role từ backend
   };
 }
 
@@ -72,11 +73,14 @@ export const userApi = {
   /**
    * Lấy thông tin một user
    */
-  findOne: (id: string) =>
-    request<BackendUser>(`/users/${id}`, {
+  findOne: async (id: string): Promise<BackendUser> => {
+    const response = await request<any>(`/users/${id}`, {
       method: 'GET',
       requireAuth: true,
-    }),
+    });
+    // Backend có thể trả về trực tiếp hoặc wrap trong data
+    return response.data || response;
+  },
 
   /**
    * Cập nhật thông tin user

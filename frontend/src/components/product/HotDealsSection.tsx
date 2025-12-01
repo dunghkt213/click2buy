@@ -279,7 +279,7 @@ export function HotDealsSection({
 
                 {/* Add to Cart Button */}
                 <Button
-                  className="w-full gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                  className="w-full gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
                   onClick={(e) => handleAddToCart(product, e)}
                 >
                   <ShoppingCart className="w-4 h-4" />
