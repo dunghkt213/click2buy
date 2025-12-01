@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { authStorage } from '../../lib/authApi';
+import { userApi, normalizeUser } from '../../lib/userApi';
 import { User } from '../../types';
 
 interface AuthCallbackProps {
@@ -16,50 +17,74 @@ export function AuthCallback({ onSuccess }: AuthCallbackProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Parse URL params manually (không dùng react-router)
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    
-    if (!token) {
-      setError('Không tìm thấy token. Vui lòng thử lại.');
-      setIsProcessing(false);
-      return;
-    }
+    const processAuthCallback = async () => {
+      // Parse URL params manually (không dùng react-router)
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      if (!token) {
+        setError('Không tìm thấy token. Vui lòng thử lại.');
+        setIsProcessing(false);
+        return;
+      }
 
-    // Lưu token vào localStorage
-    // Backend đã trả về token, nhưng chúng ta cần decode để lấy user info
-    // Hoặc gọi API để lấy user info
-    try {
-      // Lưu token tạm thời
-      authStorage.clear(); // Clear old data
-      
-      // Decode JWT để lấy user info (basic approach)
-      // Trong production, nên gọi API /auth/me để lấy user info
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const user: User = {
-        id: payload.sub || payload.id || '',
-        name: payload.name || payload.username || payload.email || 'Người dùng',
-        email: payload.email || '',
-        avatar: payload.avatar,
-        membershipLevel: 'Bronze',
-        points: 0,
-      };
+      try {
+        // Lưu token tạm thời để có thể gọi API
+        authStorage.clear(); // Clear old data
+        
+        // Decode JWT để lấy user ID tạm thời
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const userId = payload.sub || payload.id || '';
+        
+        if (!userId) {
+          throw new Error('Không tìm thấy user ID trong token');
+        }
 
-      authStorage.save(user, token);
-      onSuccess(user, token);
-      
-      toast.success('Đăng nhập thành công!');
-      
-      // Redirect về trang chủ sau 1 giây
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1000);
-    } catch (err) {
-      console.error('Failed to process OAuth callback:', err);
-      setError('Không thể xử lý token. Vui lòng thử lại.');
-      setIsProcessing(false);
-    }
-  }, [searchParams, onSuccess]);
+        // Lưu token trước để có thể gọi API
+        const tempUser: User = {
+          id: userId,
+          name: payload.name || payload.username || payload.email || 'Người dùng',
+          email: payload.email || '',
+          avatar: payload.avatar,
+          membershipLevel: 'Bronze',
+          points: 0,
+          role: payload.role,
+        };
+        authStorage.save(tempUser, token);
+
+        // Gọi API để lấy đầy đủ thông tin user (bao gồm role)
+        try {
+          const backendUser = await userApi.findOne(userId);
+          const fullUserInfo = normalizeUser(backendUser);
+          
+          // Cập nhật lại với thông tin đầy đủ
+          authStorage.save(fullUserInfo, token);
+          onSuccess(fullUserInfo, token);
+        } catch (apiError) {
+          // Nếu không gọi được API, dùng thông tin từ JWT
+          console.warn('Failed to fetch user info from API, using JWT payload:', apiError);
+          authStorage.save(tempUser, token);
+          onSuccess(tempUser, token);
+        }
+        
+        toast.success('Đăng nhập thành công!');
+        
+        // Clear URL params và redirect về trang chủ
+        window.history.replaceState({}, '', '/');
+        
+        // Redirect về trang chủ sau 1 giây
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+      } catch (err) {
+        console.error('Failed to process OAuth callback:', err);
+        setError('Không thể xử lý token. Vui lòng thử lại.');
+        setIsProcessing(false);
+      }
+    };
+
+    processAuthCallback();
+  }, [onSuccess]);
 
   if (isProcessing) {
     return (

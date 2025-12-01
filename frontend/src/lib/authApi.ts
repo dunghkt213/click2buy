@@ -107,12 +107,18 @@ export const authApi = {
       body: JSON.stringify(payload),
       requireAuth: false,
     }),
-  verifyOtp: (payload: VerifyOtpPayload) =>
-    request<AuthSuccessResponse>('/auth/verify-sms', {
+  verifyOtp: async (payload: VerifyOtpPayload): Promise<AuthSuccessResponse> => {
+    const response = await request<any>('/auth/verify-sms', {
       method: 'POST',
       body: JSON.stringify(payload),
       requireAuth: false,
-    }),
+    });
+    // Backend trả về { message, user, accessToken }, cần map về AuthSuccessResponse
+    return {
+      user: response.user,
+      accessToken: response.accessToken,
+    };
+  },
 };
 
 export const authStorage = {
