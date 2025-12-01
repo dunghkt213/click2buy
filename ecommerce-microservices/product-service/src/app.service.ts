@@ -120,16 +120,18 @@ export class AppService {
 
   /** Lấy 1 sản phẩm */
   async findOne(id: string) {
+    console.log("STEP 1");
     console.log('product_id',id)
     try{
       const product = await this.productModel.findById(id).lean();
-      return  product ;
+      if (!product) {
+        throw new RpcException('Product not found');
+      }
+      console.log("STEP 2", product);
+      return product;
     }
     catch(err){
-      return new RpcException({
-        statusCode: 403,
-        message: 'not found product',
-      });
+      throw new RpcException('Product not found');
     }
   }
 
@@ -219,4 +221,57 @@ export class AppService {
 
     return { success: true, data };
   }
+
+  /** Lấy tất cả sản phẩm của seller */
+async findAllOfSeller(q: any, sellerId: string) {
+  const page = Math.max(parseInt(q?.page || '1', 10), 1);
+  const limit = Math.max(parseInt(q?.limit || '10', 10), 1);
+  const skip = (page - 1) * limit;
+
+  const filter: FilterQuery<Product> = { ownerId: sellerId };
+
+  if (q?.keyword) {
+    filter.name = new RegExp(q.keyword.trim(), 'i');
+  }
+
+  const sort = q?.sort ? q.sort.replace(/,/g, ' ') : '-createdAt';
+
+  const [data, total] = await Promise.all([
+    this.productModel.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+    this.productModel.countDocuments(filter),
+  ]);
+
+  return {
+    success: true,
+    data,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+/** Lấy 1 sản phẩm của seller (chỉ owner mới xem được bản full) */
+async findOneOfSeller(id: string, sellerId: string) {
+  const product = await this.productModel.findById(id).lean();
+
+  if (!product) {
+    throw new RpcException({
+      statusCode: 404,
+      message: 'Product not found',
+    });
+  }
+
+  if (product.ownerId.toString() !== sellerId) {
+    throw new RpcException({
+      statusCode: 403,
+      message: 'You are not allowed to access this product',
+    });
+  }
+
+  return product;
+}
+
 }

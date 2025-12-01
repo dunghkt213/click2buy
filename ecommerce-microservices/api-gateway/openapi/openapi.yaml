@@ -13,7 +13,6 @@ paths:
       responses:
         "201":
           description: ""
-      summary: Đăng nhập & nhận accessToken + refreshToken
       tags: &a1
         - AuthGateway
   /auth/register:
@@ -29,7 +28,6 @@ paths:
       responses:
         "201":
           description: ""
-      summary: Đăng ký tài khoản mới
       tags: *a1
   /auth/refresh:
     post:
@@ -38,7 +36,6 @@ paths:
       responses:
         "201":
           description: ""
-      summary: Làm mới Access Token bằng Refresh Token (lấy từ cookie)
       tags: *a1
   /auth/logout:
     post:
@@ -47,7 +44,6 @@ paths:
       responses:
         "201":
           description: ""
-      summary: Đăng xuất & xoá refresh token
       tags: *a1
   /users:
     post:
@@ -189,6 +185,50 @@ paths:
           description: ""
       summary: Vô hiệu hóa / deactivate người dùng
       tags: *a2
+  /products/seller:
+    get:
+      operationId: ProductGateway_findAllOfSeller
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductDto"
+      summary: Lấy tất cả sản phẩm thuộc seller hiện tại
+      tags: &a3
+        - Products
+  /products/seller/{id}:
+    get:
+      operationId: ProductGateway_findOneOfSeller
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDto"
+      summary: Lấy sản phẩm thuộc seller hiện tại theo ID
+      tags: *a3
   /products:
     post:
       operationId: ProductGateway_create
@@ -208,8 +248,7 @@ paths:
         "201":
           description: Product created
       summary: Tạo sản phẩm mới
-      tags: &a3
-        - Products
+      tags: *a3
     get:
       operationId: ProductGateway_findAll
       parameters: []
@@ -344,7 +383,6 @@ paths:
           description: ""
       tags: &a4
         - CartGateway
-  /cart/add:
     post:
       operationId: CartGateway_addItem
       parameters:
@@ -357,7 +395,7 @@ paths:
         "201":
           description: ""
       tags: *a4
-  /cart/{sellerId}/update/{productId}:
+  /cart/update:
     patch:
       operationId: CartGateway_updateItem
       parameters:
@@ -366,21 +404,11 @@ paths:
           in: header
           schema:
             type: string
-        - name: sellerId
-          required: true
-          in: path
-          schema:
-            type: string
-        - name: productId
-          required: true
-          in: path
-          schema:
-            type: string
       responses:
         "200":
           description: ""
       tags: *a4
-  /cart/{sellerId}/remove/{productId}:
+  /cart/product:
     delete:
       operationId: CartGateway_removeItem
       parameters:
@@ -389,18 +417,34 @@ paths:
           in: header
           schema:
             type: string
-        - name: sellerId
+      responses:
+        "200":
+          description: ""
+      tags: *a4
+  /cart/productQuantity:
+    patch:
+      operationId: CartGateway_updateQuantity
+      parameters:
+        - name: authorization
           required: true
-          in: path
-          schema:
-            type: string
-        - name: productId
-          required: true
-          in: path
+          in: header
           schema:
             type: string
       responses:
         "200":
+          description: ""
+      tags: *a4
+  /cart/order:
+    post:
+      operationId: CartGateway_createOrder
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
           description: ""
       tags: *a4
   /reviews:
@@ -522,6 +566,81 @@ paths:
           description: ""
       tags:
         - MediaGateway
+  /seller/orders:
+    get:
+      operationId: SellerAnalyticsGateway_getOrders
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: &a6
+        - SellerAnalyticsGateway
+  /seller/orders/{id}/confirm:
+    put:
+      operationId: SellerAnalyticsGateway_confirmOrder
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a6
+  /seller/orders/{id}/reject:
+    put:
+      operationId: SellerAnalyticsGateway_rejectOrder
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a6
+  /analytics/revenue:
+    get:
+      operationId: SellerAnalyticsGateway_getRevenue
+      parameters:
+        - name: type
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a6
+  /orders:
+    post:
+      operationId: OrderGateway_create
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: &a7
+        - OrderGateway
+  /orders/seller:
+    get:
+      operationId: OrderGateway_getCart
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a7
 info:
   title: Click2Buy - API Gateway
   description: API Gateway for Click2Buy microservices.
@@ -629,25 +748,80 @@ components:
       properties:
         line1:
           type: string
-          example: 123 Nguyễn Trãi
         line2:
           type: string
-          example: Tầng 2
         city:
           type: string
-          example: Hà Nội
         province:
           type: string
-          example: Thanh Xuân
         country:
           type: string
-          example: Việt Nam
         postalCode:
           type: string
-          example: "100000"
       required:
         - line1
         - city
+    ProductDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        salePrice:
+          type: number
+        isActive:
+          type: boolean
+        brand:
+          type: string
+        condition:
+          type: string
+          enum:
+            - new
+            - used
+          description: Tình trạng sản phẩm
+        categoryIds:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        images:
+          type: array
+          items:
+            type: string
+        attributes:
+          type: object
+          description: "Thông tin tuỳ chỉnh (ví dụ: màu sắc, kích thước)"
+        variants:
+          type: object
+          description: "Biến thể sản phẩm (ví dụ: S/M/L, màu sắc…) "
+        ratingAvg:
+          type: number
+          default: 0
+        warehouseAddress:
+          $ref: "#/components/schemas/WarehouseAddress"
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+        - id
+        - name
+        - price
+        - isActive
+        - brand
+        - condition
+        - createdAt
+        - updatedAt
     CreateProductDto:
       type: object
       properties:
@@ -710,67 +884,6 @@ components:
         - name
         - price
         - brand
-    ProductDto:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        price:
-          type: number
-        salePrice:
-          type: number
-        isActive:
-          type: boolean
-        brand:
-          type: string
-        condition:
-          type: string
-          enum:
-            - new
-            - used
-          description: Tình trạng sản phẩm
-        categoryIds:
-          type: array
-          items:
-            type: string
-        tags:
-          type: array
-          items:
-            type: string
-        images:
-          type: array
-          items:
-            type: string
-        attributes:
-          type: object
-          description: "Thông tin tuỳ chỉnh (ví dụ: màu sắc, kích thước)"
-        variants:
-          type: object
-          description: "Biến thể sản phẩm (ví dụ: S/M/L, màu sắc…) "
-        ratingAvg:
-          type: number
-          default: 0
-        warehouseAddress:
-          $ref: "#/components/schemas/WarehouseAddress"
-        createdAt:
-          format: date-time
-          type: string
-        updatedAt:
-          format: date-time
-          type: string
-      required:
-        - id
-        - name
-        - price
-        - isActive
-        - brand
-        - condition
-        - createdAt
-        - updatedAt
     SimpleSearchDto:
       type: object
       properties:
