@@ -10,7 +10,7 @@ import {
   Trash2,
   Truck
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Order, StoreProduct } from 'types';
 import { formatPrice } from '../../lib/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -69,6 +69,15 @@ export function MyStorePage({
   onUpdateOrderStatus
 }: MyStorePageProps) {
   const [selectedTab, setSelectedTab] = useState('products');
+  
+  // Log khi storeProducts thay đổi
+  useEffect(() => {
+    console.log('🏪 [MyStorePage] Nhận được storeProducts:', storeProducts);
+    console.log(`📦 [MyStorePage] Tổng số sản phẩm: ${storeProducts.length}`);
+    if (storeProducts.length > 0) {
+      console.log('✅ [MyStorePage] Sản phẩm đầu tiên:', storeProducts[0]);
+    }
+  }, [storeProducts]);
   const [orderTab, setOrderTab] = useState<OrderTab>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
@@ -374,9 +383,7 @@ export function MyStorePage({
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              if (confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
-                                onDeleteProduct(product.id);
-                              }
+                              onDeleteProduct(product.id);
                             }}
                           >
                             <Trash2 className="w-4 h-4 text-red-500" />

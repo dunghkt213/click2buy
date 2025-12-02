@@ -1,4 +1,4 @@
-import { Product } from "../types";
+import { Product, StoreProduct } from "../types";
 import { request } from './api/apiClient';
 
 // -------------------------------
@@ -41,6 +41,46 @@ export function mapProductResponse(data: any): Product {
   }
   
   return mapped;
+}
+
+// -------------------------------
+// Convert backend product response to StoreProduct
+// -------------------------------
+export function mapBackendProductToStoreProduct(data: any): StoreProduct {
+  // Ưu tiên salePrice làm giá bán, nếu không có thì dùng price
+  const salePrice = data.salePrice || data.sale_price;
+  const originalPrice = data.price || data.originalPrice;
+  const displayPrice = salePrice || originalPrice;
+  
+  // Map categoryIds array thành string
+  const categoryStr = data.categoryIds && Array.isArray(data.categoryIds) 
+    ? data.categoryIds.join(', ') 
+    : '';
+  
+  // Map status từ backend (ACTIVE/INACTIVE) sang frontend format
+  let status: 'active' | 'inactive' | 'out_of_stock' = 'active';
+  if (data.isActive === false || data.status === 'INACTIVE') {
+    status = 'inactive';
+  } else if (data.status === 'OUT_OF_STOCK') {
+    status = 'out_of_stock';
+  }
+  
+  return {
+    id: data._id || data.id,
+    name: data.name,
+    price: displayPrice, // Giá bán (ưu tiên salePrice)
+    originalPrice: salePrice ? originalPrice : undefined, // Giá gốc chỉ hiển thị khi có salePrice
+    stock: data.stock || 0, // Stock có thể cần lấy từ inventory service, tạm thời để 0
+    sold: data.soldCount || 0, // Số lượng đã bán, tạm thời để 0
+    image: data.images && data.images.length > 0 ? data.images[0] : (data.image || ''),
+    images: data.images || (data.image ? [data.image] : []),
+    category: categoryStr,
+    description: data.description || '',
+    status: status,
+    createdAt: data.createdAt || new Date().toISOString(),
+    rating: data.ratingAvg || data.rating || 0,
+    reviews: data.reviews || 0,
+  };
 }
 
 // -------------------------------
@@ -191,10 +231,92 @@ async function update(id: string, dto: {
 // Xóa sản phẩm (seller)
 // -------------------------------
 async function remove(id: string): Promise<{ success: boolean; message: string }> {
-  return request<{ success: boolean; message: string }>(`/products/${id}`, {
+  console.log(`🗑️ [ProductAPI] Gọi API DELETE /products/${id}`);
+  
+  const response = await request<any>(`/products/${id}`, {
     method: 'DELETE',
     requireAuth: true,
   });
+  
+  console.log('✅ [ProductAPI] Xóa sản phẩm thành công:', response);
+  
+  // Backend trả về { success: true, message: '...' } hoặc chỉ message
+  if (typeof response === 'object' && response.success !== undefined) {
+    return response as { success: boolean; message: string };
+  }
+  
+  return {
+    success: true,
+    message: response?.message || 'Sản phẩm đã được xóa thành công'
+  };
+}
+
+// -------------------------------
+// Lấy tất cả sản phẩm của seller hiện tại
+// -------------------------------
+async function getAllBySeller(query?: {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  sort?: string;
+}): Promise<StoreProduct[]> {
+  const params = new URLSearchParams();
+  if (query?.page) params.append('page', query.page.toString());
+  if (query?.limit) params.append('limit', query.limit.toString());
+  if (query?.keyword) params.append('keyword', query.keyword);
+  if (query?.sort) params.append('sort', query.sort);
+  
+  const queryString = params.toString();
+  console.log(`🔍 [ProductAPI] Gọi API GET /products/seller${queryString ? `?${queryString}` : ''}`);
+  
+  const response = await request<any>(`/products/seller${queryString ? `?${queryString}` : ''}`, {
+    method: 'GET',
+    requireAuth: true,
+  });
+  
+  console.log('📥 [ProductAPI] Response từ API /products/seller (raw):', response);
+  console.log('📥 [ProductAPI] Response type:', typeof response, Array.isArray(response) ? 'Array' : 'Object');
+  
+  // apiClient trả về payload.data ?? payload
+  // Nếu backend trả về { success: true, data: [...], pagination: {...} }
+  // thì apiClient sẽ trả về data (array) trực tiếp
+  // Nếu backend trả về array trực tiếp, thì apiClient cũng trả về array
+  // Nếu backend trả về { success: true, data: [...] } nhưng apiClient đã unwrap, thì response là array
+  
+  let products: any[] = [];
+  
+  if (Array.isArray(response)) {
+    // Response đã là array rồi (apiClient đã unwrap)
+    products = response;
+  } else if (response && typeof response === 'object') {
+    // Response là object, có thể có data field
+    if (Array.isArray(response.data)) {
+      products = response.data;
+    } else if (Array.isArray(response)) {
+      products = response;
+    } else {
+      console.error('❌ [ProductAPI] Dữ liệu không hợp lệ - không phải array:', response);
+      throw new Error("Dữ liệu sản phẩm không hợp lệ: không phải array");
+    }
+  } else {
+    console.error('❌ [ProductAPI] Dữ liệu không hợp lệ:', response);
+    throw new Error("Dữ liệu sản phẩm không hợp lệ");
+  }
+  
+  if (!Array.isArray(products) || products.length === 0) {
+    console.warn('⚠️ [ProductAPI] Không có sản phẩm nào:', products);
+    return []; // Trả về array rỗng thay vì throw error
+  }
+  
+  console.log(`📦 [ProductAPI] Nhận được ${products.length} sản phẩm từ backend`);
+  console.log('📦 [ProductAPI] Sản phẩm đầu tiên (raw):', products[0]);
+  
+  // Convert từ backend product response sang StoreProduct
+  const storeProducts = products.map(mapBackendProductToStoreProduct);
+  console.log('✅ [ProductAPI] Đã convert sang StoreProduct:', storeProducts);
+  console.log('✅ [ProductAPI] Sản phẩm đầu tiên (converted):', storeProducts[0]);
+  
+  return storeProducts;
 }
 
 // -------------------------------
@@ -207,4 +329,5 @@ export const productApi = {
   create,
   update,
   remove,
+  getAllBySeller,
 };

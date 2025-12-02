@@ -280,6 +280,65 @@ export default function App() {
     fetchUserInfoOnMount();
   }, [isLoggedIn, user?.id]);
 
+  // Load seller products từ API khi mở My Store page
+  useEffect(() => {
+    const loadSellerProducts = async () => {
+      if (isMyStorePageOpen && isLoggedIn && user?.role === 'seller') {
+        console.log('🛒 [My Store] Bắt đầu load seller products...');
+        console.log('🛒 [My Store] User info:', { id: user?.id, role: user?.role, isLoggedIn });
+        console.log('🛒 [My Store] Token:', authStorage.getToken() ? 'Có token' : 'Không có token');
+        
+        try {
+          const products = await productApi.getAllBySeller();
+          console.log('✅ [My Store] Load seller products thành công:', products);
+          console.log(`📦 [My Store] Tổng số sản phẩm: ${products.length}`);
+          
+          if (products.length === 0) {
+            console.warn('⚠️ [My Store] Không có sản phẩm nào được trả về từ API');
+            toast.info('Bạn chưa có sản phẩm nào trong cửa hàng. Hãy thêm sản phẩm mới!');
+          } else {
+            toast.success(`Đã tải ${products.length} sản phẩm từ cửa hàng của bạn`);
+          }
+          
+          setStoreProducts(products);
+          
+          // Cập nhật storeInfo với totalProducts
+          if (storeInfo) {
+            setStoreInfo({
+              ...storeInfo,
+              totalProducts: products.length
+            });
+          }
+        } catch (error: any) {
+          console.error('❌ [My Store] Failed to load seller products:', error);
+          console.error('❌ [My Store] Error details:', {
+            message: error.message,
+            status: error.status,
+            data: error.data
+          });
+          
+          // Hiển thị error message chi tiết
+          if (error.status === 401) {
+            toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+          } else if (error.status === 404) {
+            console.log('ℹ️ [My Store] Không tìm thấy sản phẩm (404) - có thể chưa có sản phẩm');
+            setStoreProducts([]); // Set empty array
+          } else {
+            toast.error(error.message || 'Không thể tải danh sách sản phẩm. Vui lòng thử lại.');
+          }
+        }
+      } else {
+        console.log('⏭️ [My Store] Bỏ qua load - điều kiện không đủ:', {
+          isMyStorePageOpen,
+          isLoggedIn,
+          userRole: user?.role
+        });
+      }
+    };
+
+    loadSellerProducts();
+  }, [isMyStorePageOpen, isLoggedIn, user?.role, user?.id]);
+
   // Account functions
   const handleLogin = () => {
     setAuthTab('login');
@@ -728,6 +787,22 @@ export default function App() {
       }
       
       toast.success('Sản phẩm đã được thêm thành công!');
+      
+      // Reload seller products từ API để cập nhật danh sách
+      if (isMyStorePageOpen && user?.role === 'seller') {
+        try {
+          const products = await productApi.getAllBySeller();
+          setStoreProducts(products);
+          if (storeInfo) {
+            setStoreInfo({
+              ...storeInfo,
+              totalProducts: products.length
+            });
+          }
+        } catch (err) {
+          console.error('Failed to reload seller products:', err);
+        }
+      }
     } catch (error: any) {
       console.error('Failed to add product:', error);
       toast.error(error.message || 'Không thể thêm sản phẩm. Vui lòng thử lại.');
@@ -743,17 +818,78 @@ export default function App() {
     alert('Sản phẩm đã được cập nhật!');
   };
 
-  const handleDeleteProduct = (id: string) => {
-    setStoreProducts(prev => prev.filter(product => product.id !== id));
+  const handleDeleteProduct = async (id: string) => {
+    // Hiển thị confirmation dialog
+    const confirmed = window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này? Hành động này không thể hoàn tác.');
     
-    if (storeInfo) {
-      setStoreInfo({
-        ...storeInfo,
-        totalProducts: storeProducts.length - 1
-      });
+    if (!confirmed) {
+      console.log('❌ [My Store] Người dùng hủy xóa sản phẩm');
+      return;
     }
     
-    alert('Sản phẩm đã được xóa!');
+    console.log(`🗑️ [My Store] Bắt đầu xóa sản phẩm với ID: ${id}`);
+    
+    try {
+      // Gọi API xóa sản phẩm
+      const result = await productApi.remove(id);
+      console.log('✅ [My Store] Xóa sản phẩm thành công:', result);
+      
+      // Reload seller products từ API để cập nhật danh sách
+      if (isMyStorePageOpen && user?.role === 'seller') {
+        try {
+          console.log('🔄 [My Store] Reload danh sách sản phẩm sau khi xóa...');
+          const products = await productApi.getAllBySeller();
+          setStoreProducts(products);
+          
+          if (storeInfo) {
+            setStoreInfo({
+              ...storeInfo,
+              totalProducts: products.length
+            });
+          }
+          
+          console.log(`✅ [My Store] Đã reload ${products.length} sản phẩm`);
+        } catch (err: any) {
+          console.error('❌ [My Store] Failed to reload seller products:', err);
+          // Vẫn xóa khỏi local state nếu reload thất bại
+          setStoreProducts(prev => prev.filter(product => product.id !== id));
+          if (storeInfo) {
+            setStoreInfo({
+              ...storeInfo,
+              totalProducts: storeProducts.length - 1
+            });
+          }
+        }
+      } else {
+        // Nếu không phải My Store page, chỉ xóa khỏi state
+        setStoreProducts(prev => prev.filter(product => product.id !== id));
+        if (storeInfo) {
+          setStoreInfo({
+            ...storeInfo,
+            totalProducts: storeProducts.length - 1
+          });
+        }
+      }
+      
+      toast.success(result.message || 'Sản phẩm đã được xóa thành công!');
+    } catch (error: any) {
+      console.error('❌ [My Store] Failed to delete product:', error);
+      console.error('❌ [My Store] Error details:', {
+        message: error.message,
+        status: error.status,
+        data: error.data
+      });
+      
+      if (error.status === 403) {
+        toast.error('Bạn không có quyền xóa sản phẩm này.');
+      } else if (error.status === 404) {
+        toast.error('Không tìm thấy sản phẩm để xóa.');
+      } else if (error.status === 401) {
+        toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      } else {
+        toast.error(error.message || 'Không thể xóa sản phẩm. Vui lòng thử lại.');
+      }
+    }
   };
 
   const sharedHeader = (

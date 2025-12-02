@@ -45,6 +45,66 @@ paths:
         "201":
           description: ""
       tags: *a1
+  /auth/google:
+    get:
+      operationId: AuthGateway_googleAuth
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: *a1
+  /auth/google/callback:
+    get:
+      operationId: AuthGateway_googleAuthCallback
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: *a1
+  /auth/facebook:
+    get:
+      operationId: AuthGateway_facebookAuth
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: *a1
+  /auth/facebook/callback:
+    get:
+      operationId: AuthGateway_facebookAuthCallback
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: *a1
+  /auth/login-sms:
+    post:
+      operationId: AuthGateway_sendOtp
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOtpDto"
+      responses:
+        "201":
+          description: ""
+      tags: *a1
+  /auth/verify-sms:
+    post:
+      operationId: AuthGateway_verifyOtp
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpDto"
+      responses:
+        "201":
+          description: ""
+      tags: *a1
   /users:
     post:
       operationId: UserGateway_create
@@ -707,6 +767,12 @@ components:
         - email
         - role
         - password
+    SendOtpDto:
+      type: object
+      properties: {}
+    VerifyOtpDto:
+      type: object
+      properties: {}
     CreateUserDto:
       type: object
       properties:
