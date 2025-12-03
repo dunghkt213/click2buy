@@ -13,6 +13,8 @@ export class UserGateway {
     this.kafka.subscribeToResponseOf('user.update');
     this.kafka.subscribeToResponseOf('user.deactivate');
     this.kafka.subscribeToResponseOf('user.updateRoleSeller');
+    this.kafka.subscribeToResponseOf('user.getInforShop');
+    
     await this.kafka.connect();
   }
 
@@ -28,6 +30,11 @@ export class UserGateway {
 
   @Get(':id')
   findOne(@Param('id') id: string, @Headers('authorization') auth?: string) {
+    return this.kafka.send('user.findOne', { id, auth });
+  }
+
+  @Get('shop/:id')
+  getInforShop(@Param('id') id: string, @Headers('authorization') auth?: string) {
     return this.kafka.send('user.findOne', { id, auth });
   }
 
