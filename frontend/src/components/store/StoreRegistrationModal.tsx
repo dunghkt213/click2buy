@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
+import { AlertCircle, Store } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { StoreInfo } from 'types';
+import { userApi } from '../../apis/user';
 import { Button } from '../ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
-import { Store, AlertCircle } from 'lucide-react';
-import { StoreInfo } from 'types';
+import { Textarea } from '../ui/textarea';
 
 interface StoreRegistrationModalProps {
   isOpen: boolean;
@@ -28,6 +30,7 @@ export function StoreRegistrationModal({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -64,10 +67,29 @@ export function StoreRegistrationModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (validateForm()) {
-      onRegister(formData);
-      // Reset form sau khi submit
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      // Map form data to API format
+      const payload = {
+        shopName: formData.name.trim(),
+        shopDescription: formData.description.trim(),
+        shopAddress: formData.address.trim(),
+        shopPhone: formData.phone.trim().replace(/\s/g, ''),
+        shopEmail: formData.email.trim(),
+      };
+
+      // Call API to update user role to seller
+      await userApi.updateRoleSeller(payload);
+
+      toast.success('Đăng ký cửa hàng thành công! Vai trò của bạn đã được cập nhật thành seller.');
+      
+      // Reset form
       setFormData({
         name: '',
         description: '',
@@ -76,7 +98,29 @@ export function StoreRegistrationModal({
         email: ''
       });
       setErrors({});
-      // Modal sẽ được đóng bởi onRegister handler
+
+      // Close modal
+      onClose();
+
+      // Call onRegister callback for backward compatibility (parent can refresh user info)
+      onRegister({
+        name: payload.shopName,
+        description: payload.shopDescription,
+        address: payload.shopAddress,
+        phone: payload.shopPhone,
+        email: payload.shopEmail,
+      });
+
+      // Reload page to refresh user info and role
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (error: any) {
+      console.error('Failed to register store:', error);
+      const errorMessage = error?.message || error?.response?.data?.message || 'Không thể đăng ký cửa hàng. Vui lòng thử lại.';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -272,8 +316,9 @@ export function StoreRegistrationModal({
           <Button 
             onClick={handleSubmit}
             className="flex-1"
+            disabled={isSubmitting}
           >
-            Đăng ký cửa hàng
+            {isSubmitting ? 'Đang xử lý...' : 'Đăng ký cửa hàng'}
           </Button>
         </div>
       </DialogContent>

@@ -1,5 +1,4 @@
 import { request } from '../client/apiClient';
-import { User } from '../../types';
 
 export interface BackendUser {
   id?: string;
@@ -85,6 +84,22 @@ export const userApi = {
   deactivate: (id: string) =>
     request<{ success: boolean; message: string }>(`/users/${id}`, {
       method: 'DELETE',
+      requireAuth: true,
+    }),
+
+  /**
+   * Cập nhật role user lên seller
+   */
+  updateRoleSeller: (payload: {
+    shopName: string;
+    shopDescription: string;
+    shopAddress: string;
+    shopPhone: string;
+    shopEmail: string;
+  }) =>
+    request<BackendUser>('/users/seller', {
+      method: 'POST',
+      body: JSON.stringify(payload),
       requireAuth: true,
     }),
 };
