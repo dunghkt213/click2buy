@@ -204,8 +204,27 @@ async findBy(field: 'username' | 'email' | '_id', value: string) {
   }
 
   // user.service.ts
-async findWithPassword(email: string) {
-  return this.userModel.findOne({ email: email.toLowerCase().trim() }).select('+passwordHash').lean().exec();
+ async updateRoleSeller(userId: string, payload: any) {
+  // Validate tối thiểu
+  if (!payload.shopName || !payload.shopAddress || !payload.shopPhone) {
+    throw new BadRequestException(
+      'shopName, shopAddress and shopPhone are required for seller registration'
+    );
+  }
+  // Tự set role = seller
+  payload.role = UserRole.SELLER;
+
+  const updated = await this.userModel.findByIdAndUpdate(
+    userId,
+    { $set: payload },
+    { new: true }
+  );
+
+  if (!updated) {
+    throw new NotFoundException('User not found');
+  }
+
+  return this.toUserDto(updated);
 }
 
 // ==================== SOCIAL LOGIN ====================

@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, Inject, NotFoundException ,BadRequestException} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ClientKafka } from '@nestjs/microservices';
@@ -41,7 +41,13 @@ async getAllOrderForSaller (ownerId: string) {
     throw err.message;
   }
 }
-
+async getAllOrderForUser (userId: string) {
+  try {
+    return this.orderModel.find({userId});
+  } catch(err){
+    throw err.message;
+  }
+}
 async createOrders(input: {
   userId: string;
   paymentMethod: string;

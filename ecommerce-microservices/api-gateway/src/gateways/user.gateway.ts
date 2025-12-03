@@ -12,6 +12,7 @@ export class UserGateway {
     this.kafka.subscribeToResponseOf('user.findOne');
     this.kafka.subscribeToResponseOf('user.update');
     this.kafka.subscribeToResponseOf('user.deactivate');
+    this.kafka.subscribeToResponseOf('user.updateRoleSeller');
     await this.kafka.connect();
   }
 
@@ -39,4 +40,15 @@ export class UserGateway {
   deactivate(@Param('id') id: string, @Headers('authorization') auth?: string) {
     return this.kafka.send('user.deactivate', { id, auth });
   }
+  @Post('seller')
+  updateRoleSeller(
+  @Body() payload: any,
+  @Headers('authorization') auth?: string
+) {
+  return this.kafka.send('user.updateRoleSeller', {      
+    ...payload,    
+    auth,          
+  });
+}
+
 }
