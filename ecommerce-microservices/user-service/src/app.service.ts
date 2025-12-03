@@ -29,6 +29,11 @@ export class AppService  {
       createdAt: obj.createdAt,
       updatedAt: obj.updatedAt,
       address: obj.address || [],
+      shopName: obj.shopName,
+      shopDescription: obj.shopDescription,
+      shopAddress :obj.shopAddress,
+      shopPhone: obj.shopPhone,
+      shopEmail: obj.shopEmail,
     };
   }
 
