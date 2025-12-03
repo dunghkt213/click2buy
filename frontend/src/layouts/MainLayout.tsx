@@ -80,7 +80,6 @@ export function MainLayout({ children }: MainLayoutProps) {
       isProductDetailOpen={app.modals.isProductDetailOpen}
       selectedProduct={app.modals.selectedProduct}
       onProductDetailClose={() => app.modals.closeProductDetail()}
-      onAddToCart={app.addToCart}
       flyingIcons={app.flyingIcons}
       onAnimationComplete={app.handleAnimationComplete}
       onTriggerFlyingIcon={app.handleTriggerFlyingIcon}
