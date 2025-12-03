@@ -47,12 +47,10 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
           setStoreProducts(products);
           
           // Cập nhật storeInfo với totalProducts
-          if (storeInfo) {
-            setStoreInfo({
-              ...storeInfo,
-              totalProducts: products.length,
-            });
-          }
+          setStoreInfo(prev => prev ? {
+            ...prev,
+            totalProducts: products.length,
+          } : null);
         } catch (error: any) {
           console.error('❌ [My Store] Failed to load seller products:', error);
           
@@ -69,7 +67,7 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
     };
 
     loadSellerProducts();
-  }, [isMyStorePageOpen, isLoggedIn, userRole, userId, storeInfo]);
+  }, [isMyStorePageOpen, isLoggedIn, userRole, userId]);
 
   const handleAddProduct = useCallback(async (productFormData: {
     name: string;
@@ -149,6 +147,21 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
     }
   }, [isMyStorePageOpen, userRole, storeInfo]);
 
+  const handleUpdateProduct = useCallback(async (id: string, updates: Partial<StoreProduct>) => {
+    try {
+      // TODO: Implement API call to update product
+      setStoreProducts(prev => prev.map(product => 
+        product.id === id 
+          ? { ...product, ...updates }
+          : product
+      ));
+      toast.success('Sản phẩm đã được cập nhật!');
+    } catch (error: any) {
+      console.error('Failed to update product:', error);
+      toast.error(error.message || 'Không thể cập nhật sản phẩm. Vui lòng thử lại.');
+    }
+  }, []);
+
   const handleDeleteProduct = useCallback(async (id: string) => {
     const confirmed = window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này? Hành động này không thể hoàn tác.');
     
@@ -160,7 +173,7 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
       const result = await productService.remove(id);
       
       // Reload seller products từ API
-      if (isMyStorePageOpen && userRole === 'seller') {
+      if (userRole === 'seller') {
         try {
           const products = await productService.getAllBySeller();
           setStoreProducts(products);
@@ -223,6 +236,7 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
     setStoreProducts,
     setIsMyStorePageOpen,
     handleAddProduct,
+    handleUpdateProduct,
     handleDeleteProduct,
     handleStoreRegistration,
   };

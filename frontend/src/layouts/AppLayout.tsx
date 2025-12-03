@@ -10,7 +10,7 @@ import { CartSidebar } from '../components/cart/CartSidebar';
 import { Footer } from '../components/layout/Footer';
 import { Header } from '../components/layout/Header';
 import { ProductDetailModal } from '../components/review/ProductDetailModal';
-import { CheckoutModal } from '../components/search/CheckoutModal';
+import { CheckoutModal } from '../components/payment/CheckoutModal';
 import { NotificationSidebar } from '../components/sidebars/NotificationSidebar';
 import { PromotionSidebar } from '../components/sidebars/PromotionSidebar';
 import { SupportSidebar } from '../components/sidebars/SupportSidebar';
@@ -65,12 +65,14 @@ interface AppLayoutProps {
   
   // Promotions
   promotions: Promotion[];
+  onPromotionClick: () => void;
   onClaimPromotion: (id: string) => void;
   onUsePromotion: (id: string) => void;
   
   // Support
   faqs: FAQItem[];
   supportTickets: SupportTicket[];
+  onSupportClick: () => void;
   onSubmitTicket: (subject: string, message: string, category: string) => void;
   
   // Store
@@ -88,10 +90,14 @@ interface AppLayoutProps {
   
   // Sidebars
   isCartOpen: boolean;
+  onCartClick?: () => void;
   onCartClose: () => void;
+  onOpenCheckout?: () => void;
   isNotificationOpen: boolean;
+  onNotificationClick?: () => void;
   onNotificationClose: () => void;
   isWishlistOpen: boolean;
+  onWishlistClick?: () => void;
   onWishlistClose: () => void;
   isPromotionOpen: boolean;
   onPromotionClose: () => void;
@@ -119,6 +125,7 @@ interface AppLayoutProps {
   // Flying icons
   flyingIcons: FlyingIconConfig[];
   onAnimationComplete: (id: string) => void;
+  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void;
   
   // Refs
   cartIconRef: React.RefObject<HTMLButtonElement>;
@@ -160,10 +167,12 @@ export function AppLayout(props: AppLayoutProps) {
     onDeleteNotification,
     onFilterClick,
     promotions,
+    onPromotionClick,
     onClaimPromotion,
     onUsePromotion,
     faqs,
     supportTickets,
+    onSupportClick,
     onSubmitTicket,
     onStoreClick,
     onLogoClick,
@@ -173,10 +182,14 @@ export function AppLayout(props: AppLayoutProps) {
     onProfileClick,
     onOrdersClick,
     isCartOpen,
+    onCartClick,
     onCartClose,
+    onOpenCheckout,
     isNotificationOpen,
+    onNotificationClick,
     onNotificationClose,
     isWishlistOpen,
+    onWishlistClick,
     onWishlistClose,
     isPromotionOpen,
     onPromotionClose,
@@ -197,6 +210,7 @@ export function AppLayout(props: AppLayoutProps) {
     isInWishlist,
     flyingIcons,
     onAnimationComplete,
+    onTriggerFlyingIcon,
     cartIconRef,
     wishlistIconRef,
   } = props;
@@ -207,12 +221,12 @@ export function AppLayout(props: AppLayoutProps) {
         cartItemsCount={cartItemsCount}
         wishlistItemsCount={wishlistItemsCount}
         unreadNotifications={unreadNotifications}
-        onCartClick={onCartClose}
-        onWishlistClick={onWishlistClose}
-        onNotificationsClick={onNotificationClose}
+        onCartClick={onCartClick || onCartClose}
+        onWishlistClick={onWishlistClick || (() => {})}
+        onNotificationsClick={onNotificationClick || (() => {})}
         onFilterClick={onFilterClick}
-        onPromotionClick={onPromotionClose}
-        onSupportClick={onSupportClose}
+        onPromotionClick={onPromotionClick || (() => {})}
+        onSupportClick={onSupportClick || (() => {})}
         onStoreClick={onStoreClick}
         onLogoClick={onLogoClick}
         isLoggedIn={isLoggedIn}
@@ -250,7 +264,9 @@ export function AppLayout(props: AppLayoutProps) {
         onCheckout={() => {
           if (selectedItems.length > 0) {
             onCartClose();
-            onCheckoutClose();
+            if (onOpenCheckout) {
+              onOpenCheckout();
+            }
           }
         }}
       />
@@ -316,6 +332,7 @@ export function AppLayout(props: AppLayoutProps) {
         product={selectedProduct}
         onAddToCart={onAddToCart}
         onAddToWishlist={onAddToWishlist}
+        onTriggerFlyingIcon={onTriggerFlyingIcon}
         isLoggedIn={isLoggedIn}
         onLogin={onLogin}
       />

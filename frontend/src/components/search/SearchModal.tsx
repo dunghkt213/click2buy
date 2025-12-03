@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CartItem, FilterState, Product } from 'types';
 import { productApi } from '../../apis/product';
+import { FlyingIcon, FlyingIconConfig } from '../animation/FlyingIcon';
 import { Footer } from '../layout/Footer';
 import { Header } from '../layout/Header';
 import { ProductCard } from '../product/ProductCard';
@@ -40,6 +41,8 @@ interface SearchModalProps {
   totalPrice?: number; // THÊM: Total price cho preview
   cartIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho cart icon
   wishlistIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho wishlist icon
+  flyingIcons?: FlyingIconConfig[]; // THÊM: Flying icons cho animation
+  onAnimationComplete?: (id: string) => void; // THÊM: Callback khi animation complete
 }
 
 export function SearchModal({ 
@@ -72,6 +75,8 @@ export function SearchModal({
   totalPrice, // THÊM
   cartIconRef, // THÊM
   wishlistIconRef, // THÊM
+  flyingIcons = [], // THÊM
+  onAnimationComplete, // THÊM
 }: SearchModalProps) {
   const [inputValue, setInputValue] = useState(''); // Giá trị tạm trong input
   const [searchQuery, setSearchQuery] = useState(''); // Giá trị thực tế để filter
@@ -354,10 +359,12 @@ export function SearchModal({
                       product={product}
                       onAddToCart={onAddToCart}
                       viewMode="grid"
-                      onViewDetail={onViewDetail} // THÊM
-                      onAddToWishlist={onAddToWishlist} // THÊM
-                      isInWishlist={isInWishlist ? isInWishlist(product.id) : false} // SỬA: Gọi hàm isInWishlist với product.id
-                      onTriggerFlyingIcon={onTriggerFlyingIcon} // THÊM
+                      onViewDetail={onViewDetail}
+                      onAddToWishlist={onAddToWishlist}
+                      isInWishlist={isInWishlist ? isInWishlist(product.id) : false}
+                      onTriggerFlyingIcon={onTriggerFlyingIcon}
+                      isLoggedIn={isLoggedIn}
+                      onLogin={onLogin}
                     />
                   ))}
                 </div>
@@ -368,6 +375,14 @@ export function SearchModal({
       </main>
 
       <Footer />
+
+      {/* Flying Icons Animation */}
+      {flyingIcons && flyingIcons.length > 0 && onAnimationComplete && (
+        <FlyingIcon
+          icons={flyingIcons}
+          onComplete={onAnimationComplete}
+        />
+      )}
     </div>
   );
 }

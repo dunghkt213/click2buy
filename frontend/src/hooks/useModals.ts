@@ -11,8 +11,10 @@ export function useModals() {
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [isStoreRegistrationOpen, setIsStoreRegistrationOpen] = useState(false);
   const [showAuthCallback, setShowAuthCallback] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const openCheckout = useCallback(() => setIsCheckoutOpen(true), []);
   const closeCheckout = useCallback(() => setIsCheckoutOpen(false), []);
@@ -38,14 +40,20 @@ export function useModals() {
   const showAuthCallbackModal = useCallback(() => setShowAuthCallback(true), []);
   const hideAuthCallbackModal = useCallback(() => setShowAuthCallback(false), []);
 
+  const openSearch = useCallback(() => setIsSearchOpen(true), []);
+  const closeSearch = useCallback(() => setIsSearchOpen(false), []);
+
   return {
     isCheckoutOpen,
     isAuthOpen,
     isProductDetailOpen,
     isStoreRegistrationOpen,
+    isSearchOpen,
     showAuthCallback,
     authTab,
     selectedProduct,
+    searchQuery,
+    setSearchQuery,
     openCheckout,
     closeCheckout,
     openAuth,
@@ -56,6 +64,8 @@ export function useModals() {
     closeStoreRegistration,
     showAuthCallbackModal,
     hideAuthCallbackModal,
+    openSearch,
+    closeSearch,
   };
 }
 

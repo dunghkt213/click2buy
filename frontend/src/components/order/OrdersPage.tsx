@@ -90,7 +90,7 @@ export function OrdersPage({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-16">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="container mx-auto px-4 py-4">

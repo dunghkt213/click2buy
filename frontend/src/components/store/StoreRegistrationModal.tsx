@@ -16,7 +16,7 @@ interface StoreRegistrationModalProps {
 
 export function StoreRegistrationModal({
   isOpen,
-  onClose,
+  onClose = () => {},
   onRegister
 }: StoreRegistrationModalProps) {
   const [formData, setFormData] = useState({
@@ -67,7 +67,7 @@ export function StoreRegistrationModal({
   const handleSubmit = () => {
     if (validateForm()) {
       onRegister(formData);
-      // Reset form
+      // Reset form sau khi submit
       setFormData({
         name: '',
         description: '',
@@ -76,6 +76,22 @@ export function StoreRegistrationModal({
         email: ''
       });
       setErrors({});
+      // Modal sẽ được đóng bởi onRegister handler
+    }
+  };
+
+  const handleClose = () => {
+    // Reset form khi đóng modal
+    setFormData({
+      name: '',
+      description: '',
+      address: '',
+      phone: '',
+      email: ''
+    });
+    setErrors({});
+    if (typeof onClose === 'function') {
+      onClose();
     }
   };
 
@@ -88,8 +104,24 @@ export function StoreRegistrationModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        handleClose();
+      } else {
+        // Nếu mở lại thì giữ nguyên
+      }
+    }}>
+      <DialogContent 
+        className="max-w-2xl"
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
+      >
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -232,7 +264,7 @@ export function StoreRegistrationModal({
         <div className="flex gap-3 pt-4 border-t">
           <Button 
             variant="outline" 
-            onClick={onClose}
+            onClick={handleClose}
             className="flex-1"
           >
             Hủy bỏ

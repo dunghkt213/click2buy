@@ -109,7 +109,8 @@ export function useApp() {
     onOrderCreated: (order) => {
       orders.setOrders(prev => [order, ...prev]);
       modals.closeCheckout();
-      navigation.navigateToOrders();
+      // Navigate to orders page
+      window.location.href = '/orders';
     },
   });
 
@@ -152,38 +153,45 @@ export function useApp() {
     }
   }, [modals]);
 
-  // Store click handler
+  // Store click handler - navigate to /my-store
   const handleStoreClick = () => {
+    if (!isLoggedIn) {
+      modals.openAuth('login');
+      return;
+    }
     if (user?.role === 'seller') {
-      store.setIsMyStorePageOpen(true);
-      if (!store.hasStore) {
-        store.setHasStore(true);
-      }
+      // Navigate to my store page
+      window.location.href = '/my-store';
       return;
     }
     if (!store.hasStore) {
       modals.openStoreRegistration();
     } else {
-      store.setIsMyStorePageOpen(true);
+      window.location.href = '/my-store';
     }
   };
 
-  // Logo click handler
+  // Logo click handler - navigate to /feed
   const handleLogoClick = () => {
-    navigation.navigateToHome();
+    window.location.href = '/feed';
   };
 
-  // Profile click handler
+  // Profile click handler - navigate to /profile
   const handleProfileClick = () => {
-    console.log('Profile clicked');
+    if (!isLoggedIn) {
+      modals.openAuth('login');
+      return;
+    }
+    window.location.href = '/profile';
   };
 
-  // Orders click handler
+  // Orders click handler - navigate to /orders
   const handleOrdersClick = async () => {
-    orders.setIsOrdersPageOpen(true);
-    if (isLoggedIn) {
-      await orders.loadOrders();
+    if (!isLoggedIn) {
+      modals.openAuth('login');
+      return;
     }
+    window.location.href = '/orders';
   };
 
   // View product handler

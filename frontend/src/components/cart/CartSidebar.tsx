@@ -4,7 +4,8 @@ import {
   Plus,
   ShoppingBag,
   Star,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 import { CartItem } from 'types';
 import { formatPrice } from '../../utils/utils';
@@ -52,10 +53,22 @@ export function CartSidebar({
   const finalTotal = selectedTotalPrice + shippingFee - discount;
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        onClose();
+      }
+    }}>
       <SheetContent className="w-full sm:w-[480px] flex flex-col p-0 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-border bg-card">
+        <div className="px-6 py-4 border-b border-border bg-card relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 p-0 rounded-full z-20"
+          >
+            <X className="w-4 h-4" />
+          </Button>
           <SheetHeader>
             <SheetTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">

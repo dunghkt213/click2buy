@@ -1,5 +1,17 @@
 "use client";
 import {
+  usePrevious
+} from "./chunk-AW24YK6G.js";
+import {
+  createCollection
+} from "./chunk-QJZOA3JG.js";
+import {
+  clamp
+} from "./chunk-TCQMTAGU.js";
+import {
+  useDirection
+} from "./chunk-VSVPIETK.js";
+import {
   Anchor,
   Arrow,
   Content,
@@ -13,32 +25,20 @@ import {
   Portal,
   hideOthers,
   useFocusGuards
-} from "./chunk-LBWQJD3Q.js";
-import {
-  usePrevious
-} from "./chunk-AW24YK6G.js";
-import "./chunk-YKJP7FEU.js";
-import {
-  clamp
-} from "./chunk-TCQMTAGU.js";
+} from "./chunk-XWYJBPUZ.js";
 import {
   useId
 } from "./chunk-VKBXW6E4.js";
-import {
-  createCollection
-} from "./chunk-QJZOA3JG.js";
-import {
-  useDirection
-} from "./chunk-VSVPIETK.js";
+import "./chunk-YKJP7FEU.js";
 import {
   useControllableState
 } from "./chunk-IXUNNYXN.js";
 import {
-  composeEventHandlers
-} from "./chunk-P4S5NJOQ.js";
-import {
   useCallbackRef
 } from "./chunk-EXBSRZ3Z.js";
+import {
+  composeEventHandlers
+} from "./chunk-P4S5NJOQ.js";
 import {
   useLayoutEffect2
 } from "./chunk-RN7ICRRN.js";

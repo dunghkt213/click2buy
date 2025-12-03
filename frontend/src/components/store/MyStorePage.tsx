@@ -246,7 +246,8 @@ export function MyStorePage({
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen pt-16">
+      <div className="container mx-auto px-4 py-8">
       {/* Page Header */}
       <motion.div
         className="mb-8"
@@ -1028,6 +1029,7 @@ export function MyStorePage({
           </div>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

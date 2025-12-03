@@ -12,10 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 interface ProductDetailModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   product: Product;
   onAddToCart: (product: Product) => void;
   onAddToWishlist?: (product: Product) => void;
+  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void; // THÊM: Trigger flying animation
   isLoggedIn?: boolean; // THÊM: Kiểm tra đăng nhập
   onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
@@ -26,6 +27,7 @@ export function ProductDetailModal({
   product,
   onAddToCart,
   onAddToWishlist,
+  onTriggerFlyingIcon,
   isLoggedIn = false,
   onLogin,
 }: ProductDetailModalProps) {
@@ -92,21 +94,33 @@ export function ProductDetailModal({
     setQuantity((prev) => Math.max(1, prev + delta));
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (!isLoggedIn) {
       onLogin?.();
       return;
     }
+    
+    // Trigger flying animation
+    if (onTriggerFlyingIcon && e?.currentTarget) {
+      onTriggerFlyingIcon('cart', e.currentTarget);
+    }
+    
     for (let i = 0; i < quantity; i++) {
       onAddToCart(product);
     }
   };
 
-  const handleAddToWishlist = () => {
+  const handleAddToWishlist = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (!isLoggedIn) {
       onLogin?.();
       return;
     }
+    
+    // Trigger flying animation
+    if (onTriggerFlyingIcon && e?.currentTarget) {
+      onTriggerFlyingIcon('heart', e.currentTarget);
+    }
+    
     onAddToWishlist?.(product);
   };
 
@@ -115,17 +129,41 @@ export function ProductDetailModal({
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
+  const handleClose = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (onClose && typeof onClose === 'function') {
+      onClose();
+    } else {
+      console.error('ProductDetailModal: onClose is not a function', { onClose });
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-background rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={(e) => {
+        // Đóng modal khi click vào overlay (background)
+        if (e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}
+    >
+      <div 
+        className="bg-background rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-background z-10">
           <h2 className="text-lg">Chi tiết sản phẩm</h2>
           <Button
+            type="button"
             variant="ghost"
             size="sm"
-            onClick={onClose}
-            className="w-8 h-8 p-0 rounded-full"
+            onClick={handleClose}
+            className="w-8 h-8 p-0 rounded-full hover:bg-muted"
           >
             <X className="w-4 h-4" />
           </Button>
@@ -300,7 +338,7 @@ export function ProductDetailModal({
                   <Button
                     variant="outline"
                     className="flex-1 gap-2 text-black"
-                    onClick={handleAddToCart}
+                    onClick={(e) => handleAddToCart(e)}
                     disabled={!product.inStock}
                   >
                     <ShoppingCart className="w-4 h-4" />
@@ -308,7 +346,7 @@ export function ProductDetailModal({
                   </Button>
                   <Button
                     className="flex-1 gap-2"
-                    onClick={handleAddToCart}
+                    onClick={(e) => handleAddToCart(e)}
                     disabled={!product.inStock}
                   >
                     Mua ngay
@@ -321,7 +359,7 @@ export function ProductDetailModal({
                     variant="ghost"
                     size="sm"
                     className="flex-1 gap-2"
-                    onClick={handleAddToWishlist}
+                    onClick={(e) => handleAddToWishlist(e)}
                   >
                     <Heart className="w-4 h-4" />
                     Yêu thích
