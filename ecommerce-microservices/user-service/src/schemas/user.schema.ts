@@ -17,6 +17,16 @@ export enum UserRole {
 }
 
 /**
+ * Enum provider đăng nhập
+ */
+export enum AuthProvider {
+  LOCAL = 'local',
+  GOOGLE = 'google',
+  FACEBOOK = 'facebook',
+  PHONE = 'phone',
+}
+
+/**
  * Subdocument địa chỉ (address)
  */
 @Schema({ _id: false })
@@ -54,16 +64,16 @@ export class User {
   @Prop({ required: true, unique: true, trim: true, lowercase: true })
   username: string;
 
-  @Prop({ required: true, unique: true, trim: true, lowercase: true, index: true })
-  email: string;
+  @Prop({ unique: true, sparse: true, trim: true, lowercase: true, index: true })
+  email?: string;
 
-  @Prop({ required: true, select: false })
+  @Prop({ select: false })
   passwordHash?: string;
 
   @Prop({ enum: Object.values(UserRole), default: UserRole.CUSTOMER })
   role: UserRole;
 
-  @Prop({ trim: true })
+  @Prop({ trim: true, sparse: true, index: true })
   phone?: string;
 
   @Prop({ trim: true })
@@ -99,6 +109,19 @@ export class User {
   @Prop({ trim: true })
   shopEmail?: string;
 
+  // ==================== SOCIAL LOGIN FIELDS ====================
+
+  @Prop({ enum: Object.values(AuthProvider), default: AuthProvider.LOCAL })
+  provider: AuthProvider;
+
+  @Prop({ sparse: true, index: true })
+  googleId?: string;
+
+  @Prop({ sparse: true, index: true })
+  facebookId?: string;
+
+  @Prop()
+  socialId?: string;
 }
 
 /**
@@ -109,8 +132,11 @@ export const UserSchema = createMongoSchema(User);
 /**
  * Các chỉ mục (indexes)
  */
-UserSchema.index({ email: 1 }, { unique: true });
+UserSchema.index({ email: 1 }, { unique: true, sparse: true });
 UserSchema.index({ username: 1 }, { unique: true });
+UserSchema.index({ phone: 1 }, { sparse: true });
+UserSchema.index({ googleId: 1 }, { sparse: true });
+UserSchema.index({ facebookId: 1 }, { sparse: true });
 UserSchema.index({ username: 'text', email: 'text', phone: 'text' });
 
 /**

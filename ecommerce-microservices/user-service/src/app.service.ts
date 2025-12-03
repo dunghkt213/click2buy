@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
-import { User, UserDocument, UserRole } from './schemas/user.schema';
+import { User, UserDocument, UserRole, AuthProvider } from './schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
@@ -227,5 +227,113 @@ async findBy(field: 'username' | 'email' | '_id', value: string) {
   return this.toUserDto(updated);
 }
 
+// ==================== SOCIAL LOGIN ====================
+
+async findOrCreateSocial(data: {
+  provider: 'google' | 'facebook';
+  socialId: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+}): Promise<UserDto> {
+  const { provider, socialId, email, firstName, lastName, avatar } = data;
+
+  // Tìm user theo socialId
+  const socialIdField = provider === 'google' ? 'googleId' : 'facebookId';
+  let user = await this.userModel.findOne({ [socialIdField]: socialId }).exec();
+
+  if (user) {
+    // Cập nhật lastLogin
+    user.lastLogin = new Date();
+    await user.save();
+    return this.toUserDto(user);
+  }
+
+  // Nếu có email, tìm user theo email
+  if (email) {
+    user = await this.userModel.findOne({ email: email.toLowerCase() }).exec();
+    if (user) {
+      // Link social account vào user hiện có
+      user[socialIdField] = socialId;
+      user.provider = provider as AuthProvider;
+      if (avatar && !user.avatar) user.avatar = avatar;
+      user.lastLogin = new Date();
+      await user.save();
+      return this.toUserDto(user);
+    }
+  }
+
+  // Tạo user mới
+  const username = this.generateUsername(email, firstName, lastName, socialId);
+  
+  const newUser = await this.userModel.create({
+    username,
+    email: email?.toLowerCase(),
+    [socialIdField]: socialId,
+    socialId,
+    provider: provider as AuthProvider,
+    role: UserRole.CUSTOMER,
+    avatar,
+    isActive: true,
+    lastLogin: new Date(),
+    address: [],
+  });
+
+  console.log(`✅ Created new user via ${provider}:`, newUser.username);
+  return this.toUserDto(newUser);
+}
+
+// ==================== PHONE LOGIN ====================
+
+async findOrCreateByPhone(data: { phone: string }): Promise<UserDto> {
+  const { phone } = data;
+
+  // Tìm user theo số điện thoại
+  let user = await this.userModel.findOne({ phone }).exec();
+
+  if (user) {
+    user.lastLogin = new Date();
+    await user.save();
+    return this.toUserDto(user);
+  }
+
+  // Tạo user mới với số điện thoại
+  const username = `user_${phone.replace(/\D/g, '').slice(-8)}`;
+  
+  const newUser = await this.userModel.create({
+    username,
+    phone,
+    provider: AuthProvider.PHONE,
+    role: UserRole.CUSTOMER,
+    isActive: true,
+    lastLogin: new Date(),
+    address: [],
+  });
+
+  console.log(`✅ Created new user via phone:`, newUser.username);
+  return this.toUserDto(newUser);
+}
+
+// ==================== HELPER ====================
+
+private generateUsername(
+  email?: string,
+  firstName?: string,
+  lastName?: string,
+  socialId?: string,
+): string {
+  if (email) {
+    const base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `${base}_${Date.now().toString(36)}`;
+  }
+  
+  if (firstName || lastName) {
+    const name = `${firstName || ''}${lastName || ''}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `${name}_${Date.now().toString(36)}`;
+  }
+
+  return `user_${socialId?.slice(-8) || Date.now().toString(36)}`;
+}
 
 }

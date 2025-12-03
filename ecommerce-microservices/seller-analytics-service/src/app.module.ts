@@ -9,9 +9,10 @@ import {
 } from './schemas/daily-revenue.schema';
 import {
   ProductAnalytics,
-  ProductAnalyticsSchema, 
+  ProductAnalyticsSchema,
 } from './schemas/product-analytics.schema';
 
+import { AuthModule } from './auth/auth.module';
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsController } from './controllers/analytics.controller';
 import { KafkaConsumerController } from './controllers/kafka-consumer.controller';
@@ -24,7 +25,10 @@ import { KafkaConsumerController } from './controllers/kafka-consumer.controller
  */
 @Module({
   imports: [
-    // 1️⃣ Load biến môi trường toàn cục (.env)
+    // 1️⃣ Auth Module
+    AuthModule,
+
+    // 2️⃣ Load biến môi trường toàn cục (.env)
     ConfigModule.forRoot({ isGlobal: true }),
 
     // 2️⃣ Kết nối MongoDB - SỬ DỤNG ConfigService để tránh lỗi uri undefined

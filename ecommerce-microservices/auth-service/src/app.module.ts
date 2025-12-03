@@ -5,6 +5,7 @@ import { Connection } from 'mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TokenModule } from './token/token.module';
+import { OtpModule } from './otp/otp.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
@@ -21,6 +22,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
     }),
 
     TokenModule,
+    OtpModule,
     ClientsModule.register([
   {
     name: 'AUTH_SERVICE',

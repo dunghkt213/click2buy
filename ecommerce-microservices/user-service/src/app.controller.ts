@@ -95,4 +95,41 @@ export class AppController {
     }
     return this.AppService.deactivate(data.id);
   }
+
+  // ==================== SOCIAL LOGIN ====================
+
+  @MessagePattern('user.findOrCreateSocial')
+  async findOrCreateSocial(@Payload() data: {
+    provider: 'google' | 'facebook';
+    socialId: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+  }) {
+    try {
+      return await this.AppService.findOrCreateSocial(data);
+    } catch (err) {
+      throw new RpcException({
+        success: false,
+        message: err.message || 'Social login failed',
+        code: 'SOCIAL_LOGIN_ERROR',
+      });
+    }
+  }
+
+  // ==================== PHONE LOGIN ====================
+
+  @MessagePattern('user.findOrCreateByPhone')
+  async findOrCreateByPhone(@Payload() data: { phone: string }) {
+    try {
+      return await this.AppService.findOrCreateByPhone(data);
+    } catch (err) {
+      throw new RpcException({
+        success: false,
+        message: err.message || 'Phone login failed',
+        code: 'PHONE_LOGIN_ERROR',
+      });
+    }
+  }
 }
