@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Product, ProductReview } from 'types';
 import { mapReviewResponse, reviewApi } from '../../apis/review';
+import { userApi, BackendUser } from '../../apis/user';
 import { Avatar } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -37,6 +38,8 @@ export function ProductDetailModal({
   const [quantity, setQuantity] = useState(1);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [shopInfo, setShopInfo] = useState<BackendUser | null>(null);
+  const [loadingShop, setLoadingShop] = useState(false);
   
   // Comment form state
   const [commentRating, setCommentRating] = useState(5);
@@ -51,8 +54,28 @@ export function ProductDetailModal({
   useEffect(() => {
     if (isOpen && product?.id) {
       loadReviews();
+      loadShopInfo();
     }
-  }, [isOpen, product?.id]);
+  }, [isOpen, product?.id, product?.ownerId, product?.sellerId]);
+
+  const loadShopInfo = async () => {
+    const shopId = product.ownerId || product.sellerId;
+    if (!shopId) {
+      setShopInfo(null);
+      return;
+    }
+
+    try {
+      setLoadingShop(true);
+      const shop = await userApi.findOne(shopId);
+      setShopInfo(shop);
+    } catch (error) {
+      console.error('Failed to load shop info:', error);
+      setShopInfo(null);
+    } finally {
+      setLoadingShop(false);
+    }
+  };
 
   const loadReviews = async () => {
     try {
@@ -321,13 +344,22 @@ export function ProductDetailModal({
                           if (onClose) {
                             onClose();
                           }
-                          navigate(`/shop`);
+                          navigate(`/shop?ownerId=${shopId}`);
                         }
                       }}
                       className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 hover:underline transition-colors group"
+                      disabled={loadingShop}
                     >
                       <Store className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                      <span className="font-medium">Shop {product.brand || 'Đối tác'}</span>
+                      <span className="font-medium">
+                        {loadingShop 
+                          ? 'Đang tải...' 
+                          : shopInfo?.shopName 
+                            ? `Shop ${shopInfo.shopName}` 
+                            : product.brand 
+                              ? `Shop ${product.brand}` 
+                              : 'Shop Đối tác'}
+                      </span>
                     </button>
                   </div>
                 )}

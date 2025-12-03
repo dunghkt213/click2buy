@@ -5,6 +5,9 @@
 
 import { Search, Star, Store } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { productApi } from '../../apis/product';
+import { userApi, BackendUser } from '../../apis/user';
 import { FlyingIcon } from '../../components/animation/FlyingIcon';
 import { ProductCard } from '../../components/product/ProductCard';
 import { Badge } from '../../components/ui/badge';
@@ -14,117 +17,62 @@ import { Input } from '../../components/ui/input';
 import { Separator } from '../../components/ui/separator';
 import { useAppContext } from '../../providers/AppProvider';
 import { Product } from '../../types';
-
-// Mock data cho shop
-const mockShopInfo = {
-  id: 'shop-1',
-  name: 'TechStore Pro',
-  avatar: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200',
-  description: 'Chuyên cung cấp các sản phẩm công nghệ chính hãng với giá tốt nhất thị trường. Chúng tôi cam kết chất lượng và dịch vụ tốt nhất cho khách hàng.',
-  rating: 4.8,
-  totalReviews: 1250,
-  totalProducts: 156,
-  followers: 8500,
-  joinedDate: '2023-01-15',
-  address: '123 Đường ABC, Quận 1, TP.HCM',
-  phone: '0901234567',
-  email: 'contact@techstorepro.com',
-};
-
-// Mock products cho shop
-const mockShopProducts: Product[] = [
-  {
-    id: 'p1',
-    name: 'iPhone 15 Pro Max 256GB',
-    price: 28990000,
-    originalPrice: 34990000,
-    image: 'https://images.unsplash.com/photo-1696446701796-da61225697cc?w=500',
-    category: 'electronics',
-    rating: 4.9,
-    reviews: 2543,
-    description: 'iPhone 15 Pro Max với chip A17 Pro mạnh mẽ',
-    brand: 'Apple',
-    inStock: true,
-    isSale: true,
-    isNew: true,
-  },
-  {
-    id: 'p2',
-    name: 'Samsung Galaxy S24 Ultra 512GB',
-    price: 29990000,
-    originalPrice: 35990000,
-    image: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=500',
-    category: 'electronics',
-    rating: 4.8,
-    reviews: 1876,
-    description: 'Galaxy S24 Ultra với camera 200MP',
-    brand: 'Samsung',
-    inStock: true,
-    isSale: true,
-    isBestSeller: true,
-  },
-  {
-    id: 'p3',
-    name: 'MacBook Air M3 15 inch 256GB',
-    price: 32990000,
-    originalPrice: 39990000,
-    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500',
-    category: 'electronics',
-    rating: 4.9,
-    reviews: 3214,
-    description: 'MacBook Air M3 siêu mỏng nhẹ',
-    brand: 'Apple',
-    inStock: true,
-    isSale: true,
-    isNew: true,
-  },
-  {
-    id: 'p4',
-    name: 'Sony WH-1000XM5 Chống ồn',
-    price: 6990000,
-    originalPrice: 8990000,
-    image: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=500',
-    category: 'electronics',
-    rating: 4.8,
-    reviews: 1543,
-    description: 'Tai nghe chống ồn hàng đầu',
-    brand: 'Sony',
-    inStock: true,
-    isSale: true,
-  },
-  {
-    id: 'p5',
-    name: 'iPad Pro 12.9 inch M2',
-    price: 24990000,
-    originalPrice: 29990000,
-    image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500',
-    category: 'electronics',
-    rating: 4.7,
-    reviews: 987,
-    description: 'iPad Pro với chip M2 mạnh mẽ',
-    brand: 'Apple',
-    inStock: true,
-    isSale: true,
-  },
-  {
-    id: 'p6',
-    name: 'Dell XPS 13 Plus',
-    price: 35990000,
-    originalPrice: 41990000,
-    image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=500',
-    category: 'electronics',
-    rating: 4.6,
-    reviews: 654,
-    description: 'Laptop siêu mỏng nhẹ Dell XPS',
-    brand: 'Dell',
-    inStock: true,
-    isSale: true,
-  },
-];
+import { toast } from 'sonner';
 
 export function ShopPage() {
   const app = useAppContext();
+  const [searchParams] = useSearchParams();
+  const ownerId = searchParams.get('ownerId');
+  
+  const [shopInfo, setShopInfo] = useState<BackendUser | null>(null);
+  const [shopProducts, setShopProducts] = useState<Product[]>([]);
+  const [loadingShop, setLoadingShop] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Load shop info từ API
+  useEffect(() => {
+    if (ownerId) {
+      loadShopInfo(ownerId);
+      loadShopProducts(ownerId);
+    } else {
+      toast.error('Không tìm thấy thông tin cửa hàng');
+      setLoadingShop(false);
+      setLoadingProducts(false);
+    }
+  }, [ownerId]);
+
+  const loadShopInfo = async (id: string) => {
+    try {
+      setLoadingShop(true);
+      const shop = await userApi.findOne(id);
+      setShopInfo(shop);
+    } catch (error: any) {
+      console.error('Failed to load shop info:', error);
+      toast.error('Không thể tải thông tin cửa hàng');
+      setShopInfo(null);
+    } finally {
+      setLoadingShop(false);
+    }
+  };
+
+  const loadShopProducts = async (id: string) => {
+    try {
+      setLoadingProducts(true);
+      // Load tất cả products và filter theo ownerId
+      const allProducts = await productApi.getAll({ limit: 1000 });
+      const filtered = allProducts.filter(p => 
+        (p.ownerId === id || p.sellerId === id)
+      );
+      setShopProducts(filtered);
+    } catch (error: any) {
+      console.error('Failed to load shop products:', error);
+      toast.error('Không thể tải sản phẩm của cửa hàng');
+      setShopProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
   
   // Scroll về đầu trang khi vào trang shop
   useEffect(() => {
@@ -132,11 +80,46 @@ export function ShopPage() {
   }, []);
   
   // Filter products based on search
-  const filteredProducts = mockShopProducts.filter(product =>
+  const filteredProducts = shopProducts.filter(product =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Loading state
+  if (loadingShop) {
+    return (
+      <main className="min-h-screen pt-16 bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <Card className="p-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Đang tải thông tin cửa hàng...</p>
+            </div>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
+  // Error state - no shop info
+  if (!shopInfo) {
+    return (
+      <main className="min-h-screen pt-16 bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <Card className="p-12">
+            <div className="text-center">
+              <Store className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+              <h3 className="text-xl font-semibold mb-2">Không tìm thấy cửa hàng</h3>
+              <p className="text-muted-foreground">
+                Không thể tải thông tin cửa hàng. Vui lòng thử lại sau.
+              </p>
+            </div>
+          </Card>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen pt-16 bg-background">
@@ -148,34 +131,31 @@ export function ShopPage() {
             <div className="flex flex-col items-center md:items-start">
               <div className="relative mb-4">
                 <img
-                  src={mockShopInfo.avatar}
-                  alt={mockShopInfo.name}
+                  src={shopInfo.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(shopInfo.shopName || shopInfo.username || 'Shop') + '&background=0ea5e9&color=fff&size=128'}
+                  alt={shopInfo.shopName || shopInfo.username || 'Shop'}
                   className="w-32 h-32 rounded-full object-cover border-4 border-primary/20 shadow-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(shopInfo.shopName || shopInfo.username || 'Shop') + '&background=0ea5e9&color=fff&size=128';
+                  }}
                 />
                 <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary rounded-full flex items-center justify-center border-4 border-background">
                   <Store className="w-5 h-5 text-primary-foreground" />
                 </div>
               </div>
               <h1 className="text-2xl font-bold mb-2 text-center md:text-left">
-                {mockShopInfo.name}
+                {shopInfo.shopName || shopInfo.username || 'Cửa hàng'}
               </h1>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex items-center gap-1">
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <span className="font-semibold">{mockShopInfo.rating}</span>
-                </div>
-                <Separator orientation="vertical" className="h-4" />
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="text-sm text-muted-foreground">
-                  {mockShopInfo.totalReviews.toLocaleString()} đánh giá
-                </span>
-                <Separator orientation="vertical" className="h-4" />
-                <span className="text-sm text-muted-foreground">
-                  {mockShopInfo.totalProducts} sản phẩm
+                  {shopProducts.length} sản phẩm
                 </span>
               </div>
-              <Badge variant="secondary" className="w-fit">
-                {mockShopInfo.followers.toLocaleString()} người theo dõi
-              </Badge>
+              {shopInfo.role === 'seller' && (
+                <Badge variant="secondary" className="w-fit">
+                  Đã xác thực
+                </Badge>
+              )}
             </div>
 
             {/* Right: Shop Introduction */}
@@ -183,31 +163,39 @@ export function ShopPage() {
               <div>
                 <h2 className="text-lg font-semibold mb-2">Giới thiệu cửa hàng</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  {mockShopInfo.description}
+                  {shopInfo.shopDescription || 'Chưa có mô tả cửa hàng.'}
                 </p>
               </div>
               
               <Separator />
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Địa chỉ:</span>
-                  <p className="font-medium mt-1">{mockShopInfo.address}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Liên hệ:</span>
-                  <p className="font-medium mt-1">{mockShopInfo.phone}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Email:</span>
-                  <p className="font-medium mt-1">{mockShopInfo.email}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Tham gia:</span>
-                  <p className="font-medium mt-1">
-                    {new Date(mockShopInfo.joinedDate).toLocaleDateString('vi-VN')}
-                  </p>
-                </div>
+                {shopInfo.shopAddress && (
+                  <div>
+                    <span className="text-muted-foreground">Địa chỉ:</span>
+                    <p className="font-medium mt-1">{shopInfo.shopAddress}</p>
+                  </div>
+                )}
+                {(shopInfo.shopPhone || shopInfo.phone) && (
+                  <div>
+                    <span className="text-muted-foreground">Liên hệ:</span>
+                    <p className="font-medium mt-1">{shopInfo.shopPhone || shopInfo.phone}</p>
+                  </div>
+                )}
+                {(shopInfo.shopEmail || shopInfo.email) && (
+                  <div>
+                    <span className="text-muted-foreground">Email:</span>
+                    <p className="font-medium mt-1">{shopInfo.shopEmail || shopInfo.email}</p>
+                  </div>
+                )}
+                {shopInfo.createdAt && (
+                  <div>
+                    <span className="text-muted-foreground">Tham gia:</span>
+                    <p className="font-medium mt-1">
+                      {new Date(shopInfo.createdAt).toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -252,17 +240,30 @@ export function ShopPage() {
             </span>
           </div>
 
-          {filteredProducts.length === 0 ? (
+          {loadingProducts ? (
+            <Card className="p-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Đang tải sản phẩm...</p>
+              </div>
+            </Card>
+          ) : filteredProducts.length === 0 ? (
             <Card className="p-12">
               <div className="text-center">
                 <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-                <h3 className="text-xl font-semibold mb-2">Không tìm thấy sản phẩm</h3>
+                <h3 className="text-xl font-semibold mb-2">
+                  {searchQuery ? 'Không tìm thấy sản phẩm' : 'Chưa có sản phẩm'}
+                </h3>
                 <p className="text-muted-foreground mb-4">
-                  Không có sản phẩm nào khớp với từ khóa "{searchQuery}"
+                  {searchQuery 
+                    ? `Không có sản phẩm nào khớp với từ khóa "${searchQuery}"`
+                    : 'Cửa hàng này chưa có sản phẩm nào.'}
                 </p>
-                <Button variant="outline" onClick={() => setSearchQuery('')}>
-                  Xóa bộ lọc
-                </Button>
+                {searchQuery && (
+                  <Button variant="outline" onClick={() => setSearchQuery('')}>
+                    Xóa bộ lọc
+                  </Button>
+                )}
               </div>
             </Card>
           ) : (

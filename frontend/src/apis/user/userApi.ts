@@ -9,6 +9,13 @@ export interface BackendUser {
   avatar?: string;
   role?: string;
   phone?: string;
+  shopName?: string;
+  shopDescription?: string;
+  shopAddress?: string;
+  shopPhone?: string;
+  shopEmail?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateUserDto {
