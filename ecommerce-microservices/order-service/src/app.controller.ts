@@ -46,7 +46,12 @@ async getAllOrderForSaller(@CurrentUser() user: any) {
   const ownerId = user?.sub || user?.id;
   return this.appService.getAllOrderForSaller(ownerId)
 } 
-
+@MessagePattern('order.getAllOrderForUser')
+@UseGuards(JwtKafkaAuthGuard)
+async getAllOrderForUser(@CurrentUser() user: any) {
+  const userId = user?.sub || user?.id;
+  return this.appService.getAllOrderForUser(userId)
+} 
 
 @MessagePattern('order.timeout')
 timeout(@Payload() data: any) {

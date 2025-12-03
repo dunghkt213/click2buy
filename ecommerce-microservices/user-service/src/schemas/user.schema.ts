@@ -94,6 +94,21 @@ export class User {
   @Prop({ type: [Object], default: [] })
   address: Address[];
 
+  @Prop({ trim: true })
+  shopName?: string;
+
+  @Prop({ trim: true })
+  shopDescription?: string;
+
+  @Prop({ trim: true })
+  shopAddress?: string;
+
+  @Prop({ trim: true })
+  shopPhone?: string;
+
+  @Prop({ trim: true })
+  shopEmail?: string;
+
   // ==================== SOCIAL LOGIN FIELDS ====================
 
   @Prop({ enum: Object.values(AuthProvider), default: AuthProvider.LOCAL })
