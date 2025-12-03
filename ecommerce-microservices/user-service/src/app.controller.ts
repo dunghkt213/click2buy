@@ -74,7 +74,18 @@ export class AppController {
     else return this.AppService.update(data.id, data.dto);
   }
 
-
+  @MessagePattern('user.updateRoleSeller')
+  @UseGuards(JwtKafkaAuthGuard)
+  async updateRoleSeller(@Payload() payload: any, @CurrentUser() user: any) {
+    const userId = user.sub;
+    console.log(payload)
+    try {
+      return this.AppService.updateRoleSeller(userId, payload);
+    } catch (error) {
+      console.log("loi", error.message)
+      return error
+    }
+  }
 
   @MessagePattern('user.deactivate')
   @UseGuards(JwtKafkaAuthGuard)
