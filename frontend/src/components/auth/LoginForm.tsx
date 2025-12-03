@@ -8,7 +8,7 @@ import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
 import { toast } from 'sonner';
-import { authApi, mapAuthResponse, AuthSuccessPayload } from '../../lib/authApi';
+import { authApi, mapAuthResponse, AuthSuccessPayload } from '../../apis/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
 

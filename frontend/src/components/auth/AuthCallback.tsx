@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { authStorage } from '../../lib/authApi';
-import { userApi, normalizeUser } from '../../lib/userApi';
+import { authStorage } from '../../apis/auth';
+import { userApi, normalizeUser } from '../../apis/user';
 import { User } from '../../types';
 
 interface AuthCallbackProps {

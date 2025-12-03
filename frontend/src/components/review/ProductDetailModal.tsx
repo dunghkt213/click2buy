@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Heart, Package, Share2, Shield, ShoppingCart, Star, ThumbsUp, TruckIcon, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Product, ProductReview } from 'types';
-import { mapReviewResponse, reviewApi } from '../../lib/reviewApi';
+import { mapReviewResponse, reviewApi } from '../../apis/review';
 import { Avatar } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';

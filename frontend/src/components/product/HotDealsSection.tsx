@@ -2,7 +2,7 @@ import { Clock, Eye, Flame, Heart, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Product } from 'types';
-import { productApi } from '../../lib/productApi';
+import { productApi } from '../../apis/product';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';

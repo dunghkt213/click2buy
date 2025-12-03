@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Order, StoreProduct } from 'types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';

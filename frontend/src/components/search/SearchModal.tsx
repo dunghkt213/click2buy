@@ -2,7 +2,7 @@ import { Search, X } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CartItem, FilterState, Product } from 'types';
-import { productApi } from '../../lib/productApi';
+import { productApi } from '../../apis/product';
 import { Footer } from '../layout/Footer';
 import { Header } from '../layout/Header';
 import { ProductCard } from '../product/ProductCard';

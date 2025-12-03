@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { Product } from 'types';
-import { calculateDiscount, formatPrice } from '../../lib/utils';
+import { calculateDiscount, formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';

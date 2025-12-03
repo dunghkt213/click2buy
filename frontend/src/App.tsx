@@ -27,7 +27,7 @@ import {
 } from './components/sidebars';
 
 // Auth Components
-import { AuthModal, AuthCallback } from './components/auth';
+import { AuthCallback, AuthModal } from './components/auth';
 
 // Search Components
 import { SearchModal } from './components/search/SearchModal';
@@ -38,14 +38,10 @@ import { ProductDetailModal } from './components/review/ProductDetailModal';
 // Flying Icon
 import { FlyingIcon, FlyingIconConfig } from './components/animation/FlyingIcon';
 
-// Cart Page
-import { CartPage } from './components/cart/CartPage';
-
-// Orders Page
-import { OrdersPage } from './components/order/OrdersPage';
-
-// My Store Page
-import { MyStorePage } from './components/store/MyStorePage';
+// Pages
+import { CartPage } from './pages/CartPage';
+import { MyStorePage } from './pages/MyStorePage';
+import { OrdersPage } from './pages/OrdersPage';
 
 // Store Registration Modal
 import { StoreRegistrationModal } from './components/store/StoreRegistrationModal';
@@ -58,21 +54,21 @@ import { useNotifications, useWishlist } from './hooks';
 import { useCartApi } from './hooks/useCartApi';
 
 // API
-import { productApi } from './lib/productApi';
-import { userApi, normalizeUser } from './lib/userApi';
+import { productApi } from './apis/product';
+import { normalizeUser, userApi } from './apis/user';
 
 // Types & Data
 import { toast } from 'sonner';
+import { authApi, authStorage, AuthSuccessPayload } from './apis/auth';
+import { mapOrderResponse, orderApi } from './apis/order';
 import {
   initialFAQs,
   initialNotifications,
   initialPromotions,
   initialSupportTickets,
-} from './data/mockData';
-import { authApi, authStorage, AuthSuccessPayload } from './lib/authApi';
-import { mapOrderResponse, orderApi } from './lib/orderApi';
-import { generateTicketId } from './lib/utils';
+} from './constants/mockData';
 import { FAQItem, FilterState, Order, Promotion, StoreInfo, StoreProduct, SupportTicket, User } from './types';
+import { generateTicketId } from './utils/utils';
 
 const motionEase = [0.4, 0, 0.2, 1] as const;
 

@@ -1,7 +1,7 @@
 import { ArrowLeft, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useState } from 'react'; // THÊM: useState
 import { CartItem } from 'types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { CheckoutModal } from '../payment/CheckoutModal'; // THÊM: Import CheckoutModal
 import { Badge } from '../ui/badge';

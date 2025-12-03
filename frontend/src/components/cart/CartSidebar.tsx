@@ -7,7 +7,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { CartItem } from 'types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';

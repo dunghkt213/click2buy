@@ -21,7 +21,7 @@ import {
   Check
 } from 'lucide-react';
 import { Order, OrderStatus } from 'types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 
 interface OrderDetailModalProps {

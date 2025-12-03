@@ -3,7 +3,7 @@ import { Filter, Grid, List } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { FilterState, Product } from 'types';
-import { productApi } from '../../lib/productApi';
+import { productApi } from '../../apis/product';
 import { Button } from '../ui/button';
 import { ProductCard } from './ProductCard';
 

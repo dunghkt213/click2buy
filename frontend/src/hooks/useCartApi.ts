@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { cartApi } from '../lib/cartApi';
-import { productApi } from '../lib/productApi';
+import { cartApi } from '../apis/cart';
+import { productApi } from '../apis/product';
 import { CartItem, Product } from '../types';
 
 /**
