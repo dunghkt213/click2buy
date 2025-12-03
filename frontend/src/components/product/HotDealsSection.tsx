@@ -1,4 +1,4 @@
-import { Clock, Eye, Flame, Heart, ShoppingCart } from 'lucide-react';
+import { Clock, Flame, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Product } from 'types';
@@ -10,9 +10,7 @@ import { Button } from '../ui/button';
 interface HotDealsSectionProps {
   onAddToCart: (product: Product) => void;
   onViewDetail: (product: Product) => void;
-  onAddToWishlist: (product: Product) => void;
-  isInWishlist: (productId: string) => boolean;
-  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void;
+  onTriggerFlyingIcon?: (type: 'cart', element: HTMLElement) => void;
   isLoggedIn?: boolean; // THÊM: Kiểm tra đăng nhập
   onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
@@ -20,8 +18,6 @@ interface HotDealsSectionProps {
 export function HotDealsSection({
   onAddToCart,
   onViewDetail,
-  onAddToWishlist,
-  isInWishlist,
   onTriggerFlyingIcon,
   isLoggedIn = false,
   onLogin
@@ -125,9 +121,10 @@ export function HotDealsSection({
   ];
 
   const handleAddToCart = (product: Product, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // Ngăn không cho trigger xem chi tiết
+    
     if (!isLoggedIn) {
       e.preventDefault();
-      e.stopPropagation();
       onLogin?.();
       return;
     }
@@ -138,19 +135,11 @@ export function HotDealsSection({
     }
   };
 
-  const handleAddToWishlist = (product: Product, e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!isLoggedIn) {
-      e.preventDefault();
-      e.stopPropagation();
-      onLogin?.();
-      return;
-    }
-    
-    onAddToWishlist(product);
-    if (onTriggerFlyingIcon) {
-      onTriggerFlyingIcon('heart', e.currentTarget);
-    }
+  // Handler để xem chi tiết sản phẩm khi click vào card
+  const handleCardClick = (product: Product) => {
+    onViewDetail(product);
   };
+
 
   return (
     <section className="py-12 bg-gradient-to-b from-muted/30 to-background">
@@ -179,7 +168,8 @@ export function HotDealsSection({
           {hotDeals.map((product) => (
             <div
               key={product.id}
-              className="group relative bg-card border border-border rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              className="group relative bg-card border border-border rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+              onClick={() => handleCardClick(product)}
             >
               {/* Discount Badge */}
               <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
@@ -200,25 +190,6 @@ export function HotDealsSection({
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
                 
-                {/* Quick Actions - Appear on hover */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="bg-white/90 hover:bg-white"
-                    onClick={() => onViewDetail(product)}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className={`bg-white/90 hover:bg-white ${isInWishlist(product.id) ? 'text-red-500' : ''}`}
-                    onClick={(e) => handleAddToWishlist(product, e)}
-                  >
-                    <Heart className={`w-4 h-4 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
-                  </Button>
-                </div>
               </div>
 
               {/* Content */}

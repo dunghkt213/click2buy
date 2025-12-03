@@ -1,6 +1,5 @@
 import {
   Bell,
-  Heart,
   Search,
   ShoppingCart,
   Store
@@ -21,10 +20,8 @@ import {
 
 interface HeaderProps {
   cartItemsCount: number;
-  wishlistItemsCount: number;
   unreadNotifications: number;
   onCartClick: () => void;
-  onWishlistClick: () => void;
   onNotificationsClick: () => void;
   onFilterClick: () => void;
   onPromotionClick: () => void;
@@ -42,17 +39,14 @@ interface HeaderProps {
   onSearchChange?: (query: string) => void;
   onSearchClick?: () => void;
   cartIconRef?: React.RefObject<HTMLButtonElement>;
-  wishlistIconRef?: React.RefObject<HTMLButtonElement>;
   cartItems?: CartItem[];
   totalPrice?: number;
 }
 
 export function Header({ 
   cartItemsCount, 
-  wishlistItemsCount,
   unreadNotifications,
   onCartClick, 
-  onWishlistClick,
   onNotificationsClick,
   onFilterClick,
   onPromotionClick,
@@ -69,9 +63,8 @@ export function Header({
   searchQuery: externalSearchQuery = '',
   onSearchChange,
   onSearchClick,
-  cartIconRef,
-  wishlistIconRef,
-  cartItems,
+    cartIconRef,
+    cartItems,
   totalPrice
 }: HeaderProps) {
   const navigate = useNavigate();
@@ -194,6 +187,7 @@ export function Header({
                       e.preventDefault();
                       e.stopPropagation();
                       setIsCartPreviewOpen(false);
+                      window.scrollTo({ top: 0, behavior: 'instant' });
                       navigate('/cart');
                     }}
                   >
@@ -207,6 +201,7 @@ export function Header({
                           e.preventDefault();
                           e.stopPropagation();
                           setIsCartPreviewOpen(false);
+                          window.scrollTo({ top: 0, behavior: 'instant' });
                           navigate('/cart');
                         }}
                       >
@@ -226,31 +221,13 @@ export function Header({
                     totalPrice={totalPrice || 0}
                     onViewCart={() => {
                       setIsCartPreviewOpen(false);
+                      window.scrollTo({ top: 0, behavior: 'instant' });
                       navigate('/cart');
                     }}
                   />
                 </PopoverContent>
               </Popover>
             </div>
-
-            {/* Wishlist */}
-            <Button 
-              ref={wishlistIconRef}
-              variant="ghost" 
-              size="sm" 
-              className="relative"
-              onClick={onWishlistClick}
-            >
-              <Heart className="h-5 w-5" />
-              {wishlistItemsCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                >
-                  {wishlistItemsCount}
-                </Badge>
-              )}
-            </Button>
 
             {/* Notifications */}
             <Button 
@@ -279,7 +256,6 @@ export function Header({
               onLogout={onLogout}
               onProfileClick={onProfileClick}
               onOrdersClick={onOrdersClick}
-              onWishlistClick={onWishlistClick}
               onNotificationsClick={onNotificationsClick}
               unreadNotifications={unreadNotifications}
             />

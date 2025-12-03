@@ -14,7 +14,6 @@ import { CheckoutModal } from '../components/payment/CheckoutModal';
 import { NotificationSidebar } from '../components/sidebars/NotificationSidebar';
 import { PromotionSidebar } from '../components/sidebars/PromotionSidebar';
 import { SupportSidebar } from '../components/sidebars/SupportSidebar';
-import { WishlistSidebar } from '../components/sidebars/WishlistSidebar';
 import { StoreRegistrationModal } from '../components/store/StoreRegistrationModal';
 import { AuthSuccessPayload } from '../hooks/useAuth';
 import { FAQItem, Product, Promotion, SupportTicket, User } from '../types/interface';
@@ -45,13 +44,6 @@ interface AppLayoutProps {
   selectedTotalPrice: number;
   selectedItems: any[];
   onCheckout: (checkoutData: any) => Promise<void>;
-  
-  // Wishlist
-  wishlistItems: any[];
-  wishlistItemsCount: number;
-  onRemoveFromWishlist: (productId: string) => void;
-  onAddToCart: (product: any) => Promise<void>;
-  onViewProduct: (productId: string) => void;
   
   // Notifications
   notifications: any[];
@@ -96,9 +88,6 @@ interface AppLayoutProps {
   isNotificationOpen: boolean;
   onNotificationClick?: () => void;
   onNotificationClose: () => void;
-  isWishlistOpen: boolean;
-  onWishlistClick?: () => void;
-  onWishlistClose: () => void;
   isPromotionOpen: boolean;
   onPromotionClose: () => void;
   isSupportOpen: boolean;
@@ -119,17 +108,14 @@ interface AppLayoutProps {
   
   // Product actions
   onAddToCart: (product: any) => Promise<void>;
-  onAddToWishlist: (product: Product) => void;
-  isInWishlist: (productId: string) => boolean;
   
   // Flying icons
   flyingIcons: FlyingIconConfig[];
   onAnimationComplete: (id: string) => void;
-  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void;
+  onTriggerFlyingIcon?: (type: 'cart', element: HTMLElement) => void;
   
   // Refs
   cartIconRef: React.RefObject<HTMLButtonElement>;
-  wishlistIconRef: React.RefObject<HTMLButtonElement>;
 }
 
 export function AppLayout(props: AppLayoutProps) {
@@ -155,11 +141,7 @@ export function AppLayout(props: AppLayoutProps) {
     selectedTotalPrice,
     selectedItems,
     onCheckout,
-    wishlistItems,
-    wishlistItemsCount,
-    onRemoveFromWishlist,
     onAddToCart,
-    onViewProduct,
     notifications,
     unreadNotifications,
     onMarkAsRead,
@@ -188,9 +170,6 @@ export function AppLayout(props: AppLayoutProps) {
     isNotificationOpen,
     onNotificationClick,
     onNotificationClose,
-    isWishlistOpen,
-    onWishlistClick,
-    onWishlistClose,
     isPromotionOpen,
     onPromotionClose,
     isSupportOpen,
@@ -206,23 +185,18 @@ export function AppLayout(props: AppLayoutProps) {
     isStoreRegistrationOpen,
     onStoreRegistrationClose,
     onStoreRegistration,
-    onAddToWishlist,
-    isInWishlist,
     flyingIcons,
     onAnimationComplete,
     onTriggerFlyingIcon,
     cartIconRef,
-    wishlistIconRef,
   } = props;
 
   return (
     <div className="min-h-screen bg-background">
       <Header
         cartItemsCount={cartItemsCount}
-        wishlistItemsCount={wishlistItemsCount}
         unreadNotifications={unreadNotifications}
         onCartClick={onCartClick || onCartClose}
-        onWishlistClick={onWishlistClick || (() => {})}
         onNotificationsClick={onNotificationClick || (() => {})}
         onFilterClick={onFilterClick}
         onPromotionClick={onPromotionClick || (() => {})}
@@ -242,7 +216,6 @@ export function AppLayout(props: AppLayoutProps) {
         onSearchChange={onSearchChange}
         onSearchClick={onSearchClick}
         cartIconRef={cartIconRef}
-        wishlistIconRef={wishlistIconRef}
       />
 
       {children}
@@ -278,15 +251,6 @@ export function AppLayout(props: AppLayoutProps) {
         onMarkAsRead={onMarkAsRead}
         onMarkAllAsRead={onMarkAllAsRead}
         onDeleteNotification={onDeleteNotification}
-      />
-
-      <WishlistSidebar
-        isOpen={isWishlistOpen}
-        onClose={onWishlistClose}
-        items={wishlistItems}
-        onRemoveItem={onRemoveFromWishlist}
-        onAddToCart={onAddToCart}
-        onViewProduct={onViewProduct}
       />
 
       <PromotionSidebar
@@ -331,7 +295,6 @@ export function AppLayout(props: AppLayoutProps) {
         onClose={onProductDetailClose}
         product={selectedProduct}
         onAddToCart={onAddToCart}
-        onAddToWishlist={onAddToWishlist}
         onTriggerFlyingIcon={onTriggerFlyingIcon}
         isLoggedIn={isLoggedIn}
         onLogin={onLogin}

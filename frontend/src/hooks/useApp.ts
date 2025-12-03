@@ -6,7 +6,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, AuthSuccessPayload } from './useAuth';
 import { useCartApi } from './useCartApi';
-import { useWishlist } from './useWishlist';
 import { useNotifications } from './useNotifications';
 import { useFilters } from './useFilters';
 import { useSidebars } from './useSidebars';
@@ -28,7 +27,7 @@ export function useApp() {
 
   // Flying icons (contains refs)
   const flyingIconsHook = useFlyingIcons();
-  const { cartIconRef, wishlistIconRef } = flyingIconsHook;
+  const { cartIconRef } = flyingIconsHook;
 
   // Cart
   const cartApi = useCartApi();
@@ -69,10 +68,6 @@ export function useApp() {
     await updateQuantityApi(productId, quantity);
   };
 
-  // Wishlist
-  const wishlist = useWishlist();
-  const { wishlistItems, addToWishlist, removeFromWishlist } = wishlist;
-  const isInWishlist = (productId: string) => wishlistItems.some(item => item.id === productId);
 
   // Notifications
   const notifications = useNotifications([]);
@@ -302,7 +297,6 @@ export function useApp() {
   return {
     // Refs
     cartIconRef,
-    wishlistIconRef,
     
     // Auth
     user,
@@ -326,12 +320,6 @@ export function useApp() {
     toggleSelectItem,
     selectAllItems,
     deselectAllItems,
-    
-    // Wishlist
-    wishlistItems,
-    addToWishlist,
-    removeFromWishlist,
-    isInWishlist,
     
     // Notifications
     notifications,

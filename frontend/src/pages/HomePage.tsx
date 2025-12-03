@@ -17,9 +17,7 @@ interface HomePageProps {
   onFilterClose: () => void;
   onAddToCart: (product: Product) => Promise<void>;
   onViewProductDetail: (product: Product) => void;
-  onAddToWishlist: (product: Product) => void;
-  isInWishlist: (productId: string) => boolean;
-  onTriggerFlyingIcon: (type: 'heart' | 'cart', element: HTMLElement) => void;
+  onTriggerFlyingIcon: (type: 'cart', element: HTMLElement) => void;
   isLoggedIn: boolean;
   onLogin: () => void;
 }
@@ -31,8 +29,6 @@ export function HomePage({
   onFilterClose,
   onAddToCart,
   onViewProductDetail,
-  onAddToWishlist,
-  isInWishlist,
   onTriggerFlyingIcon,
   isLoggedIn,
   onLogin,
@@ -71,8 +67,6 @@ export function HomePage({
         <HotDealsSection
           onAddToCart={onAddToCart}
           onViewDetail={onViewProductDetail}
-          onAddToWishlist={onAddToWishlist}
-          isInWishlist={isInWishlist}
           onTriggerFlyingIcon={onTriggerFlyingIcon}
           isLoggedIn={isLoggedIn}
           onLogin={onLogin}
@@ -94,8 +88,6 @@ export function HomePage({
                 filters={filters}
                 onAddToCart={onAddToCart}
                 onViewDetail={onViewProductDetail}
-                onAddToWishlist={onAddToWishlist}
-                isInWishlist={isInWishlist}
                 onTriggerFlyingIcon={onTriggerFlyingIcon}
                 isLoggedIn={isLoggedIn}
                 onLogin={onLogin}

@@ -8,7 +8,6 @@ export function useSidebars() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isPromotionOpen, setIsPromotionOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
 
@@ -21,9 +20,6 @@ export function useSidebars() {
   const openNotification = useCallback(() => setIsNotificationOpen(true), []);
   const closeNotification = useCallback(() => setIsNotificationOpen(false), []);
 
-  const openWishlist = useCallback(() => setIsWishlistOpen(true), []);
-  const closeWishlist = useCallback(() => setIsWishlistOpen(false), []);
-
   const openPromotion = useCallback(() => setIsPromotionOpen(true), []);
   const closePromotion = useCallback(() => setIsPromotionOpen(false), []);
 
@@ -34,7 +30,6 @@ export function useSidebars() {
     isCartOpen,
     isFilterOpen,
     isNotificationOpen,
-    isWishlistOpen,
     isPromotionOpen,
     isSupportOpen,
     openCart,
@@ -43,8 +38,6 @@ export function useSidebars() {
     closeFilter,
     openNotification,
     closeNotification,
-    openWishlist,
-    closeWishlist,
     openPromotion,
     closePromotion,
     openSupport,

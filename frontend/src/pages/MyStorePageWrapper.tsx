@@ -16,10 +16,8 @@ interface MyStorePageWrapperProps {
   onUpdateOrderStatus: (orderId: string, status: string) => void;
   // Header props
   cartItemsCount: number;
-  wishlistItemsCount: number;
   unreadNotifications: number;
   onCartClick: () => void;
-  onWishlistClick: () => void;
   onNotificationsClick: () => void;
   onFilterClick: () => void;
   onPromotionClick: () => void;
@@ -39,7 +37,6 @@ interface MyStorePageWrapperProps {
   onSearchChange: (query: string) => void;
   onSearchClick: () => void;
   cartIconRef: React.RefObject<HTMLButtonElement>;
-  wishlistIconRef: React.RefObject<HTMLButtonElement>;
 }
 
 export function MyStorePageWrapper(props: MyStorePageWrapperProps) {
@@ -51,10 +48,8 @@ export function MyStorePageWrapper(props: MyStorePageWrapperProps) {
     onDeleteProduct,
     onUpdateOrderStatus,
     cartItemsCount,
-    wishlistItemsCount,
     unreadNotifications,
     onCartClick,
-    onWishlistClick,
     onNotificationsClick,
     onFilterClick,
     onPromotionClick,
@@ -74,17 +69,14 @@ export function MyStorePageWrapper(props: MyStorePageWrapperProps) {
     onSearchChange,
     onSearchClick,
     cartIconRef,
-    wishlistIconRef,
   } = props;
 
   return (
     <>
       <Header
         cartItemsCount={cartItemsCount}
-        wishlistItemsCount={wishlistItemsCount}
         unreadNotifications={unreadNotifications}
         onCartClick={onCartClick}
-        onWishlistClick={onWishlistClick}
         onNotificationsClick={onNotificationsClick}
         onFilterClick={onFilterClick}
         onPromotionClick={onPromotionClick}
@@ -104,7 +96,6 @@ export function MyStorePageWrapper(props: MyStorePageWrapperProps) {
         onSearchChange={onSearchChange}
         onSearchClick={onSearchClick}
         cartIconRef={cartIconRef}
-        wishlistIconRef={wishlistIconRef}
       />
       <main className="pt-16 min-h-screen">
         <MyStorePage

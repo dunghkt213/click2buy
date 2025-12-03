@@ -30,10 +30,8 @@ export function SearchPage() {
       onAddToCart={app.addToCart}
       initialSearchQuery={searchQuery}
       cartItemsCount={app.getTotalItems()}
-      wishlistItemsCount={app.wishlistItems.length}
       unreadNotifications={app.notifications.getUnreadCount()}
       onCartClick={() => navigate('/cart')}
-      onWishlistClick={() => app.sidebars.openWishlist()}
       onNotificationsClick={() => app.sidebars.openNotification()}
       onPromotionClick={() => app.sidebars.openPromotion()}
       onSupportClick={() => app.sidebars.openSupport()}
@@ -45,15 +43,12 @@ export function SearchPage() {
       onProfileClick={() => navigate('/profile')}
       onOrdersClick={() => navigate('/orders')}
       onViewDetail={app.handleViewProductDetail}
-      onAddToWishlist={app.addToWishlist}
-      isInWishlist={app.isInWishlist}
       onTriggerFlyingIcon={app.handleTriggerFlyingIcon}
       onLogoClick={() => navigate('/feed')}
       onStoreClick={app.handleStoreClick}
       cartItems={app.cartItems}
       totalPrice={app.getTotalPrice()}
       cartIconRef={app.cartIconRef}
-      wishlistIconRef={app.wishlistIconRef}
       flyingIcons={app.flyingIcons}
       onAnimationComplete={app.handleAnimationComplete}
     />

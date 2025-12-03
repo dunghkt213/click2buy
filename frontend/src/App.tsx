@@ -8,6 +8,7 @@ import { MyStorePage } from "./pages/MyStorePage/MyStorePage";
 import { OrdersPage } from "./pages/OrdersPage/OrdersPage";
 import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
 import { SearchPage } from "./pages/SearchPage/SearchPage";
+import { ShopPage } from "./pages/ShopPage/ShopPage";
 
 export default function App() {
   return (
@@ -51,6 +52,11 @@ export default function App() {
       <Route path="/orders" element={
         <MainLayout>
           <OrdersPage />
+        </MainLayout>
+      } />
+      <Route path="/shop" element={
+        <MainLayout>
+          <ShopPage />
         </MainLayout>
       } />
       

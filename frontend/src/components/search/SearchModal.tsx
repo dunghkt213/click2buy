@@ -17,10 +17,8 @@ interface SearchModalProps {
   initialSearchQuery?: string; // Query tìm kiếm từ Header
   // Header props
   cartItemsCount: number;
-  wishlistItemsCount: number;
   unreadNotifications: number;
   onCartClick: () => void;
-  onWishlistClick: () => void;
   onNotificationsClick: () => void;
   onPromotionClick: () => void;
   onSupportClick: () => void;
@@ -32,15 +30,12 @@ interface SearchModalProps {
   onProfileClick: () => void;
   onOrdersClick: () => void;
   onViewDetail?: (product: Product) => void; // THÊM: Callback xem chi tiết
-  onAddToWishlist?: (product: Product) => void; // THÊM: Callback thêm vào wishlist
-  isInWishlist?: (productId: string) => boolean; // THÊM: Hàm check wishlist
-  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void; // THÊM: Handler flying animation
+  onTriggerFlyingIcon?: (type: 'cart', element: HTMLElement) => void; // THÊM: Handler flying animation
   onStoreClick?: () => void; // THÊM: Callback cho store
   onLogoClick?: () => void; // THÊM: Callback cho logo
   cartItems?: CartItem[]; // THÊM: Cart items cho preview
   totalPrice?: number; // THÊM: Total price cho preview
   cartIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho cart icon
-  wishlistIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho wishlist icon
   flyingIcons?: FlyingIconConfig[]; // THÊM: Flying icons cho animation
   onAnimationComplete?: (id: string) => void; // THÊM: Callback khi animation complete
 }
@@ -51,10 +46,8 @@ export function SearchModal({
   onAddToCart, 
   initialSearchQuery = '',
   cartItemsCount,
-  wishlistItemsCount,
   unreadNotifications,
   onCartClick,
-  onWishlistClick,
   onNotificationsClick,
   onPromotionClick,
   onSupportClick,
@@ -66,15 +59,12 @@ export function SearchModal({
   onProfileClick,
   onOrdersClick,
   onViewDetail, // THÊM
-  onAddToWishlist, // THÊM
-  isInWishlist, // THÊM
   onTriggerFlyingIcon, // THÊM
   onStoreClick, // THÊM
   onLogoClick, // THÊM
   cartItems, // THÊM
   totalPrice, // THÊM
   cartIconRef, // THÊM
-  wishlistIconRef, // THÊM
   flyingIcons = [], // THÊM
   onAnimationComplete, // THÊM
 }: SearchModalProps) {
@@ -270,10 +260,8 @@ export function SearchModal({
     <div className="min-h-screen bg-background">
       <Header 
         cartItemsCount={cartItemsCount}
-        wishlistItemsCount={wishlistItemsCount}
         unreadNotifications={unreadNotifications}
         onCartClick={onCartClick}
-        onWishlistClick={onWishlistClick}
         onNotificationsClick={onNotificationsClick}
         onFilterClick={() => setIsFilterOpen(true)}
         onPromotionClick={onPromotionClick}
@@ -293,7 +281,6 @@ export function SearchModal({
         cartItems={cartItems}
         totalPrice={totalPrice}
         cartIconRef={cartIconRef}
-        wishlistIconRef={wishlistIconRef}
       />
       
       <main className="pt-16">
@@ -360,8 +347,6 @@ export function SearchModal({
                       onAddToCart={onAddToCart}
                       viewMode="grid"
                       onViewDetail={onViewDetail}
-                      onAddToWishlist={onAddToWishlist}
-                      isInWishlist={isInWishlist ? isInWishlist(product.id) : false}
                       onTriggerFlyingIcon={onTriggerFlyingIcon}
                       isLoggedIn={isLoggedIn}
                       onLogin={onLogin}

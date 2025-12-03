@@ -8,24 +8,21 @@ import { FlyingIconConfig } from '../components/animation/FlyingIcon';
 export function useFlyingIcons() {
   const [flyingIcons, setFlyingIcons] = useState<FlyingIconConfig[]>([]);
   const cartIconRef = useRef<HTMLButtonElement>(null);
-  const wishlistIconRef = useRef<HTMLButtonElement>(null);
 
-  const triggerFlyingIcon = useCallback((type: 'heart' | 'cart', element: HTMLElement) => {
-    const targetRef = type === 'heart' ? wishlistIconRef : cartIconRef;
-    
-    if (!targetRef.current) return;
+  const triggerFlyingIcon = useCallback((type: 'cart', element: HTMLElement) => {
+    if (!cartIconRef.current) return;
     
     const startRect = element.getBoundingClientRect();
     const startX = startRect.left + startRect.width / 2;
     const startY = startRect.top + startRect.height / 2;
     
-    const endRect = targetRef.current.getBoundingClientRect();
+    const endRect = cartIconRef.current.getBoundingClientRect();
     const endX = endRect.left + endRect.width / 2;
     const endY = endRect.top + endRect.height / 2;
     
     const newIcon: FlyingIconConfig = {
       id: `${type}-${Date.now()}-${Math.random()}`,
-      type,
+      type: 'cart',
       startX,
       startY,
       endX,
@@ -42,7 +39,6 @@ export function useFlyingIcons() {
   return {
     flyingIcons,
     cartIconRef,
-    wishlistIconRef,
     triggerFlyingIcon,
     handleAnimationComplete,
   };

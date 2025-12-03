@@ -46,8 +46,6 @@ export function FeedPage() {
         <HotDealsSection
           onAddToCart={app.addToCart}
           onViewDetail={app.handleViewProductDetail}
-          onAddToWishlist={app.addToWishlist}
-          isInWishlist={app.isInWishlist}
           onTriggerFlyingIcon={app.handleTriggerFlyingIcon}
           isLoggedIn={app.isLoggedIn}
           onLogin={app.handleLogin}
@@ -69,8 +67,6 @@ export function FeedPage() {
                 filters={app.filters.filters}
                 onAddToCart={app.addToCart}
                 onViewDetail={app.handleViewProductDetail}
-                onAddToWishlist={app.addToWishlist}
-                isInWishlist={app.isInWishlist}
                 onTriggerFlyingIcon={app.handleTriggerFlyingIcon}
                 isLoggedIn={app.isLoggedIn}
                 onLogin={app.handleLogin}

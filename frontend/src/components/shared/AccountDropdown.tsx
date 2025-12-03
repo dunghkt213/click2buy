@@ -1,31 +1,29 @@
-import React from 'react';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '../ui/dropdown-menu';
-import { Button } from '../ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Badge } from '../ui/badge';
-import { 
-  User as UserIcon, 
-  Settings, 
-  Package, 
-  Heart, 
-  Bell, 
-  HelpCircle, 
-  LogOut, 
+import {
+  Bell,
   CreditCard,
-  MapPin,
-  Star,
   Gift,
+  HelpCircle,
+  LogOut,
+  MapPin,
+  Package,
+  Settings,
   Shield,
+  Star,
+  User as UserIcon,
   Users
 } from 'lucide-react';
 import { User } from 'types';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '../ui/dropdown-menu';
 
 interface AccountDropdownProps {
   user?: User;
@@ -35,7 +33,6 @@ interface AccountDropdownProps {
   onLogout: () => void;
   onProfileClick: () => void;
   onOrdersClick: () => void;
-  onWishlistClick: () => void;
   onNotificationsClick: () => void;
   unreadNotifications: number;
 }
@@ -48,7 +45,6 @@ export function AccountDropdown({
   onLogout,
   onProfileClick,
   onOrdersClick,
-  onWishlistClick,
   onNotificationsClick,
   unreadNotifications
 }: AccountDropdownProps) {
@@ -146,13 +142,13 @@ export function AccountDropdown({
             <Package className="w-4 h-4 mr-3" />
             Đơn hàng của tôi
           </DropdownMenuItem>
-          
-          <DropdownMenuItem onClick={onWishlistClick}>
-            <Heart className="w-4 h-4 mr-3" />
-            Danh sách yêu thích
+
+          <DropdownMenuItem onClick={onNotificationsClick}>
+            <Bell className="w-4 h-4 mr-3" />
+            Thông báo
           </DropdownMenuItem>
           
-          <DropdownMenuItem onClick={onNotificationsClick}>
+          {/* <DropdownMenuItem onClick={onNotificationsClick}>
             <div className="flex items-center w-full">
               <Bell className="w-4 h-4 mr-3" />
               <span className="flex-1">Thông báo</span>
@@ -162,7 +158,7 @@ export function AccountDropdown({
                 </Badge>
               )}
             </div>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
         </div>
 
         <DropdownMenuSeparator />

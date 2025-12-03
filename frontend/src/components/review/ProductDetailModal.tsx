@@ -1,22 +1,25 @@
-import { ChevronLeft, ChevronRight, Heart, Package, Share2, Shield, ShoppingCart, Star, ThumbsUp, TruckIcon, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight, Package, Share2, Shield, ShoppingCart, Star, Store, ThumbsUp, TruckIcon, Upload, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Product, ProductReview } from 'types';
 import { mapReviewResponse, reviewApi } from '../../apis/review';
 import { Avatar } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Label } from '../ui/label';
 import { Progress } from '../ui/progress';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Textarea } from '../ui/textarea';
 
 interface ProductDetailModalProps {
   isOpen: boolean;
   onClose?: () => void;
   product: Product;
   onAddToCart: (product: Product) => void;
-  onAddToWishlist?: (product: Product) => void;
-  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void; // THÊM: Trigger flying animation
+  onTriggerFlyingIcon?: (type: 'cart', element: HTMLElement) => void; // THÊM: Trigger flying animation
   isLoggedIn?: boolean; // THÊM: Kiểm tra đăng nhập
   onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
@@ -26,7 +29,6 @@ export function ProductDetailModal({
   onClose,
   product,
   onAddToCart,
-  onAddToWishlist,
   onTriggerFlyingIcon,
   isLoggedIn = false,
   onLogin,
@@ -35,6 +37,15 @@ export function ProductDetailModal({
   const [quantity, setQuantity] = useState(1);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
+  
+  // Comment form state
+  const [commentRating, setCommentRating] = useState(5);
+  const [commentText, setCommentText] = useState('');
+  const [commentImages, setCommentImages] = useState<File[]>([]);
+  const [commentImagePreviews, setCommentImagePreviews] = useState<string[]>([]);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   // Load reviews khi modal mở
   useEffect(() => {
@@ -55,6 +66,74 @@ export function ProductDetailModal({
       setReviews([]);
     } finally {
       setLoadingReviews(false);
+    }
+  };
+
+  // Handlers cho comment form
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      const newFiles = [...commentImages, ...files].slice(0, 5); // Tối đa 5 ảnh
+      setCommentImages(newFiles);
+      
+      // Tạo preview URLs
+      const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+      setCommentImagePreviews(newPreviews);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newFiles = commentImages.filter((_, i) => i !== index);
+    const newPreviews = commentImagePreviews.filter((_, i) => i !== index);
+    
+    // Revoke old URL để tránh memory leak
+    URL.revokeObjectURL(commentImagePreviews[index]);
+    
+    setCommentImages(newFiles);
+    setCommentImagePreviews(newPreviews);
+  };
+
+  const handleSubmitComment = async () => {
+    if (!isLoggedIn) {
+      onLogin?.();
+      return;
+    }
+
+    if (commentText.trim() === '' && commentImages.length === 0) {
+      toast.error('Vui lòng nhập bình luận hoặc thêm ảnh');
+      return;
+    }
+
+    try {
+      setIsSubmittingComment(true);
+      
+      // Upload images (mock - trong thực tế cần API upload)
+      const uploadedImageUrls: string[] = [];
+      // TODO: Implement image upload API
+      
+      // Submit review
+      await reviewApi.create({
+        productId: product.id,
+        rating: commentRating,
+        comment: commentText.trim(),
+        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+      });
+
+      toast.success('Đã thêm bình luận thành công!');
+      
+      // Reset form
+      setCommentText('');
+      setCommentImages([]);
+      setCommentImagePreviews([]);
+      setCommentRating(5);
+      
+      // Reload reviews
+      await loadReviews();
+    } catch (error: any) {
+      console.error('Failed to submit comment:', error);
+      toast.error('Không thể thêm bình luận. Vui lòng thử lại.');
+    } finally {
+      setIsSubmittingComment(false);
     }
   };
 
@@ -110,19 +189,6 @@ export function ProductDetailModal({
     }
   };
 
-  const handleAddToWishlist = (e?: React.MouseEvent<HTMLButtonElement>) => {
-    if (!isLoggedIn) {
-      onLogin?.();
-      return;
-    }
-    
-    // Trigger flying animation
-    if (onTriggerFlyingIcon && e?.currentTarget) {
-      onTriggerFlyingIcon('heart', e.currentTarget);
-    }
-    
-    onAddToWishlist?.(product);
-  };
 
   const soldCount = product.soldCount || Math.floor(Math.random() * 10000);
   const discount = product.originalPrice
@@ -243,6 +309,29 @@ export function ProductDetailModal({
               <div>
                 <h1 className="text-2xl mb-2">{product.name}</h1>
                 
+                {/* Shop Name */}
+                {(product.ownerId || product.sellerId) && (
+                  <div className="mb-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const shopId = product.ownerId || product.sellerId;
+                        if (shopId) {
+                          // Đóng modal trước khi navigate
+                          if (onClose) {
+                            onClose();
+                          }
+                          navigate(`/shop`);
+                        }
+                      }}
+                      className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 hover:underline transition-colors group"
+                    >
+                      <Store className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      <span className="font-medium">Shop {product.brand || 'Đối tác'}</span>
+                    </button>
+                  </div>
+                )}
+                
                 {/* Rating & Sold */}
                 <div className="flex items-center gap-4 mb-4 flex-wrap">
                   <div className="flex items-center gap-1">
@@ -355,15 +444,6 @@ export function ProductDetailModal({
 
                 {/* Additional Actions */}
                 <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 gap-2"
-                    onClick={(e) => handleAddToWishlist(e)}
-                  >
-                    <Heart className="w-4 h-4" />
-                    Yêu thích
-                  </Button>
                   <Button variant="ghost" size="sm" className="flex-1 gap-2">
                     <Share2 className="w-4 h-4" />
                     Chia sẻ
@@ -405,9 +485,7 @@ export function ProductDetailModal({
               <TabsContent value="description" className="py-6">
                 <div className="prose prose-sm max-w-none">
                   <p>{product.description}</p>
-                  <p className="mt-4">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                  </p>
+
                 </div>
               </TabsContent>
 
@@ -461,6 +539,128 @@ export function ProductDetailModal({
                   </div>
                 </div>
 
+                {/* Add Comment Form */}
+                <div className="bg-card border border-border rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Viết đánh giá của bạn</h3>
+                  
+                  {!isLoggedIn ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground mb-4">Bạn cần đăng nhập để viết đánh giá</p>
+                      <Button onClick={onLogin}>Đăng nhập</Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Rating Selection */}
+                      <div>
+                        <Label className="mb-2 block">Đánh giá của bạn</Label>
+                        <div className="flex items-center gap-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setCommentRating(star)}
+                              className="focus:outline-none transition-transform hover:scale-110"
+                            >
+                              <Star
+                                className={`w-8 h-8 transition-colors ${
+                                  star <= commentRating
+                                    ? 'fill-primary text-primary'
+                                    : 'text-muted-foreground/30 hover:text-primary/50'
+                                }`}
+                              />
+                            </button>
+                          ))}
+                          <span className="ml-2 text-sm text-muted-foreground">
+                            {commentRating} sao
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Comment Text */}
+                      <div>
+                        <Label htmlFor="comment-text" className="mb-2 block">
+                          Bình luận
+                        </Label>
+                        <Textarea
+                          id="comment-text"
+                          placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..."
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          className="min-h-24"
+                          rows={4}
+                        />
+                      </div>
+
+                      {/* Image Upload */}
+                      <div>
+                        <Label className="mb-2 block">Thêm ảnh (tối đa 5 ảnh)</Label>
+                        <div className="space-y-3">
+                          {/* Image Previews */}
+                          {commentImagePreviews.length > 0 && (
+                            <div className="grid grid-cols-5 gap-2">
+                              {commentImagePreviews.map((preview, index) => (
+                                <div key={index} className="relative group">
+                                  <img
+                                    src={preview}
+                                    alt={`Preview ${index + 1}`}
+                                    className="w-full aspect-square object-cover rounded-lg border border-border"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeImage(index)}
+                                    className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Upload Button */}
+                          {commentImages.length < 5 && (
+                            <div>
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={handleImageSelect}
+                                className="hidden"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="gap-2"
+                              >
+                                <Upload className="w-4 h-4" />
+                                Thêm ảnh
+                                {commentImages.length > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    ({commentImages.length}/5)
+                                  </span>
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Submit Button */}
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={handleSubmitComment}
+                          disabled={isSubmittingComment || (commentText.trim() === '' && commentImages.length === 0)}
+                          className="gap-2"
+                        >
+                          {isSubmittingComment ? 'Đang gửi...' : 'Gửi đánh giá'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Reviews List */}
                 <div className="space-y-6">
                   {loadingReviews ? (
@@ -503,6 +703,26 @@ export function ProductDetailModal({
                             <span className="text-xs text-muted-foreground">{review.date}</span>
                           </div>
                           <p className="text-sm mb-3">{review.comment}</p>
+                          
+                          {/* Review Images */}
+                          {review.images && review.images.length > 0 && (
+                            <div className="grid grid-cols-4 gap-2 mb-3">
+                              {review.images.map((img, idx) => (
+                                <div
+                                  key={idx}
+                                  className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => window.open(img, '_blank')}
+                                >
+                                  <img
+                                    src={img}
+                                    alt={`Review image ${idx + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
                           <Button variant="ghost" size="sm" className="gap-2 h-8">
                             <ThumbsUp className="w-3 h-3" />
                             Hữu ích ({review.helpful})

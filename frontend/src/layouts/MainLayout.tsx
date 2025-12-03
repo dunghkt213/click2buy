@@ -36,11 +36,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       selectedTotalPrice={app.getSelectedTotalPrice()}
       selectedItems={app.getSelectedItems()}
       onCheckout={app.handleCheckout}
-      wishlistItems={app.wishlistItems}
-      wishlistItemsCount={app.wishlistItems.length}
-      onRemoveFromWishlist={app.removeFromWishlist}
       onAddToCart={app.addToCart}
-      onViewProduct={app.handleViewProduct}
       notifications={app.notifications.notifications}
       unreadNotifications={app.notifications.getUnreadCount()}
       onMarkAsRead={app.notifications.markAsRead}
@@ -77,9 +73,6 @@ export function MainLayout({ children }: MainLayoutProps) {
       isNotificationOpen={app.sidebars.isNotificationOpen}
       onNotificationClick={() => app.sidebars.openNotification()}
       onNotificationClose={() => app.sidebars.closeNotification()}
-      isWishlistOpen={app.sidebars.isWishlistOpen}
-      onWishlistClick={() => app.sidebars.openWishlist()}
-      onWishlistClose={() => app.sidebars.closeWishlist()}
       isPromotionOpen={app.sidebars.isPromotionOpen}
       onPromotionClose={() => app.sidebars.closePromotion()}
       isSupportOpen={app.sidebars.isSupportOpen}
@@ -88,13 +81,10 @@ export function MainLayout({ children }: MainLayoutProps) {
       selectedProduct={app.modals.selectedProduct}
       onProductDetailClose={() => app.modals.closeProductDetail()}
       onAddToCart={app.addToCart}
-      onAddToWishlist={app.addToWishlist}
-      isInWishlist={app.isInWishlist}
       flyingIcons={app.flyingIcons}
       onAnimationComplete={app.handleAnimationComplete}
       onTriggerFlyingIcon={app.handleTriggerFlyingIcon}
       cartIconRef={app.cartIconRef}
-      wishlistIconRef={app.wishlistIconRef}
       isCheckoutOpen={app.modals.isCheckoutOpen}
       onCloseCheckout={() => app.modals.closeCheckout()}
       isAuthOpen={app.modals.isAuthOpen}
