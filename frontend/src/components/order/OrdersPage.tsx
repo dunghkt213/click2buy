@@ -15,7 +15,8 @@ import {
   RotateCcw,
   ShoppingBag,
   Star,
-  MessageSquare
+  MessageSquare,
+  CreditCard
 } from 'lucide-react';
 import { Order, OrderStatus } from 'types';
 import { formatPrice } from '../../utils/utils';
@@ -32,10 +33,10 @@ interface OrdersPageProps {
   onContactShop: (orderId: string) => void;
 }
 
-type TabValue = 'all' | OrderStatus;
+type TabValue = 'waiting_payment' | OrderStatus;
 
 const statusTabs = [
-  { value: 'all' as TabValue, label: 'Tất cả', icon: ShoppingBag },
+  { value: 'waiting_payment' as TabValue, label: 'Chờ thanh toán', icon: CreditCard },
   { value: 'pending' as TabValue, label: 'Chờ xác nhận', icon: Clock },
   { value: 'confirmed' as TabValue, label: 'Đã xác nhận', icon: CheckCircle },
   { value: 'shipping' as TabValue, label: 'Đang giao', icon: Truck },
@@ -73,14 +74,20 @@ export function OrdersPage({
   onReview,
   onContactShop
 }: OrdersPageProps) {
-  const [selectedTab, setSelectedTab] = useState<TabValue>('all');
+  const [selectedTab, setSelectedTab] = useState<TabValue>('waiting_payment');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Filter orders
   const filteredOrders = orders.filter(order => {
-    const matchesTab = selectedTab === 'all' || order.status === selectedTab;
+    let matchesTab = false;
+    if (selectedTab === 'waiting_payment') {
+      // Chờ thanh toán: các đơn hàng có status là pending hoặc chưa được thanh toán
+      matchesTab = order.status === 'pending' || order.status === 'waiting_payment';
+    } else {
+      matchesTab = order.status === selectedTab;
+    }
     const matchesSearch = searchQuery === '' || 
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.items.some(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -90,7 +97,9 @@ export function OrdersPage({
 
   // Count orders by status
   const getStatusCount = (status: TabValue) => {
-    if (status === 'all') return orders.length;
+    if (status === 'waiting_payment') {
+      return orders.filter(order => order.status === 'pending' || order.status === 'waiting_payment').length;
+    }
     return orders.filter(order => order.status === status).length;
   };
 
@@ -175,8 +184,6 @@ export function OrdersPage({
                   <p className="text-muted-foreground mb-6">
                     {searchQuery
                       ? 'Không tìm thấy đơn hàng phù hợp'
-                      : selectedTab === 'all'
-                      ? 'Bạn chưa có đơn hàng nào'
                       : `Bạn chưa có đơn hàng ${statusTabs.find(t => t.value === selectedTab)?.label.toLowerCase()}`}
                   </p>
                   <Button onClick={onBack} className="bg-primary hover:bg-primary/90">

@@ -10,7 +10,6 @@ import { CartSidebar } from '../components/cart/CartSidebar';
 import { Footer } from '../components/layout/Footer';
 import { Header } from '../components/layout/Header';
 import { ProductDetailModal } from '../components/review/ProductDetailModal';
-import { CheckoutModal } from '../components/payment/CheckoutModal';
 import { NotificationSidebar } from '../components/sidebars/NotificationSidebar';
 import { PromotionSidebar } from '../components/sidebars/PromotionSidebar';
 import { SupportSidebar } from '../components/sidebars/SupportSidebar';
@@ -235,12 +234,7 @@ export function AppLayout(props: AppLayoutProps) {
         selectedTotalPrice={selectedTotalPrice}
         selectedItems={selectedItems}
         onCheckout={() => {
-          if (selectedItems.length > 0) {
-            onCartClose();
-            if (onOpenCheckout) {
-              onOpenCheckout();
-            }
-          }
+          // CartSidebar sẽ tự xử lý navigation
         }}
       />
 
@@ -270,14 +264,6 @@ export function AppLayout(props: AppLayoutProps) {
       />
 
       {/* Modals */}
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={onCheckoutClose}
-        items={selectedItems}
-        totalPrice={selectedTotalPrice}
-        onCheckout={onCheckout}
-      />
-
       <AuthModal
         isOpen={isAuthOpen}
         onClose={onAuthClose}

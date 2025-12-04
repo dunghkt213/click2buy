@@ -1,9 +1,8 @@
 import { ArrowLeft, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
-import { useState } from 'react'; // THÊM: useState
+import { useNavigate } from 'react-router-dom';
 import { CartItem } from 'types';
 import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { CheckoutModal } from '../payment/CheckoutModal'; // THÊM: Import CheckoutModal
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -35,11 +34,21 @@ export function CartPage({
   onCheckout,
   onBack
 }: CartPageProps) {
+  const navigate = useNavigate();
   const allSelected = items.length > 0 && items.every(item => item.selected);
   const selectedCount = selectedItems.length;
 
-  // THÊM: State cho CheckoutModal
-  const [isCheckoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const handleNavigateToCheckout = () => {
+    if (selectedCount === 0) {
+      return;
+    }
+    // Navigate to checkout with selected items
+    navigate('/checkout', {
+      state: {
+        items: selectedItems,
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -245,7 +254,7 @@ export function CartPage({
                 </div>
 
                 <Button
-                  onClick={() => setCheckoutModalOpen(true)} // THAY ĐỔI: Mở CheckoutModal
+                  onClick={handleNavigateToCheckout}
                   disabled={selectedCount === 0}
                   className="w-full bg-primary hover:bg-primary/90"
                 >
@@ -262,15 +271,6 @@ export function CartPage({
           </div>
         )}
       </div>
-
-      {/* Checkout Modal */}
-      <CheckoutModal
-        isOpen={isCheckoutModalOpen}
-        onClose={() => setCheckoutModalOpen(false)}
-        items={selectedItems} // THAY ĐỔI: Truyền selectedItems thay vì selectedItems
-        totalPrice={selectedTotalPrice}
-        onCheckout={onCheckout}
-      />
     </div>
   );
 }

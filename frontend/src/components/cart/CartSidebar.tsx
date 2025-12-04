@@ -7,6 +7,7 @@ import {
   Trash2,
   X
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { CartItem } from 'types';
 import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -44,6 +45,7 @@ export function CartSidebar({
   selectedItems,
   onCheckout
 }: CartSidebarProps) {
+  const navigate = useNavigate();
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const selectedItemsCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
   const allSelected = items.length > 0 && items.every(item => item.selected);
@@ -51,6 +53,18 @@ export function CartSidebar({
   const shippingFee = selectedTotalPrice >= 1000000 ? 0 : 30000;
   const discount = selectedTotalPrice >= 2000000 ? selectedTotalPrice * 0.05 : 0;
   const finalTotal = selectedTotalPrice + shippingFee - discount;
+
+  const handleCheckout = () => {
+    if (selectedItems.length === 0) {
+      return;
+    }
+    onClose();
+    navigate('/checkout', {
+      state: {
+        items: selectedItems,
+      },
+    });
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => {
@@ -265,7 +279,7 @@ export function CartSidebar({
               <div className="space-y-3">
                 <Button 
                     className="w-full h-10 text-sm gap-2" 
-                    onClick={onCheckout}
+                    onClick={handleCheckout}
                     disabled={selectedItems.length === 0}
                   >
                   <div className="flex items-center justify-between w-full">

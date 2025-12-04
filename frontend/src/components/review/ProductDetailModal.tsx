@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, Package, Share2, Shield, ShoppingCart, Star,
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Product, ProductReview } from 'types';
+import { Product, ProductReview, CartItem } from 'types';
 import { mapReviewResponse, reviewApi } from '../../apis/review';
 import { userApi, BackendUser } from '../../apis/user';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -211,6 +211,32 @@ export function ProductDetailModal({
     for (let i = 0; i < quantity; i++) {
       onAddToCart(product);
     }
+  };
+
+  const handleBuyNow = () => {
+    if (!isLoggedIn) {
+      onLogin?.();
+      return;
+    }
+
+    // Convert product to CartItem
+    const cartItem: CartItem = {
+      ...product,
+      quantity: quantity,
+      selected: true,
+    };
+
+    // Đóng modal trước khi navigate
+    if (onClose) {
+      onClose();
+    }
+
+    // Navigate to checkout with product
+    navigate('/checkout', {
+      state: {
+        items: [cartItem],
+      },
+    });
   };
 
 
@@ -468,7 +494,7 @@ export function ProductDetailModal({
                   </Button>
                   <Button
                     className="flex-1 gap-2"
-                    onClick={(e) => handleAddToCart(e)}
+                    onClick={handleBuyNow}
                     disabled={!product.inStock}
                   >
                     Mua ngay

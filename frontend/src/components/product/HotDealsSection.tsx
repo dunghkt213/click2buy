@@ -1,7 +1,8 @@
 import { Clock, Flame, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Product } from 'types';
+import { Product, CartItem } from 'types';
 import { productApi } from '../../apis/product';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
@@ -22,6 +23,7 @@ export function HotDealsSection({
   isLoggedIn = false,
   onLogin
 }: HotDealsSectionProps) {
+  const navigate = useNavigate();
   const [hotDeals, setHotDeals] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -133,6 +135,30 @@ export function HotDealsSection({
     if (onTriggerFlyingIcon) {
       onTriggerFlyingIcon('cart', e.currentTarget);
     }
+  };
+
+  const handleBuyNow = (product: Product, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // Ngăn không cho trigger xem chi tiết
+    
+    if (!isLoggedIn) {
+      e.preventDefault();
+      onLogin?.();
+      return;
+    }
+
+    // Convert product to CartItem
+    const cartItem: CartItem = {
+      ...product,
+      quantity: 1,
+      selected: true,
+    };
+
+    // Navigate to checkout with product
+    navigate('/checkout', {
+      state: {
+        items: [cartItem],
+      },
+    });
   };
 
   // Handler để xem chi tiết sản phẩm khi click vào card
@@ -248,10 +274,11 @@ export function HotDealsSection({
                   </div>
                 </div>
 
-                {/* Add to Cart Button */}
+                {/* Buy Now Button */}
                 <Button
                   className="w-full gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
-                  onClick={(e) => handleAddToCart(product, e)}
+                  onClick={(e) => handleBuyNow(product, e)}
+                  disabled={!product.inStock}
                 >
                   <ShoppingCart className="w-4 h-4" />
                   Mua ngay

@@ -10,6 +10,7 @@ import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
 import { SearchPage } from "./pages/SearchPage/SearchPage";
 import { ShopPage } from "./pages/ShopPage/ShopPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage/ProductDetailPage";
+import { CheckoutPage } from "./pages/CheckoutPage/CheckoutPage";
 
 export default function App() {
   return (
@@ -63,6 +64,11 @@ export default function App() {
       <Route path="/product/:id" element={
         <MainLayout>
           <ProductDetailPage />
+        </MainLayout>
+      } />
+      <Route path="/checkout" element={
+        <MainLayout>
+          <CheckoutPage />
         </MainLayout>
       } />
       

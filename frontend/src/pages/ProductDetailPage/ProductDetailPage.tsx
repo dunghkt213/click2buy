@@ -3,11 +3,11 @@
  * Hiển thị đầy đủ thông tin sản phẩm, shop, mô tả, đánh giá và sản phẩm liên quan
  */
 
-import { ArrowLeft, ChevronLeft, ChevronRight, Package, Share2, Shield, ShoppingCart, Star, Store, ThumbsUp, TruckIcon, Upload } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Package, Share2, Shield, ShoppingCart, Star, Store, ThumbsUp, TruckIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Product, ProductReview } from 'types';
+import { Product, ProductReview, CartItem } from 'types';
 import { mapReviewResponse, reviewApi } from '../../apis/review';
 import { userApi, BackendUser } from '../../apis/user';
 import { productApi } from '../../apis/product';
@@ -15,10 +15,8 @@ import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { Avatar } from '../../components/ui/avatar';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Label } from '../../components/ui/label';
 import { Progress } from '../../components/ui/progress';
 import { Separator } from '../../components/ui/separator';
-import { Textarea } from '../../components/ui/textarea';
 import { Card } from '../../components/ui/card';
 import { useAppContext } from '../../providers/AppProvider';
 import { formatPrice } from '../../utils/utils';
@@ -41,14 +39,6 @@ export function ProductDetailPage() {
   const [loadingShop, setLoadingShop] = useState(false);
   const [shopProducts, setShopProducts] = useState<Product[]>([]);
   const [loadingShopProducts, setLoadingShopProducts] = useState(false);
-
-  // Comment form state
-  const [commentRating, setCommentRating] = useState(5);
-  const [commentText, setCommentText] = useState('');
-  const [commentImages, setCommentImages] = useState<File[]>([]);
-  const [commentImagePreviews, setCommentImagePreviews] = useState<string[]>([]);
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Review pagination & filter
   const [reviewPage, setReviewPage] = useState(1);
@@ -142,64 +132,6 @@ export function ProductDetailPage() {
     }
   };
 
-  // Handlers cho comment form
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      const newFiles = [...commentImages, ...files].slice(0, 5);
-      setCommentImages(newFiles);
-      const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-      setCommentImagePreviews(newPreviews);
-    }
-  };
-
-  const removeImage = (index: number) => {
-    const newFiles = commentImages.filter((_, i) => i !== index);
-    const newPreviews = commentImagePreviews.filter((_, i) => i !== index);
-    URL.revokeObjectURL(commentImagePreviews[index]);
-    setCommentImages(newFiles);
-    setCommentImagePreviews(newPreviews);
-  };
-
-  const handleSubmitComment = async () => {
-    if (!app.isLoggedIn) {
-      app.handleLogin();
-      return;
-    }
-
-    if (!product?.id) return;
-
-    if (commentText.trim() === '' && commentImages.length === 0) {
-      toast.error('Vui lòng nhập bình luận hoặc thêm ảnh');
-      return;
-    }
-
-    try {
-      setIsSubmittingComment(true);
-      const uploadedImageUrls: string[] = [];
-      // TODO: Implement image upload API
-
-      await reviewApi.create({
-        productId: product.id,
-        rating: commentRating,
-        comment: commentText.trim(),
-        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-      });
-
-      toast.success('Đã thêm bình luận thành công!');
-      setCommentText('');
-      setCommentImages([]);
-      setCommentImagePreviews([]);
-      setCommentRating(5);
-      await loadReviews();
-    } catch (error: any) {
-      console.error('Failed to submit comment:', error);
-      toast.error('Không thể thêm bình luận. Vui lòng thử lại.');
-    } finally {
-      setIsSubmittingComment(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background pt-16 flex items-center justify-center">
@@ -287,6 +219,29 @@ export function ProductDetailPage() {
     for (let i = 0; i < quantity; i++) {
       app.addToCart(product);
     }
+  };
+
+  const handleBuyNow = () => {
+    if (!app.isLoggedIn) {
+      app.handleLogin();
+      return;
+    }
+
+    if (!product) return;
+
+    // Convert product to CartItem
+    const cartItem: CartItem = {
+      ...product,
+      quantity: quantity,
+      selected: true,
+    };
+
+    // Navigate to checkout with product
+    navigate('/checkout', {
+      state: {
+        items: [cartItem],
+      },
+    });
   };
 
   const shopId = product.ownerId || product.sellerId;
@@ -504,7 +459,7 @@ export function ProductDetailPage() {
               </Button>
               <Button
                 className="flex-1 gap-2 h-12"
-                onClick={(e) => handleAddToCart(e)}
+                onClick={handleBuyNow}
                 disabled={!product.inStock}
               >
                 Mua ngay
@@ -668,122 +623,6 @@ export function ProductDetailPage() {
               </div>
             </div>
           </div>
-
-          {/* Add Comment Form */}
-          {app.isLoggedIn && (
-            <div className="bg-card border border-border rounded-lg p-6 mb-6">
-              <h3 className="text-lg font-semibold mb-4">Viết đánh giá của bạn</h3>
-              <div className="space-y-4">
-                {/* Rating Selection */}
-                <div>
-                  <Label className="mb-2 block">Đánh giá của bạn</Label>
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setCommentRating(star)}
-                        className="focus:outline-none transition-transform hover:scale-110"
-                      >
-                        <Star
-                          className={`w-8 h-8 transition-colors ${
-                            star <= commentRating
-                              ? 'fill-primary text-primary'
-                              : 'text-muted-foreground/30 hover:text-primary/50'
-                          }`}
-                        />
-                      </button>
-                    ))}
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      {commentRating} sao
-                    </span>
-                  </div>
-                </div>
-
-                {/* Comment Text */}
-                <div>
-                  <Label htmlFor="comment-text" className="mb-2 block">
-                    Bình luận
-                  </Label>
-                  <Textarea
-                    id="comment-text"
-                    placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    className="min-h-24"
-                    rows={4}
-                  />
-                </div>
-
-                {/* Image Upload */}
-                <div>
-                  <Label className="mb-2 block">Thêm ảnh (tối đa 5 ảnh)</Label>
-                  <div className="space-y-3">
-                    {commentImagePreviews.length > 0 && (
-                      <div className="grid grid-cols-5 gap-2">
-                        {commentImagePreviews.map((preview, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={preview}
-                              alt={`Preview ${index + 1}`}
-                              className="w-full aspect-square object-cover rounded-lg border border-border"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeImage(index)}
-                              className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {commentImages.length < 5 && (
-                      <div>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleImageSelect}
-                          className="hidden"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="gap-2"
-                        >
-                          <Upload className="w-4 h-4" />
-                          Thêm ảnh
-                          {commentImages.length > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                              ({commentImages.length}/5)
-                            </span>
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Submit Button */}
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handleSubmitComment}
-                    disabled={
-                      isSubmittingComment || (commentText.trim() === '' && commentImages.length === 0)
-                    }
-                    className="gap-2"
-                  >
-                    {isSubmittingComment ? 'Đang gửi...' : 'Gửi đánh giá'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Reviews List */}
           <div className="space-y-6">

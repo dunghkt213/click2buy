@@ -11,5 +11,6 @@ export * from './FeedPage/FeedPage';
 export * from './ProfilePage/ProfilePage';
 export * from './ShopPage/ShopPage';
 export * from './ProductDetailPage/ProductDetailPage';
+export * from './CheckoutPage/CheckoutPage';
 export { default as LoginPage } from './AuthPage/LoginPage/LoginPage';
 export { default as RegisterPage } from './AuthPage/RegisterPage/RegisterPage';
