@@ -9,6 +9,7 @@ import { OrdersPage } from "./pages/OrdersPage/OrdersPage";
 import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
 import { SearchPage } from "./pages/SearchPage/SearchPage";
 import { ShopPage } from "./pages/ShopPage/ShopPage";
+import { ProductDetailPage } from "./pages/ProductDetailPage/ProductDetailPage";
 
 export default function App() {
   return (
@@ -57,6 +58,11 @@ export default function App() {
       <Route path="/shop" element={
         <MainLayout>
           <ShopPage />
+        </MainLayout>
+      } />
+      <Route path="/product/:id" element={
+        <MainLayout>
+          <ProductDetailPage />
         </MainLayout>
       } />
       

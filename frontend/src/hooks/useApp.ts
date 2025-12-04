@@ -194,9 +194,9 @@ export function useApp() {
     console.log('View product:', productId);
   };
 
-  // View product detail handler
+  // View product detail handler - Navigate to product detail page
   const handleViewProductDetail = (product: Product) => {
-    modals.openProductDetail(product);
+    window.location.href = `/product/${product.id}`;
   };
 
   // Product actions
