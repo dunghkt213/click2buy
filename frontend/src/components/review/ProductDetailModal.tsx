@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Product, ProductReview } from 'types';
 import { mapReviewResponse, reviewApi } from '../../apis/review';
 import { userApi, BackendUser } from '../../apis/user';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Avatar } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -267,7 +268,7 @@ export function ProductDetailModal({
               <div>
                 {/* Main Image */}
                 <div className="relative aspect-square bg-muted rounded-lg overflow-hidden mb-4">
-                  <img
+                  <ImageWithFallback
                     src={productImages[selectedImageIndex]}
                     alt={product.name}
                     className="w-full h-full object-cover"
@@ -318,7 +319,7 @@ export function ProductDetailModal({
                           : 'border-transparent hover:border-muted-foreground/30'
                       }`}
                     >
-                      <img
+                      <ImageWithFallback
                         src={img}
                         alt={`${product.name} ${idx + 1}`}
                         className="w-full h-full object-cover"
@@ -708,7 +709,13 @@ export function ProductDetailModal({
                     <div key={review.id} className="border-b border-border pb-6">
                       <div className="flex items-start gap-3">
                         <Avatar className="w-10 h-10">
-                          <img src={review.userAvatar} alt={review.userName} />
+                          {review.userAvatar ? (
+                            <ImageWithFallback src={review.userAvatar} alt={review.userName} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-sm font-medium">
+                              {review.userName.charAt(0).toUpperCase()}
+                            </span>
+                          )}
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -745,7 +752,7 @@ export function ProductDetailModal({
                                   className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-80 transition-opacity"
                                   onClick={() => window.open(img, '_blank')}
                                 >
-                                  <img
+                                  <ImageWithFallback
                                     src={img}
                                     alt={`Review image ${idx + 1}`}
                                     className="w-full h-full object-cover"

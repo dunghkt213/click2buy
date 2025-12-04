@@ -4,6 +4,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { productService } from '../apis/product';
+import { productApi } from '../apis/product/productApi';
+import { Product } from '../types';
 import { StoreInfo, StoreProduct } from '../types/interface';
 import { toast } from 'sonner';
 
@@ -26,48 +28,82 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
     }
   }, [userRole]);
 
+  // Helper function để load seller products (giống hệt ShopPage)
+  const loadSellerProductsByUserId = useCallback(async (sellerId: string): Promise<StoreProduct[]> => {
+    try {
+      console.log('🛒 [My Store] Bắt đầu load seller products cho userId:', sellerId);
+      
+      // Load tất cả products và filter theo ownerId (giống ShopPage)
+      const allProducts = await productApi.getAll({ limit: 1000 });
+      console.log('📦 [My Store] Tổng số products từ API:', allProducts.length);
+      
+      // Filter products theo ownerId = userId của người đăng nhập (giống ShopPage)
+      const filtered = allProducts.filter(p => 
+        (p.ownerId === sellerId || p.sellerId === sellerId)
+      );
+      
+      console.log('✅ [My Store] Tìm thấy', filtered.length, 'sản phẩm của seller');
+      
+      // Convert từ Product sang StoreProduct (giống ShopPage nhưng convert sang StoreProduct)
+      const storeProducts: StoreProduct[] = filtered.map((product: Product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description || '',
+        price: product.price,
+        originalPrice: product.originalPrice,
+        stock: 0, // Product không có stock, sẽ cần lấy từ inventory service
+        sold: product.soldCount || 0,
+        image: product.image,
+        images: product.images || (product.image ? [product.image] : []),
+        category: product.category || '',
+        status: product.inStock ? 'active' : 'inactive',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        rating: product.rating || 0,
+        reviews: product.reviews || 0,
+      }));
+      
+      return storeProducts;
+    } catch (error: any) {
+      console.error('❌ [My Store] Failed to load seller products:', error);
+      throw error;
+    }
+  }, []);
+
   // Load seller products từ API khi mở My Store page
   useEffect(() => {
     const loadSellerProducts = async () => {
-      if (isMyStorePageOpen && isLoggedIn && userRole === 'seller') {
-        console.log('🛒 [My Store] Bắt đầu load seller products...');
-        
+      if (isMyStorePageOpen && isLoggedIn && userRole === 'seller' && userId) {
         try {
-          const products = await productService.getAllBySeller();
-          console.log('✅ [My Store] Load seller products thành công:', products);
-          console.log(`📦 [My Store] Tổng số sản phẩm: ${products.length}`);
+          const storeProducts = await loadSellerProductsByUserId(userId);
           
-          if (products.length === 0) {
+          if (storeProducts.length === 0) {
             console.warn('⚠️ [My Store] Không có sản phẩm nào được trả về từ API');
             toast.info('Bạn chưa có sản phẩm nào trong cửa hàng. Hãy thêm sản phẩm mới!');
           } else {
-            toast.success(`Đã tải ${products.length} sản phẩm từ cửa hàng của bạn`);
+            toast.success(`Đã tải ${storeProducts.length} sản phẩm từ cửa hàng của bạn`);
           }
           
-          setStoreProducts(products);
+          setStoreProducts(storeProducts);
           
           // Cập nhật storeInfo với totalProducts
           setStoreInfo(prev => prev ? {
             ...prev,
-            totalProducts: products.length,
+            totalProducts: storeProducts.length,
           } : null);
         } catch (error: any) {
-          console.error('❌ [My Store] Failed to load seller products:', error);
-          
           if (error.status === 401) {
             toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-          } else if (error.status === 404) {
-            console.log('ℹ️ [My Store] Không tìm thấy sản phẩm (404) - có thể chưa có sản phẩm');
-            setStoreProducts([]);
           } else {
             toast.error(error.message || 'Không thể tải danh sách sản phẩm. Vui lòng thử lại.');
           }
+          setStoreProducts([]);
         }
       }
     };
 
     loadSellerProducts();
-  }, [isMyStorePageOpen, isLoggedIn, userRole, userId]);
+  }, [isMyStorePageOpen, isLoggedIn, userRole, userId, loadSellerProductsByUserId]);
 
   const handleAddProduct = useCallback(async (productFormData: {
     name: string;
@@ -126,10 +162,10 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
 
       toast.success('Sản phẩm đã được thêm thành công!');
       
-      // Reload seller products từ API
-      if (isMyStorePageOpen && userRole === 'seller') {
+      // Reload seller products từ API (giống ShopPage)
+      if (isMyStorePageOpen && userRole === 'seller' && userId) {
         try {
-          const products = await productService.getAllBySeller();
+          const products = await loadSellerProductsByUserId(userId);
           setStoreProducts(products);
           if (storeInfo) {
             setStoreInfo({
@@ -145,7 +181,7 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
       console.error('Failed to add product:', error);
       toast.error(error.message || 'Không thể thêm sản phẩm. Vui lòng thử lại.');
     }
-  }, [isMyStorePageOpen, userRole, storeInfo]);
+  }, [isMyStorePageOpen, userRole, storeInfo, userId, loadSellerProductsByUserId]);
 
   const handleUpdateProduct = useCallback(async (id: string, updates: Partial<StoreProduct>) => {
     try {
@@ -172,10 +208,10 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
     try {
       const result = await productService.remove(id);
       
-      // Reload seller products từ API
-      if (userRole === 'seller') {
+      // Reload seller products từ API (giống ShopPage)
+      if (userRole === 'seller' && userId) {
         try {
-          const products = await productService.getAllBySeller();
+          const products = await loadSellerProductsByUserId(userId);
           setStoreProducts(products);
           if (storeInfo) {
             setStoreInfo({
@@ -209,7 +245,7 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
         toast.error(error.message || 'Không thể xóa sản phẩm. Vui lòng thử lại.');
       }
     }
-  }, [isMyStorePageOpen, userRole, storeInfo, storeProducts.length]);
+  }, [isMyStorePageOpen, userRole, storeInfo, storeProducts.length, userId, loadSellerProductsByUserId]);
 
   const handleStoreRegistration = useCallback((newStoreInfo: Omit<StoreInfo, 'id' | 'rating' | 'totalReviews' | 'totalProducts' | 'followers' | 'joinedDate'>) => {
     const fullStoreInfo: StoreInfo = {

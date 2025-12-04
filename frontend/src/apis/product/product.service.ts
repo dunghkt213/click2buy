@@ -2,17 +2,18 @@
  * Product Service - API service for products
  */
 
-import { request } from '../client/apiClient';
 import {
+  BackendProductDto,
   CreateProductDto,
-  UpdateProductDto,
+  DeleteProductResponseDto,
   ProductQueryDto,
   SellerProductQueryDto,
-  BackendProductDto,
-  DeleteProductResponseDto,
+  UpdateProductDto,
 } from '../../types/dto/product.dto';
 import { Product, StoreProduct } from '../../types/interface/product.types';
-import { mapProductResponse, mapBackendProductToStoreProduct } from './product.mapper';
+import { request } from '../client/apiClient';
+import { mapBackendProductToStoreProduct, mapProductResponse } from './product.mapper';
+import { productApi } from './productApi';
 
 export const productService = {
   /**
@@ -136,53 +137,48 @@ export const productService = {
 
   /**
    * Lấy tất cả sản phẩm của seller hiện tại
+   * Sử dụng userId để filter products theo ownerId
    */
-  getAllBySeller: async (query?: SellerProductQueryDto): Promise<StoreProduct[]> => {
-    const params = new URLSearchParams();
-    if (query?.page) params.append('page', query.page.toString());
-    if (query?.limit) params.append('limit', query.limit.toString());
-    if (query?.keyword) params.append('keyword', query.keyword);
-    if (query?.sort) params.append('sort', query.sort);
-    
-    const queryString = params.toString();
-    console.log(`🔍 [ProductService] Gọi API GET /products/seller${queryString ? `?${queryString}` : ''}`);
-    
-    const response = await request<any>(`/products/seller${queryString ? `?${queryString}` : ''}`, {
-      method: 'GET',
-      requireAuth: true,
-    });
-    
-    console.log('📥 [ProductService] Response từ API /products/seller (raw):', response);
-    console.log('📥 [ProductService] Response type:', typeof response, Array.isArray(response) ? 'Array' : 'Object');
-    
-    let products: any[] = [];
-    
-    if (Array.isArray(response)) {
-      products = response;
-    } else if (response && typeof response === 'object') {
-      if (Array.isArray(response.data)) {
-        products = response.data;
-      } else {
-        console.error('❌ [ProductService] Dữ liệu không hợp lệ - không phải array:', response);
-        throw new Error('Dữ liệu sản phẩm không hợp lệ: không phải array');
-      }
-    } else {
-      console.error('❌ [ProductService] Dữ liệu không hợp lệ:', response);
-      throw new Error('Dữ liệu sản phẩm không hợp lệ');
-    }
-    
-    if (!Array.isArray(products) || products.length === 0) {
-      console.warn('⚠️ [ProductService] Không có sản phẩm nào:', products);
+  getAllBySeller: async (sellerId?: string, query?: SellerProductQueryDto): Promise<StoreProduct[]> => {
+    if (!sellerId) {
+      console.warn('⚠️ [ProductService] Không có sellerId - trả về mảng rỗng');
       return [];
     }
+
+    console.log(`🔍 [ProductService] Lấy products cho seller ID: ${sellerId}`);
     
-    console.log(`📦 [ProductService] Nhận được ${products.length} sản phẩm từ backend`);
-    
-    // Convert từ backend product response sang StoreProduct
-    const storeProducts = products.map(mapBackendProductToStoreProduct);
-    console.log('✅ [ProductService] Đã convert sang StoreProduct:', storeProducts.length);
-    
-    return storeProducts;
+    try {
+      // Load tất cả products và filter theo ownerId
+      const allProducts = await productApi.getAll({ limit: 1000 });
+      
+      // Filter products theo ownerId (seller ID)
+      const sellerProducts = allProducts.filter(p => 
+        (p.ownerId === sellerId || p.sellerId === sellerId)
+      );
+
+      console.log(`📦 [ProductService] Tìm thấy ${sellerProducts.length} sản phẩm của seller ${sellerId}`);
+
+      // Apply additional filters nếu có
+      let filtered = sellerProducts;
+      
+      if (query?.keyword) {
+        const keyword = query.keyword.toLowerCase();
+        filtered = filtered.filter(p => 
+          p.name.toLowerCase().includes(keyword) ||
+          p.description?.toLowerCase().includes(keyword) ||
+          p.brand?.toLowerCase().includes(keyword)
+        );
+      }
+
+      // Convert từ Product sang StoreProduct
+      const storeProducts = filtered.map(mapBackendProductToStoreProduct);
+      console.log('✅ [ProductService] Đã convert sang StoreProduct:', storeProducts.length);
+      
+      return storeProducts;
+    } catch (error: any) {
+      console.error('❌ [ProductService] Lỗi khi lấy products của seller:', error);
+      throw error;
+    }
   },
 };
 
