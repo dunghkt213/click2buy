@@ -23,4 +23,9 @@ export class UserDto {
   createdAt: Date;
   updatedAt: Date;
   address: AddressDto[];
+  shopName?: string;
+  shopDescription?: string;
+  shopAddress?: string;
+  shopPhone?: string;
+  shopEmail?: string;
 }
