@@ -53,6 +53,17 @@ const statusConfig: Record<OrderStatus, { label: string; color: string }> = {
   refund: { label: 'Hoàn tiền', color: 'bg-orange-500/10 text-orange-700 border-orange-200' },
 };
 
+// Default status config for unknown statuses
+const defaultStatusConfig = { label: 'Không xác định', color: 'bg-gray-500/10 text-gray-700 border-gray-200' };
+
+// Helper function to get status config safely
+const getStatusConfig = (status: string | undefined): { label: string; color: string } => {
+  if (!status || !(status in statusConfig)) {
+    return defaultStatusConfig;
+  }
+  return statusConfig[status as OrderStatus];
+};
+
 export function OrdersPage({
   orders,
   onBack,
@@ -176,7 +187,7 @@ export function OrdersPage({
             ) : (
               <div className="space-y-4">
                 {filteredOrders.map((order) => {
-                  const statusInfo = statusConfig[order.status];
+                  const statusInfo = getStatusConfig(order.status);
                   
                   return (
                     <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
