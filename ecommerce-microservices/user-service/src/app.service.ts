@@ -37,6 +37,18 @@ export class AppService  {
     };
   }
 
+    private toShopDto(doc: any) {
+    const obj = doc.toJSON() as any; // đã loại passwordHash trong toJSON
+    return {
+      id: obj.id,
+      shopName: obj.shopName,
+      shopDescription: obj.shopDescription,
+      shopAddress :obj.shopAddress,
+      shopPhone: obj.shopPhone,
+      shopEmail: obj.shopEmail,
+    };
+  }
+
   async create(dto: CreateUserDto): Promise<UserDto> {
     // Kiểm tra trùng username/email (đề phòng trước khi đụng unique index)
     const existed = await this.userModel.exists({
@@ -152,7 +164,39 @@ async findByforpasswordHash(
 
   return doc;
 }
+async getInforShop( value: string) {
+  // ❗ Chặn lỗi nguy hiểm: field hoặc value bị undefined → query thành {}
+  let field = '_id';
+  if (!field || !value) {
+    throw new NotFoundException('Không tìm thấy người dùng (tham số không hợp lệ)');
+  }
 
+  const query: any = {};
+
+  if (field === 'username' || field === 'email') {
+    query[field] = value.toLowerCase();
+  } else if (field === '_id') {
+    query[field] = value;
+  } else {
+    // ❗ Nếu field không hợp lệ
+    throw new NotFoundException('Không tìm thấy người dùng (field không hợp lệ)');
+  }
+
+  console.log("🔍 Running findBy with query:", query);
+
+  const user = await this.userModel
+    .findOne(query)
+    .select("-passwordHash")   // xoá mật khẩu khi trả về
+    .lean()
+    .exec();
+
+  // ❗ Nếu không tìm thấy → báo lỗi đúng chuẩn
+  if (!user) {
+    throw new NotFoundException('Không tìm thấy người dùng');
+  }
+
+  return this.toShopDto(user);
+}
 
 async findBy(field: 'username' | 'email' | '_id', value: string) {
   // ❗ Chặn lỗi nguy hiểm: field hoặc value bị undefined → query thành {}

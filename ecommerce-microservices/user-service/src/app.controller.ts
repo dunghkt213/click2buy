@@ -39,6 +39,12 @@ export class AppController {
     return this.AppService.findOne(data.id);
   }
 
+  
+  @MessagePattern('user.getInforShop')
+  async getInforShop(@Payload() data: any) {
+    return this.AppService.getInforShop(data.id);
+  }
+
   @MessagePattern('user.getByCondition')
   async findByCondition(@Payload() data: any) {
     try {
