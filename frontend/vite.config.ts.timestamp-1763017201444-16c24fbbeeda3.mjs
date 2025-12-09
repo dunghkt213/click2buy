@@ -1,0 +1,43 @@
+// vite.config.ts
+import { defineConfig } from "file:///D:/PROJECT/click2buy/frontend/node_modules/vite/dist/node/index.js";
+import react from "file:///D:/PROJECT/click2buy/frontend/node_modules/@vitejs/plugin-react/dist/index.js";
+import tailwindcss from "file:///D:/PROJECT/click2buy/frontend/node_modules/@tailwindcss/vite/dist/index.mjs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+var __vite_injected_original_import_meta_url = "file:///D:/PROJECT/click2buy/frontend/vite.config.ts";
+var __filename = fileURLToPath(__vite_injected_original_import_meta_url);
+var __dirname = dirname(__filename);
+var vite_config_default = defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src")
+      // Thường trỏ đến ./src thay vì ./
+    }
+  },
+  server: {
+    port: 3e3,
+    open: true,
+    watch: {
+      // Giảm tần suất watch để tránh lock file trên Windows
+      usePolling: false,
+      interval: 1e3
+    }
+  },
+  // QUAN TRỌNG: Thêm cacheDir để tránh xung đột permission
+  cacheDir: "./.vite-cache",
+  // Tối ưu build để tránh memory issues
+  build: {
+    sourcemap: false,
+    rollupOptions: {
+      maxParallelFileOps: 5
+    }
+  },
+  // Clear screen khi dev    
+  clearScreen: false
+});
+export {
+  vite_config_default as default
+};
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsidml0ZS5jb25maWcudHMiXSwKICAic291cmNlc0NvbnRlbnQiOiBbImNvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9kaXJuYW1lID0gXCJEOlxcXFxQUk9KRUNUXFxcXGNsaWNrMmJ1eVxcXFxmcm9udGVuZFwiO2NvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9maWxlbmFtZSA9IFwiRDpcXFxcUFJPSkVDVFxcXFxjbGljazJidXlcXFxcZnJvbnRlbmRcXFxcdml0ZS5jb25maWcudHNcIjtjb25zdCBfX3ZpdGVfaW5qZWN0ZWRfb3JpZ2luYWxfaW1wb3J0X21ldGFfdXJsID0gXCJmaWxlOi8vL0Q6L1BST0pFQ1QvY2xpY2syYnV5L2Zyb250ZW5kL3ZpdGUuY29uZmlnLnRzXCI7aW1wb3J0IHsgZGVmaW5lQ29uZmlnIH0gZnJvbSAndml0ZSdcclxuaW1wb3J0IHJlYWN0IGZyb20gJ0B2aXRlanMvcGx1Z2luLXJlYWN0J1xyXG5pbXBvcnQgdGFpbHdpbmRjc3MgZnJvbSAnQHRhaWx3aW5kY3NzL3ZpdGUnXHJcbmltcG9ydCBwYXRoIGZyb20gJ3BhdGgnXHJcbmltcG9ydCB7IGZpbGVVUkxUb1BhdGggfSBmcm9tICd1cmwnXHJcbmltcG9ydCB7IGRpcm5hbWUgfSBmcm9tICdwYXRoJ1xyXG5cclxuLy8gVFx1MUVBMW8gX19kaXJuYW1lIHRoZW8gY2h1XHUxRUE5biBFU01cclxuY29uc3QgX19maWxlbmFtZSA9IGZpbGVVUkxUb1BhdGgoaW1wb3J0Lm1ldGEudXJsKVxyXG5jb25zdCBfX2Rpcm5hbWUgPSBkaXJuYW1lKF9fZmlsZW5hbWUpXHJcblxyXG4vLyBodHRwczovL3ZpdGVqcy5kZXYvY29uZmlnL1xyXG5leHBvcnQgZGVmYXVsdCBkZWZpbmVDb25maWcoe1xyXG4gIHBsdWdpbnM6IFtyZWFjdCgpLCB0YWlsd2luZGNzcygpXSxcclxuICByZXNvbHZlOiB7XHJcbiAgICBhbGlhczoge1xyXG4gICAgICAnQCc6IHBhdGgucmVzb2x2ZShfX2Rpcm5hbWUsICcuL3NyYycpLCAvLyBUaFx1MDFCMFx1MUVERG5nIHRyXHUxRUNGIFx1MDExMVx1MUVCRm4gLi9zcmMgdGhheSB2XHUwMEVDIC4vXHJcbiAgICB9LFxyXG4gIH0sXHJcbiAgc2VydmVyOiB7XHJcbiAgICBwb3J0OiAzMDAwLFxyXG4gICAgb3BlbjogdHJ1ZSxcclxuICAgIHdhdGNoOiB7XHJcbiAgICAgIC8vIEdpXHUxRUEzbSB0XHUxRUE3biBzdVx1MUVBNXQgd2F0Y2ggXHUwMTExXHUxRUMzIHRyXHUwMEUxbmggbG9jayBmaWxlIHRyXHUwMEVBbiBXaW5kb3dzXHJcbiAgICAgIHVzZVBvbGxpbmc6IGZhbHNlLFxyXG4gICAgICBpbnRlcnZhbDogMTAwMFxyXG4gICAgfVxyXG4gIH0sXHJcbiAgLy8gUVVBTiBUUlx1MUVDQ05HOiBUaFx1MDBFQW0gY2FjaGVEaXIgXHUwMTExXHUxRUMzIHRyXHUwMEUxbmggeHVuZyBcdTAxMTFcdTFFRDl0IHBlcm1pc3Npb25cclxuICBjYWNoZURpcjogJy4vLnZpdGUtY2FjaGUnLFxyXG4gIC8vIFRcdTFFRDFpIFx1MDFCMHUgYnVpbGQgXHUwMTExXHUxRUMzIHRyXHUwMEUxbmggbWVtb3J5IGlzc3Vlc1xyXG4gIGJ1aWxkOiB7XHJcbiAgICBzb3VyY2VtYXA6IGZhbHNlLFxyXG4gICAgcm9sbHVwT3B0aW9uczoge1xyXG4gICAgICBtYXhQYXJhbGxlbEZpbGVPcHM6IDVcclxuICAgIH1cclxuICB9LFxyXG4gIC8vIENsZWFyIHNjcmVlbiBraGkgZGV2ICAgIFxyXG4gIGNsZWFyU2NyZWVuOiBmYWxzZVxyXG59KSJdLAogICJtYXBwaW5ncyI6ICI7QUFBaVIsU0FBUyxvQkFBb0I7QUFDOVMsT0FBTyxXQUFXO0FBQ2xCLE9BQU8saUJBQWlCO0FBQ3hCLE9BQU8sVUFBVTtBQUNqQixTQUFTLHFCQUFxQjtBQUM5QixTQUFTLGVBQWU7QUFMaUosSUFBTSwyQ0FBMkM7QUFRMU4sSUFBTSxhQUFhLGNBQWMsd0NBQWU7QUFDaEQsSUFBTSxZQUFZLFFBQVEsVUFBVTtBQUdwQyxJQUFPLHNCQUFRLGFBQWE7QUFBQSxFQUMxQixTQUFTLENBQUMsTUFBTSxHQUFHLFlBQVksQ0FBQztBQUFBLEVBQ2hDLFNBQVM7QUFBQSxJQUNQLE9BQU87QUFBQSxNQUNMLEtBQUssS0FBSyxRQUFRLFdBQVcsT0FBTztBQUFBO0FBQUEsSUFDdEM7QUFBQSxFQUNGO0FBQUEsRUFDQSxRQUFRO0FBQUEsSUFDTixNQUFNO0FBQUEsSUFDTixNQUFNO0FBQUEsSUFDTixPQUFPO0FBQUE7QUFBQSxNQUVMLFlBQVk7QUFBQSxNQUNaLFVBQVU7QUFBQSxJQUNaO0FBQUEsRUFDRjtBQUFBO0FBQUEsRUFFQSxVQUFVO0FBQUE7QUFBQSxFQUVWLE9BQU87QUFBQSxJQUNMLFdBQVc7QUFBQSxJQUNYLGVBQWU7QUFBQSxNQUNiLG9CQUFvQjtBQUFBLElBQ3RCO0FBQUEsRUFDRjtBQUFBO0FBQUEsRUFFQSxhQUFhO0FBQ2YsQ0FBQzsiLAogICJuYW1lcyI6IFtdCn0K
