@@ -14,6 +14,9 @@ import { SellerAnalyticsGateway } from './gateways/seller-analytics.gateway';
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderGateway } from './gateways/order.gateway';
+import { PaymentGateway } from './gateways/payment.gateway';
+import { SseService } from './gateways/sse/sse.service';
+import { SseController } from './gateways/sse/sse.controller';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -51,10 +54,12 @@ import { OrderGateway } from './gateways/order.gateway';
     ReviewGateway,
     MediaGateway,
     SellerAnalyticsGateway, // Route /seller/* và /analytics/* về seller-analytics-service
-    OrderGateway
+    OrderGateway,
+    PaymentGateway,
+    SseController
   ],
 
-  providers: [],
+  providers: [SseService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
