@@ -1,0 +1,32 @@
+{
+  "dependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@nestjs/cli": "^11.0.14",
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/mapped-types": "^2.1.0",
+    "@nestjs/microservices": "^11.1.9",
+    "@nestjs/mongoose": "^11.0.3",
+    "@nestjs/schematics": "^11.0.9",
+    "@nestjs/testing": "^11.1.9",
+    "axios": "^1.13.2",
+    "bcryptjs": "^3.0.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.3",
+    "googleapis": "^167.0.0",
+    "ioredis": "^5.8.2",
+    "jsonwebtoken": "^9.0.3",
+    "kafkajs": "^2.2.4",
+    "microservices": "^0.1.0",
+    "passport": "^0.7.0",
+    "react-router-dom": "^7.9.6",
+    "reflect-metadata": "^0.2.2",
+    "supertest": "^7.1.4",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^6.0.3"
+  }
+}

@@ -1,0 +1,25 @@
+# Ignore node modules
+node_modules/
+# Ignore NestJS build output
+dist/
+build/
+*.tsbuildinfo
+
+# Ignore logs
+*.log
+
+# Ignore env files
+.env
+.env.local
+.env.*.local
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE folders
+.vscode/
+.idea/
+google-service-account.json
+
+package-lock.json

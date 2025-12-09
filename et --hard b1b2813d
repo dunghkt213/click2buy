@@ -1,0 +1,114 @@
+[33mb1b2813d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mph_hung[m[33m)[m HEAD@{0}: commit: review product, shop
+[33mbac72099[m[33m ([m[1;31morigin/ph_hung[m[33m)[m HEAD@{1}: commit: sap xep lai
+[33m6b387b91[m HEAD@{2}: commit: tai cau truc frontend
+[33mab890539[m HEAD@{3}: reset: moving to origin/ph_hung
+[33mab890539[m HEAD@{4}: checkout: moving from ph_hung to ph_hung
+[33mab890539[m HEAD@{5}: commit: connect product-get product for seller, delete product
+[33m9a56b0e2[m HEAD@{6}: pull origin chie41_BeMicro: Merge made by the 'ort' strategy.
+[33mfc193eda[m HEAD@{7}: reset: moving to origin/ph_hung
+[33m640d1a41[m HEAD@{8}: checkout: moving from ph_hung to ph_hung
+[33m640d1a41[m HEAD@{9}: pull origin chie41_BeMicro: Merge made by the 'ort' strategy.
+[33mfc193eda[m HEAD@{10}: reset: moving to origin/ph_hung
+[33me207ef98[m HEAD@{11}: checkout: moving from ph_hung to ph_hung
+[33me207ef98[m HEAD@{12}: pull origin chie41_BeMicro: Merge made by the 'ort' strategy.
+[33mf37b2ac5[m HEAD@{13}: checkout: moving from chie41_BeMicro to ph_hung
+[33md78cc56e[m[33m ([m[1;31morigin/chie41_BeMicro[m[33m, [m[1;32mchie41_BeMicro[m[33m)[m HEAD@{14}: pull origin chie41_BeMicro: Fast-forward
+[33mf03cc6f7[m HEAD@{15}: checkout: moving from ph_hung to chie41_BeMicro
+[33mf37b2ac5[m HEAD@{16}: merge origin/chie41_BeMicro: Merge made by the 'ort' strategy.
+[33mafcf5d0d[m HEAD@{17}: checkout: moving from chie41_BeMicro to ph_hung
+[33mf03cc6f7[m HEAD@{18}: checkout: moving from ph_hung to chie41_BeMicro
+[33mafcf5d0d[m HEAD@{19}: commit: WIP: save before merge
+[33mfc193eda[m HEAD@{20}: commit: connect auth-google login
+[33m9db9e2ea[m HEAD@{21}: commit: connect product-add product
+[33m1a7a7ca4[m HEAD@{22}: commit: ...
+[33m13fb2824[m HEAD@{23}: commit: user status
+[33mf6c4f615[m HEAD@{24}: commit: Sync backend from origin/be
+[33m58baea07[m HEAD@{25}: checkout: moving from ph_hung to ph_hung
+[33m58baea07[m HEAD@{26}: reset: moving to HEAD
+[33m58baea07[m HEAD@{27}: reset: moving to HEAD
+[33m58baea07[m HEAD@{28}: commit: connect cart - add to cart, show cart
+[33m7f6845e6[m HEAD@{29}: reset: moving to origin/ph_hung
+[33m7f6845e6[m HEAD@{30}: checkout: moving from ph_hung to ph_hung
+[33m7f6845e6[m HEAD@{31}: pull origin be: Merge made by the 'ort' strategy.
+[33m22c19169[m HEAD@{32}: commit: conect product - get product
+[33m8683bb24[m[33m ([m[1;31morigin/fe[m[33m, [m[1;32mfe[m[33m)[m HEAD@{33}: reset: moving to origin/ph_hung
+[33m8683bb24[m[33m ([m[1;31morigin/fe[m[33m, [m[1;32mfe[m[33m)[m HEAD@{34}: checkout: moving from ph_hung to ph_hung
+[33m8683bb24[m[33m ([m[1;31morigin/fe[m[33m, [m[1;32mfe[m[33m)[m HEAD@{35}: reset: moving to origin/ph_hung
+[33m8683bb24[m[33m ([m[1;31morigin/fe[m[33m, [m[1;32mfe[m[33m)[m HEAD@{36}: checkout: moving from ph_hung to ph_hung
+[33m8683bb24[m[33m ([m[1;31morigin/fe[m[33m, [m[1;32mfe[m[33m)[m HEAD@{37}: reset: moving to origin/fe
+[33m788ab2e3[m HEAD@{38}: reset: moving to origin/ph_hung
+[33m788ab2e3[m HEAD@{39}: pull origin be: Merge made by the 'ort' strategy.
+[33m8683bb24[m[33m ([m[1;31morigin/fe[m[33m, [m[1;32mfe[m[33m)[m HEAD@{40}: checkout: moving from fe to ph_hung
+[33m8683bb24[m[33m ([m[1;31morigin/fe[m[33m, [m[1;32mfe[m[33m)[m HEAD@{41}: merge ph_hung: Fast-forward
+[33m9e8aa342[m HEAD@{42}: checkout: moving from ph_hung to fe
+[33m8683bb24[m[33m ([m[1;31morigin/fe[m[33m, [m[1;32mfe[m[33m)[m HEAD@{43}: commit: sap xep lai component
+[33m9e8aa342[m HEAD@{44}: checkout: moving from fe to ph_hung
+[33m9e8aa342[m HEAD@{45}: pull origin ph_hung: Fast-forward
+[33mbc59a427[m HEAD@{46}: checkout: moving from ph_hung to fe
+[33m9e8aa342[m HEAD@{47}: reset: moving to origin/ph_hung
+[33m4d30cac9[m HEAD@{48}: pull origin be: Merge made by the 'ort' strategy.
+[33m9e8aa342[m HEAD@{49}: reset: moving to origin/ph_hung
+[33m9e8aa342[m HEAD@{50}: reset: moving to origin/ph_hung
+[33m9e8aa342[m HEAD@{51}: commit: connect auth
+[33mdc6173b5[m HEAD@{52}: commit: Replace frontend folder with code from fe branch
+[33mdae21292[m HEAD@{53}: checkout: moving from fe to ph_hung
+[33mbc59a427[m HEAD@{54}: checkout: moving from ph_hung to fe
+[33mdae21292[m HEAD@{55}: commit (merge): merge code from main
+[33mbc59a427[m HEAD@{56}: checkout: moving from fe to ph_hung
+[33mbc59a427[m HEAD@{57}: checkout: moving from ph_hung to fe
+[33mbc59a427[m HEAD@{58}: checkout: moving from main to ph_hung
+[33m5e547a64[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{59}: checkout: moving from ph_hung to main
+[33mbc59a427[m HEAD@{60}: checkout: moving from fe to ph_hung
+[33mbc59a427[m HEAD@{61}: checkout: moving from ph_hung to fe
+[33mbc59a427[m HEAD@{62}: reset: moving to HEAD
+[33mbc59a427[m HEAD@{63}: reset: moving to HEAD
+[33mbc59a427[m HEAD@{64}: checkout: moving from ph_hung to ph_hung
+[33mbc59a427[m HEAD@{65}: checkout: moving from main to ph_hung
+[33m5e547a64[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{66}: checkout: moving from ph_hung to main
+[33mbc59a427[m HEAD@{67}: reset: moving to origin/fe
+[33mceabda98[m HEAD@{68}: checkout: moving from fe to ph_hung
+[33mbc59a427[m HEAD@{69}: checkout: moving from main to fe
+[33m5e547a64[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{70}: pull origin main: Fast-forward
+[33mf18f5506[m HEAD@{71}: checkout: moving from fe to main
+[33mbc59a427[m HEAD@{72}: checkout: moving from ph_hung to fe
+[33mceabda98[m HEAD@{73}: reset: moving to HEAD
+[33mceabda98[m HEAD@{74}: checkout: moving from fe to ph_hung
+[33mbc59a427[m HEAD@{75}: pull origin fe: Merge made by the 'ort' strategy.
+[33m41f7b2f0[m HEAD@{76}: commit: animation
+[33m797a2d38[m HEAD@{77}: commit (merge): Merge frontend folder from ph_hung
+[33mb0a22bc3[m HEAD@{78}: checkout: moving from ph_hung to fe
+[33mceabda98[m HEAD@{79}: checkout: moving from ph_hung to ph_hung
+[33mceabda98[m HEAD@{80}: commit: fix bug in mystore page
+[33mb0a22bc3[m HEAD@{81}: reset: moving to origin/fe
+[33m6648dab8[m HEAD@{82}: reset: moving to HEAD
+[33m6648dab8[m HEAD@{83}: checkout: moving from fe to ph_hung
+[33mb0a22bc3[m HEAD@{84}: commit: update my store
+[33m196bea09[m HEAD@{85}: commit: update my store
+[33md7f48cfb[m HEAD@{86}: commit: Update frontend from origin/ph_hung
+[33m19c0e1e1[m HEAD@{87}: checkout: moving from ph_hung to fe
+[33m6648dab8[m HEAD@{88}: reset: moving to origin/ph_hung
+[33m6648dab8[m HEAD@{89}: checkout: moving from ph_hung to ph_hung
+[33m6648dab8[m HEAD@{90}: checkout: moving from fe to ph_hung
+[33m19c0e1e1[m HEAD@{91}: checkout: moving from ph_hung to fe
+[33m6648dab8[m HEAD@{92}: commit: orderspage and cartpage
+[33m5983ec23[m HEAD@{93}: reset: moving to origin/fe
+[33me7487406[m HEAD@{94}: checkout: moving from ph_hung to ph_hung
+[33me7487406[m HEAD@{95}: checkout: moving from main to ph_hung
+[33mf18f5506[m HEAD@{96}: pull origin main: Fast-forward
+[33m3880f696[m HEAD@{97}: checkout: moving from fe to main
+[33m19c0e1e1[m HEAD@{98}: commit: ...
+[33m5983ec23[m HEAD@{99}: commit: add animation
+[33m2829722f[m HEAD@{100}: merge origin/ph_hung: Merge made by the 'ort' strategy.
+[33m4bc3708a[m HEAD@{101}: reset: moving to HEAD
+[33m4bc3708a[m HEAD@{102}: checkout: moving from ph_hung to fe
+[33me7487406[m HEAD@{103}: checkout: moving from fe to ph_hung
+[33m4bc3708a[m HEAD@{104}: checkout: moving from ph_hung to fe
+[33me7487406[m HEAD@{105}: commit: ProductDetailModal
+[33m51396485[m HEAD@{106}: checkout: moving from fe to ph_hung
+[33m4bc3708a[m HEAD@{107}: checkout: moving from ph_hung to fe
+[33m51396485[m HEAD@{108}: checkout: moving from fe to ph_hung
+[33m4bc3708a[m HEAD@{109}: checkout: moving from main to fe
+[33m3880f696[m HEAD@{110}: checkout: moving from ph_hung to main
+[33m51396485[m HEAD@{111}: checkout: moving from fe to ph_hung
+[33m4bc3708a[m HEAD@{112}: commit: m.m.m
+[33m51396485[m HEAD@{113}: checkout: moving
