@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import { ShoppingCart, ArrowRight } from 'lucide-react';
 import { CartItem } from 'types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 
 interface CartPreviewProps {

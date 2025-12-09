@@ -8,7 +8,7 @@ import {
 } from "../ui/tabs";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
-import { AuthSuccessPayload } from "../../lib/authApi";
+import { AuthSuccessPayload } from "../../apis/auth";
 
 interface AuthModalProps {
   isOpen: boolean;

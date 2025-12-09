@@ -1,36 +1,33 @@
+import {
+  Bell,
+  Search,
+  ShoppingCart,
+  Store
+} from 'lucide-react';
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CartItem, User } from '../../types';
+import { CartPreview } from '../cart/CartPreview';
+import { AccountDropdown } from '../shared/AccountDropdown';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Badge } from '../ui/badge';
-import { 
-  Search, 
-  ShoppingCart, 
-  Heart, 
-  Menu,
-  Bell,
-  Store // THÊM: Icon Store
-} from 'lucide-react';
-import { AccountDropdown } from '../shared/AccountDropdown';
-import { User, CartItem } from '../../types'; // THÊM: Import CartItem
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '../ui/popover'; // THÊM: Import Popover
-import { CartPreview } from '../cart/CartPreview'; // THÊM: Import CartPreview
+} from '../ui/popover';
 
 interface HeaderProps {
   cartItemsCount: number;
-  wishlistItemsCount: number;
   unreadNotifications: number;
   onCartClick: () => void;
-  onWishlistClick: () => void;
   onNotificationsClick: () => void;
   onFilterClick: () => void;
   onPromotionClick: () => void;
   onSupportClick: () => void;
-  onStoreClick: () => void; // THÊM: Callback cho Store
-  onLogoClick?: () => void; // THÊM: Callback khi click logo để về màn hình chính
+  onStoreClick: () => void;
+  onLogoClick?: () => void;
   isLoggedIn: boolean;
   user?: User;
   onLogin: () => void;
@@ -38,27 +35,24 @@ interface HeaderProps {
   onLogout: () => void;
   onProfileClick: () => void;
   onOrdersClick: () => void;
-  searchQuery?: string; // THÊM: Query tìm kiếm
-  onSearchChange?: (query: string) => void; // THÊM: Callback khi search thay đổi
-  onSearchClick?: () => void; // THÊM: Callback khi click vào search input để mở modal
-  cartIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho icon cart để flying animation
-  wishlistIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho icon wishlist để flying animation
-  cartItems?: CartItem[]; // THÊM: Danh sách items trong giỏ hàng
-  totalPrice?: number; // THÊM: Tổng tiền
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  onSearchClick?: () => void;
+  cartIconRef?: React.RefObject<HTMLButtonElement>;
+  cartItems?: CartItem[];
+  totalPrice?: number;
 }
 
 export function Header({ 
   cartItemsCount, 
-  wishlistItemsCount,
   unreadNotifications,
   onCartClick, 
-  onWishlistClick,
   onNotificationsClick,
   onFilterClick,
   onPromotionClick,
   onSupportClick,
-  onStoreClick, // THÊM: Nhận callback từ parent
-  onLogoClick, // THÊM: Nhận callback để quay về màn hình chính
+  onStoreClick,
+  onLogoClick,
   isLoggedIn,
   user,
   onLogin,
@@ -66,15 +60,15 @@ export function Header({
   onLogout,
   onProfileClick,
   onOrdersClick,
-  searchQuery: externalSearchQuery = '', // THÊM: Nhận search query từ parent
-  onSearchChange, // THÊM: Nhận callback từ parent
-  onSearchClick, // THÊM: Callback để mở search modal
-  cartIconRef, // THÊM: Nhận ref từ parent
-  wishlistIconRef, // THÊM: Nhận ref từ parent
-  cartItems, // THÊM: Nhận danh sách items từ parent
-  totalPrice // THÊM: Nhận tổng tiền từ parent
+  searchQuery: externalSearchQuery = '',
+  onSearchChange,
+  onSearchClick,
+    cartIconRef,
+    cartItems,
+  totalPrice
 }: HeaderProps) {
-  const [isCartPreviewOpen, setIsCartPreviewOpen] = useState(false); // THÊM: State cho cart preview
+  const navigate = useNavigate();
+  const [isCartPreviewOpen, setIsCartPreviewOpen] = useState(false);
 
   // Handler khi search thay đổi - cho phép nhập text
   const handleSearchChange = (value: string) => {
@@ -84,7 +78,12 @@ export function Header({
   // Handler khi submit search (chỉ khi nhấn Enter)
   const handleSearchSubmit = () => {
     if (externalSearchQuery.trim()) {
-      onSearchClick?.();
+      if (onSearchClick) {
+        onSearchClick();
+      } else {
+        // Fallback: navigate to search page
+        navigate(`/search?q=${encodeURIComponent(externalSearchQuery)}`);
+      }
     }
   };
 
@@ -92,6 +91,15 @@ export function Header({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearchSubmit();
+    }
+  };
+
+  // Handler logo click - navigate to home
+  const handleLogoClick = () => {
+    if (onLogoClick) {
+      onLogoClick();
+    } else {
+      navigate('/feed');
     }
   };
 
@@ -103,13 +111,13 @@ export function Header({
           {/* Logo */}
           <div className="flex items-center gap-8">
             <button 
-              onClick={onLogoClick}
+              onClick={handleLogoClick}
               className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
             >
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-4 h-4 bg-primary-foreground rounded-sm"></div>
               </div>
-              <span className="text-xl font-semibold">ShopMart</span>
+              <span className="text-xl font-semibold">Click2buy</span>
             </button>
 
             {/* Navigation */}
@@ -142,125 +150,114 @@ export function Header({
               variant="ghost" 
               size="sm" 
               className="hidden md:flex relative"
-              onClick={onStoreClick}
+              onClick={() => {
+                if (!isLoggedIn) {
+                  onLogin();
+                } else {
+                  onStoreClick();
+                }
+              }}
             >
-              <Store className="w-4 h-4" />
-            </Button>
-
-            {/* Notifications */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="hidden md:flex relative"
-              onClick={onNotificationsClick}
-            >
-              <Bell className="w-4 h-4" />
-              {unreadNotifications > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
-                >
-                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                </Badge>
-              )}
-            </Button>
-            
-            {/* Wishlist */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="hidden md:flex relative"
-              onClick={onWishlistClick}
-              ref={wishlistIconRef}
-            >
-              <Heart className="w-4 h-4" />
-              {wishlistItemsCount > 0 && (
-                <Badge 
-                  variant="secondary" 
-                  className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-primary/10 text-primary"
-                >
-                  {wishlistItemsCount > 99 ? '99+' : wishlistItemsCount}
-                </Badge>
-              )}
+              <Store className="h-5 w-5" />
             </Button>
 
             {/* Cart */}
             <div 
               className="relative"
-              onMouseEnter={() => setIsCartPreviewOpen(true)}
-              onMouseLeave={() => setIsCartPreviewOpen(false)}
+              onMouseEnter={() => {
+                // Mở preview khi hover
+                if (cartItemsCount > 0) {
+                  setIsCartPreviewOpen(true);
+                }
+              }}
+              onMouseLeave={() => {
+                // Đóng preview khi rời chuột
+                setIsCartPreviewOpen(false);
+              }}
             >
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="relative"
-                onClick={onCartClick}
-                ref={cartIconRef}
-              >
-                <ShoppingCart className="w-4 h-4" />
-                {cartItemsCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
+              <Popover open={isCartPreviewOpen} onOpenChange={setIsCartPreviewOpen}>
+                <PopoverTrigger asChild>
+                  <Button 
+                    ref={cartIconRef}
+                    variant="ghost" 
+                    size="sm" 
+                    className="relative"
+                    onClick={(e) => {
+                      // Click vào cart icon: navigate đến cart page
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsCartPreviewOpen(false);
+                      window.scrollTo({ top: 0, behavior: 'instant' });
+                      navigate('/cart');
+                    }}
                   >
-                    {cartItemsCount > 99 ? '99+' : cartItemsCount}
-                  </Badge>
-                )}
-              </Button>
-
-              {/* Hover Preview */}
-              {isCartPreviewOpen && (
-                <div className="absolute right-0 top-full mt-2 z-50">
+                    <ShoppingCart className="h-5 w-5" />
+                    {cartItemsCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs cursor-pointer"
+                        onClick={(e) => {
+                          // Click vào badge: navigate đến cart page
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsCartPreviewOpen(false);
+                          window.scrollTo({ top: 0, behavior: 'instant' });
+                          navigate('/cart');
+                        }}
+                      >
+                        {cartItemsCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  className="w-80 p-0" 
+                  align="end"
+                  onMouseEnter={() => setIsCartPreviewOpen(true)}
+                  onMouseLeave={() => setIsCartPreviewOpen(false)}
+                >
                   <CartPreview 
-                    items={cartItems || []} 
+                    items={cartItems || []}
                     totalPrice={totalPrice || 0}
                     onViewCart={() => {
                       setIsCartPreviewOpen(false);
-                      onCartClick();
+                      window.scrollTo({ top: 0, behavior: 'instant' });
+                      navigate('/cart');
                     }}
                   />
-                </div>
-              )}
+                </PopoverContent>
+              </Popover>
             </div>
+
+            {/* Notifications */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="relative"
+              onClick={onNotificationsClick}
+            >
+              <Bell className="h-5 w-5" />
+              {unreadNotifications > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {unreadNotifications}
+                </Badge>
+              )}
+            </Button>
 
             {/* Account */}
             <AccountDropdown
-              user={user}
               isLoggedIn={isLoggedIn}
+              user={user}
               onLogin={onLogin}
               onRegister={onRegister}
               onLogout={onLogout}
               onProfileClick={onProfileClick}
               onOrdersClick={onOrdersClick}
-              onWishlistClick={onWishlistClick}
               onNotificationsClick={onNotificationsClick}
               unreadNotifications={unreadNotifications}
-            />
-
-            {/* Mobile Menu */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="lg:hidden ml-2"
-              onClick={onFilterClick}
-            >
-              <Menu className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile search - Chỉ Enter mới trigger tìm kiếm */}
-        <div className="md:hidden pb-4">
-          <div className="relative">
-            <Search 
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" 
-            />
-            <Input
-              placeholder="Tìm kiếm sản phẩm..."
-              value={externalSearchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="pl-10 pr-4 bg-input-background border-0 rounded-full"
             />
           </div>
         </div>

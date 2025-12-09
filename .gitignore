@@ -1,6 +1,5 @@
 # Ignore node modules
 node_modules/
-
 # Ignore NestJS build output
 dist/
 build/
@@ -22,3 +21,5 @@ Thumbs.db
 .vscode/
 .idea/
 google-service-account.json
+
+package-lock.json

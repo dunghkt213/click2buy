@@ -26,7 +26,7 @@ import {
   Plus
 } from 'lucide-react';
 import { CartItem, Address, PaymentMethod, ShippingMethod } from '../../types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice } from '../../utils/utils';
 
 interface CheckoutModalProps {
   isOpen: boolean;

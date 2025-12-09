@@ -15,10 +15,11 @@ import {
   RotateCcw,
   ShoppingBag,
   Star,
-  MessageSquare
+  MessageSquare,
+  CreditCard
 } from 'lucide-react';
 import { Order, OrderStatus } from 'types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { OrderDetailModal } from './OrderDetailModal';
 
@@ -32,10 +33,10 @@ interface OrdersPageProps {
   onContactShop: (orderId: string) => void;
 }
 
-type TabValue = 'all' | OrderStatus;
+type TabValue = 'waiting_payment' | OrderStatus;
 
 const statusTabs = [
-  { value: 'all' as TabValue, label: 'Tất cả', icon: ShoppingBag },
+  { value: 'waiting_payment' as TabValue, label: 'Chờ thanh toán', icon: CreditCard },
   { value: 'pending' as TabValue, label: 'Chờ xác nhận', icon: Clock },
   { value: 'confirmed' as TabValue, label: 'Đã xác nhận', icon: CheckCircle },
   { value: 'shipping' as TabValue, label: 'Đang giao', icon: Truck },
@@ -53,6 +54,17 @@ const statusConfig: Record<OrderStatus, { label: string; color: string }> = {
   refund: { label: 'Hoàn tiền', color: 'bg-orange-500/10 text-orange-700 border-orange-200' },
 };
 
+// Default status config for unknown statuses
+const defaultStatusConfig = { label: 'Không xác định', color: 'bg-gray-500/10 text-gray-700 border-gray-200' };
+
+// Helper function to get status config safely
+const getStatusConfig = (status: string | undefined): { label: string; color: string } => {
+  if (!status || !(status in statusConfig)) {
+    return defaultStatusConfig;
+  }
+  return statusConfig[status as OrderStatus];
+};
+
 export function OrdersPage({
   orders,
   onBack,
@@ -62,14 +74,20 @@ export function OrdersPage({
   onReview,
   onContactShop
 }: OrdersPageProps) {
-  const [selectedTab, setSelectedTab] = useState<TabValue>('all');
+  const [selectedTab, setSelectedTab] = useState<TabValue>('waiting_payment');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Filter orders
   const filteredOrders = orders.filter(order => {
-    const matchesTab = selectedTab === 'all' || order.status === selectedTab;
+    let matchesTab = false;
+    if (selectedTab === 'waiting_payment') {
+      // Chờ thanh toán: các đơn hàng có status là pending hoặc chưa được thanh toán
+      matchesTab = order.status === 'pending' || order.status === 'waiting_payment';
+    } else {
+      matchesTab = order.status === selectedTab;
+    }
     const matchesSearch = searchQuery === '' || 
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.items.some(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -79,7 +97,9 @@ export function OrdersPage({
 
   // Count orders by status
   const getStatusCount = (status: TabValue) => {
-    if (status === 'all') return orders.length;
+    if (status === 'waiting_payment') {
+      return orders.filter(order => order.status === 'pending' || order.status === 'waiting_payment').length;
+    }
     return orders.filter(order => order.status === status).length;
   };
 
@@ -90,7 +110,7 @@ export function OrdersPage({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-16">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="container mx-auto px-4 py-4">
@@ -164,8 +184,6 @@ export function OrdersPage({
                   <p className="text-muted-foreground mb-6">
                     {searchQuery
                       ? 'Không tìm thấy đơn hàng phù hợp'
-                      : selectedTab === 'all'
-                      ? 'Bạn chưa có đơn hàng nào'
                       : `Bạn chưa có đơn hàng ${statusTabs.find(t => t.value === selectedTab)?.label.toLowerCase()}`}
                   </p>
                   <Button onClick={onBack} className="bg-primary hover:bg-primary/90">
@@ -176,7 +194,7 @@ export function OrdersPage({
             ) : (
               <div className="space-y-4">
                 {filteredOrders.map((order) => {
-                  const statusInfo = statusConfig[order.status];
+                  const statusInfo = getStatusConfig(order.status);
                   
                   return (
                     <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">

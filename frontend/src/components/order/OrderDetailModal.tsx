@@ -21,7 +21,7 @@ import {
   Check
 } from 'lucide-react';
 import { Order, OrderStatus } from 'types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 
 interface OrderDetailModalProps {
@@ -43,6 +43,17 @@ const statusConfig: Record<OrderStatus, { label: string; color: string; icon: an
   refund: { label: 'Hoàn tiền', color: 'bg-orange-500', icon: RotateCcw },
 };
 
+// Default status config for unknown statuses
+const defaultStatusConfig = { label: 'Không xác định', color: 'bg-gray-500', icon: Package };
+
+// Helper function to get status config safely
+const getStatusConfig = (status: string | undefined): { label: string; color: string; icon: any } => {
+  if (!status || !(status in statusConfig)) {
+    return defaultStatusConfig;
+  }
+  return statusConfig[status as OrderStatus];
+};
+
 export function OrderDetailModal({
   isOpen,
   onClose,
@@ -56,7 +67,7 @@ export function OrderDetailModal({
 
   if (!order) return null;
 
-  const statusInfo = statusConfig[order.status];
+  const statusInfo = getStatusConfig(order.status);
   const StatusIcon = statusInfo.icon;
 
   const handleCopyOrderNumber = () => {

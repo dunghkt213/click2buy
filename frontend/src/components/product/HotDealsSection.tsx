@@ -1,27 +1,61 @@
-import React from 'react';
+import { Clock, Flame, ShoppingCart } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Product, CartItem } from 'types';
+import { productApi } from '../../apis/product';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Flame, Clock, ShoppingCart, Heart, Eye } from 'lucide-react';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { Product } from 'types';
 
 interface HotDealsSectionProps {
   onAddToCart: (product: Product) => void;
   onViewDetail: (product: Product) => void;
-  onAddToWishlist: (product: Product) => void;
-  isInWishlist: (productId: string) => boolean;
-  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void;
+  onTriggerFlyingIcon?: (type: 'cart', element: HTMLElement) => void;
+  isLoggedIn?: boolean; // THÊM: Kiểm tra đăng nhập
+  onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
 
 export function HotDealsSection({
   onAddToCart,
   onViewDetail,
-  onAddToWishlist,
-  isInWishlist,
-  onTriggerFlyingIcon
+  onTriggerFlyingIcon,
+  isLoggedIn = false,
+  onLogin
 }: HotDealsSectionProps) {
-  // Mock hot deals products
-  const hotDeals: Product[] = [
+  const navigate = useNavigate();
+  const [hotDeals, setHotDeals] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Load hot deals products từ API
+  useEffect(() => {
+    loadHotDeals();
+  }, []);
+
+  const loadHotDeals = async () => {
+    try {
+      setLoading(true);
+      // Load products với filter isSale hoặc isBestSeller
+      const products = await productApi.getAll({
+        // Có thể filter theo category hoặc các tiêu chí khác
+      });
+      // Filter để lấy các sản phẩm có sale hoặc best seller
+      const deals = products
+        .filter(p => p.isSale || p.isBestSeller)
+        .slice(0, 4); // Lấy 4 sản phẩm đầu tiên
+      setHotDeals(deals);
+    } catch (error: any) {
+      console.error('Failed to load hot deals:', error);
+      toast.error('Không thể tải sản phẩm hot deals');
+      // Fallback to empty array
+      setHotDeals([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock hot deals products (fallback)
+  const mockHotDeals: Product[] = [
     {
       id: 'hot-1',
       name: 'iPhone 15 Pro Max 256GB',
@@ -89,18 +123,49 @@ export function HotDealsSection({
   ];
 
   const handleAddToCart = (product: Product, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // Ngăn không cho trigger xem chi tiết
+    
+    if (!isLoggedIn) {
+      e.preventDefault();
+      onLogin?.();
+      return;
+    }
+    
     onAddToCart(product);
     if (onTriggerFlyingIcon) {
       onTriggerFlyingIcon('cart', e.currentTarget);
     }
   };
 
-  const handleAddToWishlist = (product: Product, e: React.MouseEvent<HTMLButtonElement>) => {
-    onAddToWishlist(product);
-    if (onTriggerFlyingIcon) {
-      onTriggerFlyingIcon('heart', e.currentTarget);
+  const handleBuyNow = (product: Product, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // Ngăn không cho trigger xem chi tiết
+    
+    if (!isLoggedIn) {
+      e.preventDefault();
+      onLogin?.();
+      return;
     }
+
+    // Convert product to CartItem
+    const cartItem: CartItem = {
+      ...product,
+      quantity: 1,
+      selected: true,
+    };
+
+    // Navigate to checkout with product
+    navigate('/checkout', {
+      state: {
+        items: [cartItem],
+      },
+    });
   };
+
+  // Handler để xem chi tiết sản phẩm khi click vào card
+  const handleCardClick = (product: Product) => {
+    onViewDetail(product);
+  };
+
 
   return (
     <section className="py-12 bg-gradient-to-b from-muted/30 to-background">
@@ -129,7 +194,8 @@ export function HotDealsSection({
           {hotDeals.map((product) => (
             <div
               key={product.id}
-              className="group relative bg-card border border-border rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              className="group relative bg-card border border-border rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+              onClick={() => handleCardClick(product)}
             >
               {/* Discount Badge */}
               <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
@@ -150,25 +216,6 @@ export function HotDealsSection({
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
                 
-                {/* Quick Actions - Appear on hover */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="bg-white/90 hover:bg-white"
-                    onClick={() => onViewDetail(product)}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className={`bg-white/90 hover:bg-white ${isInWishlist(product.id) ? 'text-red-500' : ''}`}
-                    onClick={(e) => handleAddToWishlist(product, e)}
-                  >
-                    <Heart className={`w-4 h-4 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
-                  </Button>
-                </div>
               </div>
 
               {/* Content */}
@@ -227,10 +274,11 @@ export function HotDealsSection({
                   </div>
                 </div>
 
-                {/* Add to Cart Button */}
+                {/* Buy Now Button */}
                 <Button
-                  className="w-full gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                  onClick={(e) => handleAddToCart(product, e)}
+                  className="w-full gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+                  onClick={(e) => handleBuyNow(product, e)}
+                  disabled={!product.inStock}
                 >
                   <ShoppingCart className="w-4 h-4" />
                   Mua ngay

@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Search } from 'lucide-react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { ScrollArea } from '../ui/scroll-area';
-import { ProductCard } from '../product/ProductCard';
-import { Product, FilterState } from 'types';   
-import { Header } from '../layout/Header';
+import { Search, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { CartItem, FilterState, Product } from 'types';
+import { productApi } from '../../apis/product';
+import { FlyingIcon, FlyingIconConfig } from '../animation/FlyingIcon';
 import { Footer } from '../layout/Footer';
+import { Header } from '../layout/Header';
+import { ProductCard } from '../product/ProductCard';
 import { FilterSidebar } from '../sidebars/FilterSidebar';
+import { Button } from '../ui/button';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -16,10 +17,8 @@ interface SearchModalProps {
   initialSearchQuery?: string; // Query tìm kiếm từ Header
   // Header props
   cartItemsCount: number;
-  wishlistItemsCount: number;
   unreadNotifications: number;
   onCartClick: () => void;
-  onWishlistClick: () => void;
   onNotificationsClick: () => void;
   onPromotionClick: () => void;
   onSupportClick: () => void;
@@ -31,9 +30,14 @@ interface SearchModalProps {
   onProfileClick: () => void;
   onOrdersClick: () => void;
   onViewDetail?: (product: Product) => void; // THÊM: Callback xem chi tiết
-  onAddToWishlist?: (product: Product) => void; // THÊM: Callback thêm vào wishlist
-  isInWishlist?: (productId: string) => boolean; // THÊM: Hàm check wishlist
-  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void; // THÊM: Handler flying animation
+  onTriggerFlyingIcon?: (type: 'cart', element: HTMLElement) => void; // THÊM: Handler flying animation
+  onStoreClick?: () => void; // THÊM: Callback cho store
+  onLogoClick?: () => void; // THÊM: Callback cho logo
+  cartItems?: CartItem[]; // THÊM: Cart items cho preview
+  totalPrice?: number; // THÊM: Total price cho preview
+  cartIconRef?: React.RefObject<HTMLButtonElement>; // THÊM: Ref cho cart icon
+  flyingIcons?: FlyingIconConfig[]; // THÊM: Flying icons cho animation
+  onAnimationComplete?: (id: string) => void; // THÊM: Callback khi animation complete
 }
 
 export function SearchModal({ 
@@ -42,10 +46,8 @@ export function SearchModal({
   onAddToCart, 
   initialSearchQuery = '',
   cartItemsCount,
-  wishlistItemsCount,
   unreadNotifications,
   onCartClick,
-  onWishlistClick,
   onNotificationsClick,
   onPromotionClick,
   onSupportClick,
@@ -57,9 +59,14 @@ export function SearchModal({
   onProfileClick,
   onOrdersClick,
   onViewDetail, // THÊM
-  onAddToWishlist, // THÊM
-  isInWishlist, // THÊM
   onTriggerFlyingIcon, // THÊM
+  onStoreClick, // THÊM
+  onLogoClick, // THÊM
+  cartItems, // THÊM
+  totalPrice, // THÊM
+  cartIconRef, // THÊM
+  flyingIcons = [], // THÊM
+  onAnimationComplete, // THÊM
 }: SearchModalProps) {
   const [inputValue, setInputValue] = useState(''); // Giá trị tạm trong input
   const [searchQuery, setSearchQuery] = useState(''); // Giá trị thực tế để filter
@@ -71,6 +78,8 @@ export function SearchModal({
     inStock: true,
   });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Cập nhật cả input value và search query khi modal mở với query từ Header
@@ -81,8 +90,35 @@ export function SearchModal({
     }
   }, [isOpen, initialSearchQuery]);
 
-  // Mock products data
-  const allProducts: Product[] = [
+  // Load products từ API khi search query thay đổi
+  useEffect(() => {
+    if (isOpen) {
+      loadProducts();
+    }
+  }, [isOpen, searchQuery, filters]);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const products = await productApi.search({
+        keyword: searchQuery || undefined,
+        category: filters.category !== 'all' ? filters.category : undefined,
+        minPrice: filters.priceRange[0] > 0 ? filters.priceRange[0] : undefined,
+        maxPrice: filters.priceRange[1] < 50000000 ? filters.priceRange[1] : undefined,
+        rating: filters.rating > 0 ? filters.rating : undefined,
+      });
+      setAllProducts(products);
+    } catch (error: any) {
+      console.error('Failed to load products:', error);
+      toast.error('Không thể tải sản phẩm');
+      setAllProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock products data (fallback nếu API fail)
+  const mockProducts: Product[] = [
     {
       id: '1',
       name: 'Áo Sơ Mi Công Sở Nam',
@@ -196,30 +232,16 @@ export function SearchModal({
     },
   ];
 
-  // Filter products based on search query and filters
+  // Filter products based on filters (client-side filter cho các filter còn lại)
+  // Note: Search, category, price, rating đã được filter ở API level
   const filteredProducts = allProducts.filter(product => {
-    // Search query filter
-    const matchesSearch = !searchQuery.trim() || 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.brand.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Category filter
-    const matchesCategory = filters.category === 'all' || product.category === filters.category;
-    
-    // Price filter
-    const matchesPrice = product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1];
-    
     // Brand filter
     const matchesBrand = filters.brands.length === 0 || filters.brands.includes(product.brand);
-    
-    // Rating filter
-    const matchesRating = filters.rating === 0 || product.rating >= filters.rating;
     
     // Stock filter
     const matchesStock = !filters.inStock || product.inStock;
     
-    return matchesSearch && matchesCategory && matchesPrice && matchesBrand && matchesRating && matchesStock;
+    return matchesBrand && matchesStock;
   });
 
   // Handle search input change
@@ -238,14 +260,14 @@ export function SearchModal({
     <div className="min-h-screen bg-background">
       <Header 
         cartItemsCount={cartItemsCount}
-        wishlistItemsCount={wishlistItemsCount}
         unreadNotifications={unreadNotifications}
         onCartClick={onCartClick}
-        onWishlistClick={onWishlistClick}
         onNotificationsClick={onNotificationsClick}
         onFilterClick={() => setIsFilterOpen(true)}
         onPromotionClick={onPromotionClick}
         onSupportClick={onSupportClick}
+        onStoreClick={onStoreClick || (() => {})}
+        onLogoClick={onLogoClick || (() => {})}
         isLoggedIn={isLoggedIn}
         user={user}
         onLogin={onLogin}
@@ -256,6 +278,9 @@ export function SearchModal({
         searchQuery={inputValue}
         onSearchChange={handleSearchInputChange}
         onSearchClick={handleSearchInputSubmit}
+        cartItems={cartItems}
+        totalPrice={totalPrice}
+        cartIconRef={cartIconRef}
       />
       
       <main className="pt-16">
@@ -321,10 +346,10 @@ export function SearchModal({
                       product={product}
                       onAddToCart={onAddToCart}
                       viewMode="grid"
-                      onViewDetail={onViewDetail} // THÊM
-                      onAddToWishlist={onAddToWishlist} // THÊM
-                      isInWishlist={isInWishlist ? isInWishlist(product.id) : false} // SỬA: Gọi hàm isInWishlist với product.id
-                      onTriggerFlyingIcon={onTriggerFlyingIcon} // THÊM
+                      onViewDetail={onViewDetail}
+                      onTriggerFlyingIcon={onTriggerFlyingIcon}
+                      isLoggedIn={isLoggedIn}
+                      onLogin={onLogin}
                     />
                   ))}
                 </div>
@@ -335,6 +360,14 @@ export function SearchModal({
       </main>
 
       <Footer />
+
+      {/* Flying Icons Animation */}
+      {flyingIcons && flyingIcons.length > 0 && onAnimationComplete && (
+        <FlyingIcon
+          icons={flyingIcons}
+          onComplete={onAnimationComplete}
+        />
+      )}
     </div>
   );
 }

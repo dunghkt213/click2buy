@@ -4,10 +4,12 @@ import {
   Plus,
   ShoppingBag,
   Star,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { CartItem } from 'types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -43,6 +45,7 @@ export function CartSidebar({
   selectedItems,
   onCheckout
 }: CartSidebarProps) {
+  const navigate = useNavigate();
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const selectedItemsCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
   const allSelected = items.length > 0 && items.every(item => item.selected);
@@ -51,11 +54,35 @@ export function CartSidebar({
   const discount = selectedTotalPrice >= 2000000 ? selectedTotalPrice * 0.05 : 0;
   const finalTotal = selectedTotalPrice + shippingFee - discount;
 
+  const handleCheckout = () => {
+    if (selectedItems.length === 0) {
+      return;
+    }
+    onClose();
+    navigate('/checkout', {
+      state: {
+        items: selectedItems,
+      },
+    });
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        onClose();
+      }
+    }}>
       <SheetContent className="w-full sm:w-[480px] flex flex-col p-0 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-border bg-card">
+        <div className="px-6 py-4 border-b border-border bg-card relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 p-0 rounded-full z-20"
+          >
+            <X className="w-4 h-4" />
+          </Button>
           <SheetHeader>
             <SheetTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -252,7 +279,7 @@ export function CartSidebar({
               <div className="space-y-3">
                 <Button 
                     className="w-full h-10 text-sm gap-2" 
-                    onClick={onCheckout}
+                    onClick={handleCheckout}
                     disabled={selectedItems.length === 0}
                   >
                   <div className="flex items-center justify-between w-full">

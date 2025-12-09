@@ -44,4 +44,5 @@ export class ProductGateway {
   search(@Body() q: any) {
     return this.kafka.send('product.search', { q });
   }
+
 }

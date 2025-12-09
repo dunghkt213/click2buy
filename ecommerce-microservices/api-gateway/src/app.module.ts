@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { HttpModule } from '@nestjs/axios';
 
 import { AuthGateway } from './gateways/auth.gateway';
 import { UserGateway } from './gateways/user.gateway';
@@ -8,12 +9,21 @@ import { ProductGateway } from './gateways/product.gateway';
 import { CartGateway } from './gateways/cart.gateway';
 import { ReviewGateway } from './gateways/review.gateway';
 import { MediaGateway } from './gateways/media.gateway';
+import { SellerAnalyticsGateway } from './gateways/seller-analytics.gateway';
+import { AuthModule } from './auth/auth.module';
+
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderGateway } from './gateways/order.gateway';
 @Module({
   imports: [
     ConfigModule.forRoot(),
+
+    // HttpModule để proxy HTTP requests đến seller-analytics-service
+    HttpModule,
+
+    // Auth Module cho Passport strategies (Google, Facebook)
+    AuthModule,
 
     ClientsModule.register([
       {
@@ -44,6 +54,7 @@ import { OrderGateway } from './gateways/order.gateway';
     CartGateway,
     ReviewGateway,
     MediaGateway,
+    SellerAnalyticsGateway, // Route /seller/* và /analytics/* về seller-analytics-service
     OrderGateway
   ],
 

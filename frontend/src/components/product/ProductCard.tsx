@@ -1,27 +1,24 @@
-import React, { useState } from 'react';
-import { Card, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { 
-  Star, 
-  Heart, 
-  ShoppingCart, 
-  Eye,
-  Share2,
+import {
+  ShoppingCart,
+  Star,
   Zap
 } from 'lucide-react';
+import React, { useState } from 'react';
 import { Product } from 'types';
+import { calculateDiscount, formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { formatPrice, calculateDiscount } from '../../lib/utils';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
 
 interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
   viewMode?: 'grid' | 'list';
   onViewDetail?: (product: Product) => void; // THÊM: Callback khi click xem chi tiết
-  onAddToWishlist?: (product: Product) => void; // THÊM: Callback khi thêm vào wishlist
-  isInWishlist?: boolean; // THÊM: Check xem sản phẩm đã có trong wishlist chưa
-  onTriggerFlyingIcon?: (type: 'heart' | 'cart', element: HTMLElement) => void; // THÊM: Trigger flying animation
+  onTriggerFlyingIcon?: (type: 'cart', element: HTMLElement) => void; // THÊM: Trigger flying animation
+  isLoggedIn?: boolean; // THÊM: Kiểm tra đăng nhập
+  onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
 
 export function ProductCard({ 
@@ -29,31 +26,26 @@ export function ProductCard({
   onAddToCart, 
   viewMode = 'grid', 
   onViewDetail, 
-  onAddToWishlist, 
-  isInWishlist = false,
-  onTriggerFlyingIcon 
+  onTriggerFlyingIcon,
+  isLoggedIn = false,
+  onLogin
 }: ProductCardProps) {
-  // SỬA: Không dùng local state nữa, sử dụng isInWishlist từ props
   const [isHovered, setIsHovered] = useState(false);
 
   const discountPercent = product.originalPrice 
     ? calculateDiscount(product.originalPrice, product.price)
     : 0;
 
-  // THÊM: Handler cho wishlist
-  const handleWishlistClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    // Trigger flying animation
-    if (onTriggerFlyingIcon) {
-      onTriggerFlyingIcon('heart', e.currentTarget);
-    }
-    
-    if (onAddToWishlist) {
-      onAddToWishlist(product);
-    }
-  };
-
   // THÊM: Handler cho add to cart
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // Ngăn không cho trigger xem chi tiết
+    
+    if (!isLoggedIn) {
+      e.preventDefault();
+      onLogin?.();
+      return;
+    }
+    
     // Trigger flying animation
     if (onTriggerFlyingIcon) {
       onTriggerFlyingIcon('cart', e.currentTarget);
@@ -62,9 +54,19 @@ export function ProductCard({
     onAddToCart(product);
   };
 
+  // Handler để xem chi tiết sản phẩm khi click vào card
+  const handleCardClick = () => {
+    if (onViewDetail) {
+      onViewDetail(product);
+    }
+  };
+
   if (viewMode === 'list') {
     return (
-      <Card className="group hover:shadow-lg transition-all duration-300">
+      <Card 
+        className="group hover:shadow-lg transition-all duration-300 cursor-pointer"
+        onClick={handleCardClick}
+      >
         <CardContent className="p-0">
           <div className="flex gap-6">
             {/* Image */}
@@ -134,24 +136,12 @@ export function ProductCard({
 
               <div className="flex items-center gap-2">
                 <Button
-                  className="flex-1 gap-2"
+                  className="flex-1 gap-2 text-black [&>svg]:text-black"
                   onClick={handleAddToCart}
                   disabled={!product.inStock}
                 >
-                  <ShoppingCart className="w-4 h-4" />
-                  {product.inStock ? 'Thêm vào giỏ' : 'Hết hàng'}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleWishlistClick}
-                >
-                  <Heart className={`w-4 h-4 ${isInWishlist ? 'fill-current text-red-500' : ''}`} />
-                </Button>
-                
-                <Button variant="outline" size="icon" onClick={() => onViewDetail && onViewDetail(product)}>
-                  <Eye className="w-4 h-4" />
+                  <ShoppingCart className="w-4 h-4 text-black" />
+                  <span className="text-black">{product.inStock ? 'Thêm vào giỏ' : 'Hết hàng'}</span>
                 </Button>
               </div>
             </div>
@@ -163,9 +153,10 @@ export function ProductCard({
 
   return (
     <Card 
-      className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+      className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={handleCardClick}
     >
       <CardContent className="p-0">
         {/* Image */}
@@ -191,36 +182,6 @@ export function ProductCard({
             )}
           </div>
 
-          {/* Quick actions */}
-          <div className={`absolute top-3 right-3 flex flex-col gap-2 transition-all duration-300 ${
-            isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
-          }`}>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-10 h-10 p-0 bg-white/90 backdrop-blur-sm hover:bg-white"
-              onClick={handleWishlistClick}
-            >
-              <Heart className={`w-4 h-4 ${isInWishlist ? 'fill-current text-red-500' : ''}`} />
-            </Button>
-            
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-10 h-10 p-0 bg-white/90 backdrop-blur-sm hover:bg-white"
-              onClick={() => onViewDetail && onViewDetail(product)}
-            >
-              <Eye className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-10 h-10 p-0 bg-white/90 backdrop-blur-sm hover:bg-white"
-            >
-              <Share2 className="w-4 h-4" />
-            </Button>
-          </div>
 
           {/* Stock status */}
           {!product.inStock && (
@@ -236,12 +197,12 @@ export function ProductCard({
             isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
           }`}>
             <Button
-              className="w-full gap-2 bg-white/90 backdrop-blur-sm text-foreground hover:bg-white"
+              className="w-full gap-2 bg-white/90 backdrop-blur-sm text-black hover:bg-white hover:text-black [&>svg]:text-black"
               onClick={handleAddToCart}
               disabled={!product.inStock}
             >
-              <ShoppingCart className="w-4 h-4" />
-              Thêm vào giỏ
+              <ShoppingCart className="w-4 h-4 text-black" />
+              <span className="text-black">Thêm vào giỏ</span>
             </Button>
           </div>
         </div>

@@ -7,12 +7,16 @@ import { ClientKafka } from '@nestjs/microservices';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { TokenService } from './token/token.service';
+import { OtpService } from './otp/otp.service';
 import { registerDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { SocialLoginDto, SocialProvider } from './dto/social-login.dto';
+
 @Injectable()
 export class AppService {
   constructor(
     private readonly tokenService: TokenService,
+    private readonly otpService: OtpService,
 
     @Inject('AUTH_SERVICE')
     private readonly AuthClient: ClientKafka,
@@ -22,7 +26,8 @@ export class AppService {
     // cần để send().toPromise() hoạt động
     this.AuthClient.subscribeToResponseOf('user.create');
     this.AuthClient.subscribeToResponseOf('user.getByforpasswordHash');
-
+    this.AuthClient.subscribeToResponseOf('user.findOrCreateSocial');
+    this.AuthClient.subscribeToResponseOf('user.findOrCreateByPhone');
   }
 
 
@@ -219,5 +224,105 @@ export class AppService {
   async revoke(refreshToken: string) {
     await this.tokenService.revokeToken(refreshToken);
     return { revoked: true };
+  }
+
+  // ==================== SOCIAL LOGIN ====================
+
+  async socialLogin(dto: SocialLoginDto) {
+    console.log('🔐 Social login attempt:', { provider: dto.provider, socialId: dto.socialId });
+
+    // Gọi User Service để tìm hoặc tạo user
+    const user = await this.AuthClient
+      .send('user.findOrCreateSocial', {
+        provider: dto.provider,
+        socialId: dto.socialId,
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        avatar: dto.avatar,
+      })
+      .toPromise();
+
+    if (!user || user.error) {
+      throw new UnauthorizedException(user?.error || 'Failed to authenticate with social provider');
+    }
+
+    const accessToken = await this.generateAccessToken(user.role, user.id || user._id);
+    const refreshToken = await this.generateRefreshToken(user.role, user.id || user._id);
+
+    return {
+      user: {
+        id: user.id || user._id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+        provider: dto.provider,
+      },
+      accessToken,
+      refreshTokenInfo: {
+        name: 'refreshToken',
+        value: refreshToken,
+        options: {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'strict' as const,
+          path: '/auth/refresh',
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+        },
+      },
+    };
+  }
+
+  // ==================== SMS OTP ====================
+
+  async sendOtp(phone: string) {
+    const otp = this.otpService.generateOtp();
+    await this.otpService.saveOtp(phone, otp);
+    await this.otpService.sendSms(phone, otp);
+
+    console.log(`📱 OTP generated for ${phone}: ${otp}`);
+
+    return { otp }; // Chỉ trả về trong dev mode
+  }
+
+  async verifyOtpAndLogin(phone: string, otp: string) {
+    const isValid = await this.otpService.verifyOtp(phone, otp);
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
+
+    // Tìm hoặc tạo user theo số điện thoại
+    const user = await this.AuthClient
+      .send('user.findOrCreateByPhone', { phone })
+      .toPromise();
+
+    if (!user || user.error) {
+      throw new UnauthorizedException(user?.error || 'Failed to create user');
+    }
+
+    const accessToken = await this.generateAccessToken(user.role, user.id || user._id);
+    const refreshToken = await this.generateRefreshToken(user.role, user.id || user._id);
+
+    return {
+      user: {
+        id: user.id || user._id,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+      },
+      accessToken,
+      refreshTokenInfo: {
+        name: 'refreshToken',
+        value: refreshToken,
+        options: {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'strict' as const,
+          path: '/auth/refresh',
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+        },
+      },
+    };
   }
 }
