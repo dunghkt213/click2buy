@@ -641,6 +641,47 @@ paths:
         "200":
           description: ""
       tags: *a7
+  /payment/payos/callback:
+    post:
+      operationId: PaymentGateway_handlePayOS
+      parameters:
+        - name: x-signature
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: &a8
+        - PaymentGateway
+  /payment/create-banking:
+    post:
+      operationId: PaymentGateway_requestBanking
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: *a8
+  /sse/payments/{userId}:
+    get:
+      operationId: SseController_streamPayment
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags:
+        - Sse
 info:
   title: Click2Buy - API Gateway
   description: API Gateway for Click2Buy microservices.

@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@nestjs/platform-express": "^11.1.9",
+    "ioredis": "^5.8.2"
+  },
+  "devDependencies": {
+    "@types/ioredis": "^4.28.10"
+  }
+}
