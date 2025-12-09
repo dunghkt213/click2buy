@@ -11,7 +11,7 @@ export class AppController {
   @MessagePattern('review.create')
   //@UseGuards(JwtKafkaAuthGuard)
   create(@Payload() { dto }: any, @CurrentUser() user: any) {
-    //const userId = user?.sub || user?.id;
+    // const userId = user?.sub || user?.id;
     const userId = 'mock-user';
     return this.appService.create( dto, userId);
   }
