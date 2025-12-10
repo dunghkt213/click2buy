@@ -26,6 +26,7 @@ export class OrderGateway implements OnModuleInit {
     this.kafka.subscribeToResponseOf('order.getAllOrderForUser');
     this.kafka.subscribeToResponseOf('order.confirm'); 
     this.kafka.subscribeToResponseOf('order.seller.reject'); 
+    this.kafka.subscribeToResponseOf('order.complete');
 
     await this.kafka.connect();
   }
@@ -39,7 +40,7 @@ export class OrderGateway implements OnModuleInit {
     }
   }
 
-  @Patch('seller/orders/:orderId/approve')
+  @Patch('seller/orders/:orderId/confirm')
   async approveOrderForSeller(
     @Param('orderId') orderId: string,
     @Headers('authorization') auth: string,
@@ -66,10 +67,26 @@ export class OrderGateway implements OnModuleInit {
       const payload = { orderId, auth };
 
       return await this.kafka
-        .send('order.seller.reject', payload)
+        .send('order.reject', payload)
         .toPromise();
     } catch (err) {
       throw new BadRequestException(err.message || 'Reject failed');
+    }
+  }
+
+  // THÊM API NÀY ĐỂ TEST DOANH THU (Giả lập Shipper báo giao xong)
+  @Patch(':orderId/complete')
+  async completeOrder(
+    @Param('orderId') orderId: string,
+    @Headers('authorization') auth: string,
+  ) {
+    try {
+      // Gọi sang order-service để báo đơn hàng đã hoàn tất -> Lúc này mới cộng tiền
+      return await this.kafka
+        .send('order.complete', { orderId, auth }) // Lưu ý: MessagePattern bên Order Service phải là 'order.complete'
+        .toPromise();
+    } catch (err) {
+      throw new BadRequestException(err.message || 'Complete order failed');
     }
   }
 

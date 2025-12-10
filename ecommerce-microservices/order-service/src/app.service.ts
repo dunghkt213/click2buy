@@ -153,40 +153,114 @@ async createOrders(input: {
     };
   }
 
+  /**
+   * Seller duyệt đơn hàng - KHÔNG cộng doanh thu ở bước này
+   * Chỉ emit event để tracking số đơn được duyệt
+   */
   async confirmOrder(orderId: string, sellerId: string) {
-  const order = await this.orderModel.findById(orderId);
-  
-  if (!order) {
-    throw new NotFoundException(`Order not found: ${orderId}`);
-  }
-  
-  if (order.ownerId !== sellerId) {
-    throw new BadRequestException('You are not the owner of this order');
-  }
-  
-  if (order.status !== 'PENDING_ACCEPT') {
-    throw new BadRequestException(`Cannot confirm order with status: ${order.status}`);
+    const order = await this.orderModel.findById(orderId);
+    
+    if (!order) {
+      throw new NotFoundException(`Order not found: ${orderId}`);
+    }
+    
+    if (order.ownerId !== sellerId) {
+      throw new BadRequestException('You are not the owner of this order');
+    }
+    
+    if (order.status !== 'PENDING_ACCEPT') {
+      throw new BadRequestException(`Cannot confirm order with status: ${order.status}`);
+    }
+
+    order.status = 'CONFIRMED';
+    await order.save();
+
+    // 🔔 Event chỉ để tracking - KHÔNG chứa totalAmount để tránh cộng doanh thu
+    this.kafka.emit('order.confirmed', {
+      orderId: order._id.toString(),
+      sellerId: order.ownerId,
+      confirmedAt: new Date().toISOString(),
+    });
+
+    this.logger.log(`✅ Order ${orderId} confirmed by seller ${sellerId}`);
+    
+    return { success: true, status: 'CONFIRMED' };
   }
 
-  // Cập nhật trạng thái
-  order.status = 'CONFIRMED';
-  await order.save();
+  /**
+   * Seller từ chối đơn hàng
+   */
+  async rejectOrder(orderId: string, sellerId: string, reason?: string) {
+    const order = await this.orderModel.findById(orderId);
+    
+    if (!order) {
+      throw new NotFoundException(`Order not found: ${orderId}`);
+    }
+    
+    if (order.ownerId !== sellerId) {
+      throw new BadRequestException('You are not the owner of this order');
+    }
+    
+    if (order.status !== 'PENDING_ACCEPT') {
+      throw new BadRequestException(`Cannot reject order with status: ${order.status}`);
+    }
 
-  // 🔥 EMIT EVENT CHO SELLER-ANALYTICS-SERVICE
-  await this.kafka.emit('order.confirmed', {
-    orderId: order._id.toString(),
-    sellerId: order.ownerId,
-    totalAmount: order.total,
-    confirmedAt: new Date().toISOString(),
-    items: order.items.map(item => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      price: item.price,
-    })),
-  });
+    order.status = 'REJECTED';
+    await order.save();
 
-  this.logger.log(`✅ Order ${orderId} confirmed, event emitted to Kafka`);
-  
-  return { success: true, status: 'CONFIRMED' };
+    // Emit event để các service khác xử lý (hoàn tiền, restock, notify user...)
+    this.kafka.emit('order.rejected', {
+      orderId: order._id.toString(),
+      sellerId: order.ownerId,
+      userId: order.userId,
+      reason: reason || 'Seller rejected the order',
+      rejectedAt: new Date().toISOString(),
+      items: order.items,
+    });
+
+    this.logger.log(`❌ Order ${orderId} rejected by seller ${sellerId}`);
+    
+    return { success: true, status: 'REJECTED' };
+  }
+
+  /**
+   * Đánh dấu đơn hàng đã giao thành công - CẬP NHẬT DOANH THU TẠI ĐÂY
+   */
+  async completeOrder(orderId: string, sellerId: string) {
+    const order = await this.orderModel.findById(orderId);
+    
+    if (!order) {
+      throw new NotFoundException(`Order not found: ${orderId}`);
+    }
+    
+    if (order.ownerId !== sellerId) {
+      throw new BadRequestException('You are not the owner of this order');
+    }
+    
+    // Chỉ cho phép complete từ trạng thái CONFIRMED hoặc SHIPPING
+    const allowedStatuses = ['CONFIRMED', 'SHIPPING'];
+    if (!allowedStatuses.includes(order.status)) {
+      throw new BadRequestException(`Cannot complete order with status: ${order.status}`);
+    }
+
+    order.status = 'DELIVERED';
+    await order.save();
+
+    // 🔥 EMIT EVENT ĐỂ CỘNG DOANH THU - Chỉ khi giao hàng thành công
+    this.kafka.emit('order.completed', {
+      orderId: order._id.toString(),
+      sellerId: order.ownerId,
+      totalAmount: order.total,
+      completedAt: new Date().toISOString(),
+      items: order.items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+    });
+
+    this.logger.log(`🎉 Order ${orderId} delivered, revenue event emitted`);
+    
+    return { success: true, status: 'DELIVERED' };
   }
 }

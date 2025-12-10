@@ -69,5 +69,22 @@ async updateOrderStatus(@Payload() data:any) {
 async confirmOrder(@Payload() data: { orderId: string }, @CurrentUser() user: any) {
   const sellerId = user?.sub || user?.id;
   return this.appService.confirmOrder(data.orderId, sellerId);
-}  
+}
+
+@MessagePattern('order.reject')
+@UseGuards(JwtKafkaAuthGuard)
+async rejectOrder(
+  @Payload() data: { orderId: string; reason?: string },
+  @CurrentUser() user: any,
+) {
+  const sellerId = user?.sub || user?.id;
+  return this.appService.rejectOrder(data.orderId, sellerId, data.reason);
+}
+
+@MessagePattern('order.complete')
+@UseGuards(JwtKafkaAuthGuard)
+async completeOrder(@Payload() data: { orderId: string }, @CurrentUser() user: any) {
+  const sellerId = user?.sub || user?.id;
+  return this.appService.completeOrder(data.orderId, sellerId);
+}
 }
