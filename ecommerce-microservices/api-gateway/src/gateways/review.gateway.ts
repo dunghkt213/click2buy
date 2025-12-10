@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common/decorators/core/inject.decorator';
+import { AiReviewGuard } from '../guards/ai-review.guard';
 
 @Controller('reviews')
 export class ReviewGateway {
@@ -16,6 +17,7 @@ export class ReviewGateway {
     }
 
     @Post()
+    @UseGuards(AiReviewGuard)
     create(@Body() dto: any, @Headers('authorization') auth?: string) { 
         return this.kafka.send('review.create', { dto, auth });
     }
@@ -32,6 +34,7 @@ export class ReviewGateway {
     }
 
     @Patch(':id')
+    @UseGuards(AiReviewGuard)
     update(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
         return this.kafka.send('review.update', { id, dto, auth });
     }

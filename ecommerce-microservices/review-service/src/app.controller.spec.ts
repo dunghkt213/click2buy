@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { userInfo } from 'os';
 
 describe('AppController', () => {
   let appController: AppController;
@@ -36,7 +37,7 @@ describe('AppController', () => {
     const result = { success: true, data: { ...dto, _id: '1' } };
     mockAppService.create.mockResolvedValue(result);
 
-    const response = await appController.create({ dto });
+    const response = await appController.create({ dto }, userInfo);
     expect(response).toEqual(result);
     expect(mockAppService.create).toHaveBeenCalledWith(dto);
   });
@@ -67,7 +68,7 @@ describe('AppController', () => {
     const result = { success: true, data: { _id: '1', rating: 4 } };
     mockAppService.update.mockResolvedValue(result);
 
-    const response = await appController.update({ id: '1', dto });
+    const response = await appController.update({ id: '1', dto }, userInfo);
     expect(response).toEqual(result);
     expect(mockAppService.update).toHaveBeenCalledWith('1', dto);
   });
@@ -77,7 +78,7 @@ describe('AppController', () => {
     const result = { success: true, message: 'Review deleted successfully' };
     mockAppService.remove.mockResolvedValue(result);
 
-    const response = await appController.remove({ id: '1' });
+    const response = await appController.remove({ id: '1' }, userInfo);
     expect(response).toEqual(result);
     expect(mockAppService.remove).toHaveBeenCalledWith('1');
   });
