@@ -46,7 +46,7 @@ export function AuthModal({
             </DialogDescription>
             <Tabs
               value={activeTab}
-              onValueChange={(value) =>
+              onValueChange={(value: string) =>
                 setActiveTab(value as "login" | "register")
               }
               className="w-full"

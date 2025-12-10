@@ -16,6 +16,9 @@ import { AiGuardModule } from './modules/ai-guard';
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderGateway } from './gateways/order.gateway';
+import { PaymentGateway } from './gateways/payment.gateway';
+import { SseService } from './gateways/sse/sse.service';
+import { SseController } from './gateways/sse/sse.controller';
 import { AiReviewGuard } from './guards/ai-review.guard';
 import { ChatGateway } from './gateways/chat.gateway';
 @Module({
@@ -61,10 +64,11 @@ import { ChatGateway } from './gateways/chat.gateway';
     ReviewGateway,
     MediaGateway,
     SellerAnalyticsGateway, // Route /seller/* và /analytics/* về seller-analytics-service
-    OrderGateway
+    OrderGateway,
+    PaymentGateway,
+    SseController
   ],
-
-  providers: [AiReviewGuard, ChatGateway],
+  providers: [AiReviewGuard, ChatGateway,SseService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

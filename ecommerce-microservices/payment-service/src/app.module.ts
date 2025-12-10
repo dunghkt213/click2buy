@@ -1,5 +1,5 @@
 // src/payment.module.ts
-import { Module, OnModuleInit} from '@nestjs/common';
+import { Inject, Module, OnModuleInit} from '@nestjs/common';
 import { MongooseModule, InjectConnection} from '@nestjs/mongoose';
 import { Payment, PaymentSchema } from './schemas/payment.schema';
 import { PaymentService } from './app.service';
@@ -7,9 +7,14 @@ import { PaymentController } from './app.controller';
 import { ConfigModule } from '@nestjs/config/dist/config.module';
 import { ConfigService } from '@nestjs/config/dist/config.service';
 import { Connection } from 'mongoose';
-import { ClientsModule, Transport } from '@nestjs/microservices';
+import { ClientKafka, ClientsModule, Transport } from '@nestjs/microservices';
+import { HttpModule } from '@nestjs/axios';
+import { redisProviders } from './redis.provider';
+import { PaymentExpireListener } from './payment-expire.listener';
+
 @Module({
   imports: [
+    HttpModule,
     // 1️⃣ Load biến môi trường toàn cục (.env)
     ConfigModule.forRoot({ isGlobal: true }),
 
@@ -44,9 +49,6 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
               clientId: 'payment-producer',
               brokers: ['click2buy_kafka:9092'],
             },
-            consumer: {
-              groupId: 'payment-producer-group',
-            },
           },
         }),
       },
@@ -54,12 +56,14 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
   ],
 
   controllers: [PaymentController],
-  providers: [PaymentService],
+  providers: [...redisProviders, PaymentService,  PaymentExpireListener,],
 })
 export class PaymentModule implements OnModuleInit {
-  constructor(@InjectConnection() private readonly connection: Connection) {}
+  constructor(@InjectConnection() private readonly connection: Connection,  @Inject('KAFKA_PRODUCER')
+  private readonly kafka: ClientKafka) {}
 
   async onModuleInit() {
+    this.kafka.subscribeToResponseOf('payment.payos.callback');
     const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
     console.log(
       `🧠 MongoDB connection state: ${states[this.connection.readyState]}`,

@@ -5,6 +5,8 @@ export type OrderDocument = Order & Document;
 
 @Schema({ timestamps: true })
 export class Order {
+  @Prop({ required: true })
+  orderCode: string;
 
   @Prop({ required: true })
   userId: string;
@@ -33,6 +35,7 @@ export class Order {
 
   @Prop()
   createAt: Date;
+
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
