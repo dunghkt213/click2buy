@@ -4,6 +4,7 @@ import {
   Put,
   Param,
   Query,
+  Headers,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
@@ -14,7 +15,7 @@ import { firstValueFrom } from 'rxjs';
  * Gateway controller để route các request /seller/* và /analytics/* về seller-analytics-service
  * Sử dụng HTTP proxy vì seller-analytics-service là HTTP service
  */
-@Controller()
+@Controller('seller-analytics')
 export class SellerAnalyticsGateway {
   private readonly analyticsServiceUrl: string;
 
@@ -22,7 +23,7 @@ export class SellerAnalyticsGateway {
     // URL của seller-analytics-service (trong Docker network)
     this.analyticsServiceUrl =
       process.env.SELLER_ANALYTICS_SERVICE_URL ||
-      'http://click2buy_seller-analytics-service:3006';
+      'http://click2buy_seller-analytics-service:3010';
   }
 
   /**
@@ -91,16 +92,22 @@ export class SellerAnalyticsGateway {
   }
 
   /**
-   * GET /analytics/revenue
+   * GET /seller-analytics/revenue
    * Proxy request đến seller-analytics-service
    */
-  @Get('analytics/revenue')
-  async getRevenue(@Query('type') type?: string) {
+  @Get('revenue')
+  async getRevenue(
+    @Query('type') type?: string,
+    @Headers('authorization') auth?: string,
+  ) {
     try {
       const params = type ? { type } : {};
+      const headers = auth ? { Authorization: auth } : {};
+      
       const response = await firstValueFrom(
         this.httpService.get(`${this.analyticsServiceUrl}/analytics/revenue`, {
           params,
+          headers,
         }),
       );
       return response.data;
@@ -111,5 +118,30 @@ export class SellerAnalyticsGateway {
       );
     }
   }
+
+  /**
+   * GET /seller-analytics/top-products
+   * Proxy request đến seller-analytics-service
+   */
+  @Get('top-products')
+  async getTopProducts(@Headers('authorization') auth?: string) {
+    try {
+      const headers = auth ? { Authorization: auth } : {};
+      
+      const response = await firstValueFrom(
+        this.httpService.get(`${this.analyticsServiceUrl}/analytics/top-products`, {
+          headers,
+        }),
+      );
+      return response.data;
+    } catch (error: any) {
+      throw new HttpException(
+        error.response?.data || 'Error fetching top products',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+
 }
 
