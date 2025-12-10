@@ -306,6 +306,7 @@ services:
     depends_on:
       - kafka
       - mongo
+      - redis
     networks:
       - click2buy_net
     restart: unless-stopped
