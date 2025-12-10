@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, BadGatewayException } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { HttpModule } from '@nestjs/axios';
@@ -21,6 +21,7 @@ import { SseService } from './gateways/sse/sse.service';
 import { SseController } from './gateways/sse/sse.controller';
 import { AiReviewGuard } from './guards/ai-review.guard';
 import { ChatGateway } from './gateways/chat.gateway';
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
