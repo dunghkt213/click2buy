@@ -107,7 +107,7 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
         <p className="text-center text-muted-foreground">Đăng nhập để tiếp tục</p>
       </div>
 
-      <Tabs value={loginMethod} onValueChange={(v) => setLoginMethod(v as 'password' | 'otp')} className="w-full">
+      <Tabs value={loginMethod} onValueChange={(v: string) => setLoginMethod(v as 'password' | 'otp')} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="password">Mật khẩu</TabsTrigger>
           <TabsTrigger value="otp">SMS OTP</TabsTrigger>
@@ -173,7 +173,7 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
             <Checkbox 
               id="remember" 
               checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+              onCheckedChange={(checked: boolean) => setRememberMe(checked as boolean)}
             />
             <label
               htmlFor="remember"

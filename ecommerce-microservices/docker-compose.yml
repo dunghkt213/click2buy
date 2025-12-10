@@ -58,7 +58,7 @@ services:
   # ============================
   redis:
     image: redis:7
-    container_name: click2buy_redis
+    container_name: redis
     restart: always
     ports:
       - "6379:6379"

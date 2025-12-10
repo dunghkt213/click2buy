@@ -1,24 +1,38 @@
-import {
-  Bell,
-  Search,
-  ShoppingCart,
-  Store
-} from 'lucide-react';
+/**
+ * Header.tsx - Component Header của ứng dụng
+ * Đã sửa lỗi đường dẫn import và TypeScript
+ */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CartItem, User } from '../../types';
-import { CartPreview } from '../cart/CartPreview';
-import { AccountDropdown } from '../shared/AccountDropdown';
-import { Badge } from '../ui/badge';
+import { 
+  Search, 
+  ShoppingCart, 
+  Heart, 
+  Menu, 
+  Bell, 
+  Store 
+} from 'lucide-react';
+
+// --- UI COMPONENTS ---
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Badge } from '../ui/badge';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '../ui/popover';
 
+// --- FEATURE COMPONENTS ---
+// Import từ ../shared và ../cart dựa trên cấu trúc thư mục của bạn
+import { AccountDropdown } from '../shared/AccountDropdown'; 
+import { CartPreview } from '../cart/CartPreview'; 
+
+// --- TYPES ---
+import { User, CartItem } from '../../types';
+
 interface HeaderProps {
+  // Các props bắt buộc
   cartItemsCount: number;
   unreadNotifications: number;
   onCartClick: () => void;
@@ -27,26 +41,35 @@ interface HeaderProps {
   onPromotionClick: () => void;
   onSupportClick: () => void;
   onStoreClick: () => void;
-  onLogoClick?: () => void;
   isLoggedIn: boolean;
-  user?: User;
   onLogin: () => void;
   onRegister: () => void;
   onLogout: () => void;
   onProfileClick: () => void;
   onOrdersClick: () => void;
+
+  // Các props tùy chọn (đánh dấu ?) để tránh lỗi khi cha không truyền
+  wishlistItemsCount?: number;
+  onWishlistClick?: () => void;
+  onLogoClick?: () => void;
+  user?: User;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   onSearchClick?: () => void;
   cartIconRef?: React.RefObject<HTMLButtonElement>;
+  wishlistIconRef?: React.RefObject<HTMLButtonElement>;
   cartItems?: CartItem[];
   totalPrice?: number;
+  hasStore?: boolean;
+  onMyStoreClick?: () => void;
 }
 
 export function Header({ 
   cartItemsCount, 
+  wishlistItemsCount = 0, 
   unreadNotifications,
   onCartClick, 
+  onWishlistClick = () => {}, 
   onNotificationsClick,
   onFilterClick,
   onPromotionClick,
@@ -63,52 +86,56 @@ export function Header({
   searchQuery: externalSearchQuery = '',
   onSearchChange,
   onSearchClick,
-    cartIconRef,
-    cartItems,
-  totalPrice
+  cartIconRef,
+  wishlistIconRef,
+  cartItems,
+  totalPrice,
+  hasStore,
+  onMyStoreClick
 }: HeaderProps) {
   const navigate = useNavigate();
   const [isCartPreviewOpen, setIsCartPreviewOpen] = useState(false);
 
-  // Handler khi search thay đổi - cho phép nhập text
+  // Xử lý thay đổi ô tìm kiếm
   const handleSearchChange = (value: string) => {
-    onSearchChange?.(value);
+    if (onSearchChange) {
+      onSearchChange(value);
+    }
   };
 
-  // Handler khi submit search (chỉ khi nhấn Enter)
+  // Xử lý khi nhấn Enter hoặc nút tìm kiếm
   const handleSearchSubmit = () => {
     if (externalSearchQuery.trim()) {
       if (onSearchClick) {
         onSearchClick();
       } else {
-        // Fallback: navigate to search page
+        // Mặc định điều hướng nếu không có hàm xử lý riêng
         navigate(`/search?q=${encodeURIComponent(externalSearchQuery)}`);
       }
     }
   };
 
-  // Handler khi nhấn Enter
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearchSubmit();
     }
   };
 
-  // Handler logo click - navigate to home
+  // Xử lý click Logo
   const handleLogoClick = () => {
     if (onLogoClick) {
       onLogoClick();
     } else {
-      navigate('/feed');
+      navigate('/');
     }
   };
 
   return (
     <header className="fixed top-0 w-full bg-card/95 backdrop-blur-md border-b border-border z-50">
       <div className="container mx-auto px-4">
-        {/* Top bar */}
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+          
+          {/* --- LOGO & NAV --- */}
           <div className="flex items-center gap-8">
             <button 
               onClick={handleLogoClick}
@@ -120,32 +147,30 @@ export function Header({
               <span className="text-xl font-semibold">Click2buy</span>
             </button>
 
-            {/* Navigation */}
             <nav className="hidden lg:flex items-center gap-6">
               <Button variant="ghost" onClick={onPromotionClick}>Khuyến mãi</Button>
               <Button variant="ghost" onClick={onSupportClick}>Hỗ trợ</Button>
             </nav>
           </div>
 
-          {/* Search - Chỉ Enter mới trigger tìm kiếm */}
+          {/* --- SEARCH BAR --- */}
           <div className="flex-1 max-w-xl mx-8 hidden md:block">
             <div className="relative">
-              <Search 
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" 
-              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Tìm kiếm sản phẩm..."
                 value={externalSearchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="pl-10 pr-4 bg-input-background border-0 rounded-full"
+                className="pl-10 pr-4 bg-input-background border-0 rounded-full focus-visible:ring-1"
               />
             </div>
           </div>
 
-          {/* Actions */}
+          {/* --- RIGHT ACTIONS --- */}
           <div className="flex items-center gap-2">
-            {/* Store */}
+            
+            {/* Store Button */}
             <Button 
               variant="ghost" 
               size="sm" 
@@ -157,59 +182,85 @@ export function Header({
                   onStoreClick();
                 }
               }}
+              title="Quản lý cửa hàng"
             >
-              <Store className="h-5 w-5" />
+              <Store className="w-4 h-4" />
             </Button>
 
-            {/* Cart */}
+            {/* Notifications */}
+            {isLoggedIn && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="hidden md:flex relative"
+                onClick={onNotificationsClick}
+              >
+                <Bell className="w-4 h-4" />
+                {unreadNotifications > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
+                  >
+                    {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                  </Badge>
+                )}
+              </Button>
+            )}
+            
+            {/* Wishlist */}
+            {isLoggedIn && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="hidden md:flex relative"
+                onClick={onWishlistClick}
+                ref={wishlistIconRef}
+              >
+                <Heart className="w-4 h-4" />
+                {wishlistItemsCount > 0 && (
+                  <Badge 
+                    variant="secondary" 
+                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-primary/10 text-primary"
+                  >
+                    {wishlistItemsCount > 99 ? '99+' : wishlistItemsCount}
+                  </Badge>
+                )}
+              </Button>
+            )}
+
+            {/* Cart with Preview */}
             <div 
               className="relative"
               onMouseEnter={() => {
-                // Mở preview khi hover
-                if (cartItemsCount > 0) {
-                  setIsCartPreviewOpen(true);
-                }
+                if (cartItemsCount > 0) setIsCartPreviewOpen(true);
               }}
-              onMouseLeave={() => {
-                // Đóng preview khi rời chuột
-                setIsCartPreviewOpen(false);
-              }}
+              onMouseLeave={() => setIsCartPreviewOpen(false)}
             >
               <Popover open={isCartPreviewOpen} onOpenChange={setIsCartPreviewOpen}>
                 <PopoverTrigger asChild>
                   <Button 
-                    ref={cartIconRef}
                     variant="ghost" 
                     size="sm" 
                     className="relative"
                     onClick={(e) => {
-                      // Click vào cart icon: navigate đến cart page
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsCartPreviewOpen(false);
-                      window.scrollTo({ top: 0, behavior: 'instant' });
-                      navigate('/cart');
+                       e.preventDefault();
+                       setIsCartPreviewOpen(false);
+                       onCartClick();
                     }}
+                    ref={cartIconRef}
                   >
-                    <ShoppingCart className="h-5 w-5" />
+                    <ShoppingCart className="w-4 h-4" />
                     {cartItemsCount > 0 && (
                       <Badge 
                         variant="destructive" 
-                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs cursor-pointer"
-                        onClick={(e) => {
-                          // Click vào badge: navigate đến cart page
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setIsCartPreviewOpen(false);
-                          window.scrollTo({ top: 0, behavior: 'instant' });
-                          navigate('/cart');
-                        }}
+                        className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
                       >
-                        {cartItemsCount}
+                        {cartItemsCount > 99 ? '99+' : cartItemsCount}
                       </Badge>
                     )}
                   </Button>
                 </PopoverTrigger>
+                
                 <PopoverContent 
                   className="w-80 p-0" 
                   align="end"
@@ -217,40 +268,21 @@ export function Header({
                   onMouseLeave={() => setIsCartPreviewOpen(false)}
                 >
                   <CartPreview 
-                    items={cartItems || []}
+                    items={cartItems || []} 
                     totalPrice={totalPrice || 0}
                     onViewCart={() => {
                       setIsCartPreviewOpen(false);
-                      window.scrollTo({ top: 0, behavior: 'instant' });
-                      navigate('/cart');
+                      onCartClick();
                     }}
                   />
                 </PopoverContent>
               </Popover>
             </div>
 
-            {/* Notifications */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="relative"
-              onClick={onNotificationsClick}
-            >
-              <Bell className="h-5 w-5" />
-              {unreadNotifications > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                >
-                  {unreadNotifications}
-                </Badge>
-              )}
-            </Button>
-
-            {/* Account */}
+            {/* Account Dropdown */}
             <AccountDropdown
-              isLoggedIn={isLoggedIn}
               user={user}
+              isLoggedIn={isLoggedIn}
               onLogin={onLogin}
               onRegister={onRegister}
               onLogout={onLogout}
@@ -258,6 +290,30 @@ export function Header({
               onOrdersClick={onOrdersClick}
               onNotificationsClick={onNotificationsClick}
               unreadNotifications={unreadNotifications}
+            />
+
+            {/* Mobile Menu Button */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="lg:hidden ml-2"
+              onClick={onFilterClick}
+            >
+              <Menu className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Search Bar */}
+        <div className="md:hidden pb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Tìm kiếm sản phẩm..."
+              value={externalSearchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="pl-10 pr-4 bg-input-background border-0 rounded-full"
             />
           </div>
         </div>

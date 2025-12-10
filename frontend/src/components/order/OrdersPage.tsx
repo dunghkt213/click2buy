@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
-import { Button } from '../ui/button';
-import { Card } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
-import { Input } from '../ui/input';
+/**
+ * OrdersPage - Trang đơn hàng (Đã fix lỗi Implicit Any TypeScript)
+ */
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAppContext } from '../../providers/AppProvider';
+
+// Import UI Components
+import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
+import { Input } from '../../components/ui/input';
+
+// Icons
 import {
   ArrowLeft,
   Search,
@@ -15,28 +25,23 @@ import {
   RotateCcw,
   ShoppingBag,
   Star,
-  MessageSquare,
-  CreditCard
+  MessageSquare
 } from 'lucide-react';
-import { Order, OrderStatus } from 'types';
+
+// Types & Utils
+import { Order, OrderStatus } from '../../types';
 import { formatPrice } from '../../utils/utils';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { OrderDetailModal } from './OrderDetailModal';
+import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
-interface OrdersPageProps {
-  orders: Order[];
-  onBack: () => void;
-  onViewDetail: (order: Order) => void;
-  onCancelOrder: (orderId: string) => void;
-  onReorder: (orderId: string) => void;
-  onReview: (orderId: string) => void;
-  onContactShop: (orderId: string) => void;
-}
+// Import Modals
+import { OrderDetailModal } from '../../components/order/OrderDetailModal'; 
+import { ReviewModal, ReviewData } from '../../components/review/ReviewModal';
 
-type TabValue = 'waiting_payment' | OrderStatus;
+// --- CONFIG ---
+type TabValue = 'all' | OrderStatus;
 
 const statusTabs = [
-  { value: 'waiting_payment' as TabValue, label: 'Chờ thanh toán', icon: CreditCard },
+  { value: 'all' as TabValue, label: 'Tất cả', icon: ShoppingBag },
   { value: 'pending' as TabValue, label: 'Chờ xác nhận', icon: Clock },
   { value: 'confirmed' as TabValue, label: 'Đã xác nhận', icon: CheckCircle },
   { value: 'shipping' as TabValue, label: 'Đang giao', icon: Truck },
@@ -54,94 +59,93 @@ const statusConfig: Record<OrderStatus, { label: string; color: string }> = {
   refund: { label: 'Hoàn tiền', color: 'bg-orange-500/10 text-orange-700 border-orange-200' },
 };
 
-// Default status config for unknown statuses
-const defaultStatusConfig = { label: 'Không xác định', color: 'bg-gray-500/10 text-gray-700 border-gray-200' };
+export function OrdersPage() {
+  const navigate = useNavigate();
+  const app = useAppContext(); 
 
-// Helper function to get status config safely
-const getStatusConfig = (status: string | undefined): { label: string; color: string } => {
-  if (!status || !(status in statusConfig)) {
-    return defaultStatusConfig;
-  }
-  return statusConfig[status as OrderStatus];
-};
-
-export function OrdersPage({
-  orders,
-  onBack,
-  onViewDetail,
-  onCancelOrder,
-  onReorder,
-  onReview,
-  onContactShop
-}: OrdersPageProps) {
-  const [selectedTab, setSelectedTab] = useState<TabValue>('waiting_payment');
+  // --- 1. STATE & LOGIC ---
+  const [selectedTab, setSelectedTab] = useState<TabValue>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  
+  // Modal State
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
-  // Filter orders
-  const filteredOrders = orders.filter(order => {
-    let matchesTab = false;
-    if (selectedTab === 'waiting_payment') {
-      // Chờ thanh toán: các đơn hàng có status là pending hoặc chưa được thanh toán
-      matchesTab = order.status === 'pending' || order.status === 'waiting_payment';
-    } else {
-      matchesTab = order.status === selectedTab;
+  // --- 2. EFFECT (Load Data) ---
+  useEffect(() => {
+    if (!app.isLoggedIn) {
+      navigate('/login');
+      return;
     }
+    app.orders.loadOrders();
+  }, [app.isLoggedIn, app.orders, navigate]);
+
+  const orders: Order[] = app.orders.orders || [];
+
+  // --- 3. FILTERING (Fix lỗi 'order' implicitly any) ---
+  const filteredOrders = orders.filter((order: Order) => {
+    const matchesTab = selectedTab === 'all' || order.status === selectedTab;
+    // Fix lỗi 'item' implicitly any bên trong some
     const matchesSearch = searchQuery === '' || 
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.items.some(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      order.items.some((item: any) => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return matchesTab && matchesSearch;
   });
 
-  // Count orders by status
+  // Count orders by status (Fix lỗi 'order' implicitly any)
   const getStatusCount = (status: TabValue) => {
-    if (status === 'waiting_payment') {
-      return orders.filter(order => order.status === 'pending' || order.status === 'waiting_payment').length;
-    }
-    return orders.filter(order => order.status === status).length;
+    if (status === 'all') return orders.length;
+    return orders.filter((order: Order) => order.status === status).length;
   };
 
+  // --- 4. HANDLERS ---
   const handleViewDetail = (order: Order) => {
     setSelectedOrder(order);
     setIsDetailModalOpen(true);
-    onViewDetail(order);
+    if (app.handleViewOrderDetail) {
+        app.handleViewOrderDetail(order);
+    }
   };
 
+  const handleReview = (orderId: string) => {
+    // Fix lỗi 'order' implicitly any trong find
+    setSelectedOrder(orders.find((order: Order) => order.id === orderId) || null);
+    setIsReviewModalOpen(true);
+  };
+
+  const handleReviewSubmit = (reviewData: ReviewData) => {
+    if (selectedOrder) {
+      app.handleReview(selectedOrder.id, reviewData);
+      setIsReviewModalOpen(false);
+    }
+  };
+
+  const onBack = () => {
+      navigate('/feed');
+  };
+
+  // --- 5. RENDER ---
   return (
     <div className="min-h-screen bg-background pt-16">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-card border-b border-border">
+      <div className="sticky top-16 z-30 bg-card border-b border-border">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBack}
-                className="gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Quay lại
+              <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
+                <ArrowLeft className="w-4 h-4" /> Quay lại
               </Button>
               <div>
                 <h1 className="text-2xl font-semibold">Đơn hàng của tôi</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Quản lý và theo dõi đơn hàng của bạn
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">Quản lý và theo dõi đơn hàng của bạn</p>
               </div>
             </div>
-
             {/* Search */}
-            <div className="relative w-80">
+            <div className="relative w-full md:w-80">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Tìm đơn hàng theo mã đơn hoặc tên sản phẩm..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+              <Input placeholder="Tìm theo mã đơn hoặc tên SP..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
           </div>
         </div>
@@ -150,32 +154,20 @@ export function OrdersPage({
       {/* Content */}
       <div className="container mx-auto px-4 py-8">
         <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as TabValue)}>
-          {/* Tabs List */}
           <TabsList className="w-full justify-start h-auto p-1 bg-muted/50 mb-6 overflow-x-auto">
             {statusTabs.map((tab) => {
               const Icon = tab.icon;
               const count = getStatusCount(tab.value);
-              
               return (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="flex items-center gap-2 data-[state=active]:bg-background"
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                  {count > 0 && (
-                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                      {count}
-                    </Badge>
-                  )}
+                <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-2 data-[state=active]:bg-background min-w-fit">
+                  <Icon className="w-4 h-4" /> {tab.label}
+                  {count > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{count}</Badge>}
                 </TabsTrigger>
               );
             })}
           </TabsList>
 
-          {/* Orders List */}
-          <TabsContent value={selectedTab} className="mt-0">
+          <TabsContent value={selectedTab} className="mt-0 space-y-4">
             {filteredOrders.length === 0 ? (
               <Card className="p-12">
                 <div className="text-center">
@@ -184,71 +176,57 @@ export function OrdersPage({
                   <p className="text-muted-foreground mb-6">
                     {searchQuery
                       ? 'Không tìm thấy đơn hàng phù hợp'
-                      : `Bạn chưa có đơn hàng ${statusTabs.find(t => t.value === selectedTab)?.label.toLowerCase()}`}
+                      : selectedTab === 'all'
+                      ? 'Bạn chưa có đơn hàng nào'
+                      // Fix lỗi 't' implicitly any
+                      : `Bạn chưa có đơn hàng ${statusTabs.find((t: any) => t.value === selectedTab)?.label.toLowerCase()}`}
                   </p>
-                  <Button onClick={onBack} className="bg-primary hover:bg-primary/90">
-                    Tiếp tục mua sắm
-                  </Button>
+                  <Button onClick={() => navigate('/feed')} className="bg-primary hover:bg-primary/90">Tiếp tục mua sắm</Button>
                 </div>
               </Card>
             ) : (
               <div className="space-y-4">
-                {filteredOrders.map((order) => {
-                  const statusInfo = getStatusConfig(order.status);
+                {/* Fix lỗi 'order' implicitly any trong map */}
+                {filteredOrders.map((order: Order) => {
+                  const statusInfo = statusConfig[order.status] || { label: order.status, color: 'bg-gray-100' };
                   
                   return (
                     <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
                       {/* Order Header */}
-                      <div className="flex items-center justify-between p-4 bg-muted/30 border-b">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-muted/30 border-b gap-3">
                         <div className="flex items-center gap-4">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <Package className="w-4 h-4 text-muted-foreground" />
-                              <span className="font-mono text-sm">{order.orderNumber}</span>
+                              <span className="font-mono text-sm font-medium">{order.orderNumber}</span>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              Đặt ngày {new Date(order.createdAt).toLocaleDateString('vi-VN')}
-                            </p>
+                            <p className="text-xs text-muted-foreground">Đặt ngày {new Date(order.createdAt).toLocaleDateString('vi-VN')}</p>
                           </div>
                         </div>
-                        <Badge variant="outline" className={statusInfo.color}>
-                          {statusInfo.label}
-                        </Badge>
+                        <Badge variant="outline" className={`${statusInfo.color} w-fit`}>{statusInfo.label}</Badge>
                       </div>
 
                       {/* Order Items */}
-                      <div className="p-4">
+                      <div className="p-4 cursor-pointer" onClick={() => handleViewDetail(order)}>
                         <div className="space-y-3">
-                          {order.items.slice(0, 2).map((item) => (
+                          {/* Fix lỗi 'item' implicitly any */}
+                          {order.items.slice(0, 2).map((item: any) => (
                             <div key={item.id} className="flex gap-3">
-                              <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                                <ImageWithFallback
-                                  src={item.image}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                />
+                              <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0 border">
+                                <ImageWithFallback src={item.image} alt={item.name} className="w-full h-full object-cover" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium line-clamp-2">{item.name}</p>
-                                {item.variant && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {item.variant}
-                                  </p>
-                                )}
+                                <p className="font-medium line-clamp-2 text-sm">{item.name}</p>
+                                {item.variant && <p className="text-xs text-muted-foreground mt-1">{item.variant}</p>}
                                 <div className="flex items-center justify-between mt-2">
                                   <span className="text-sm text-muted-foreground">x{item.quantity}</span>
-                                  <span className="font-semibold text-primary">
-                                    {formatPrice(item.price)}
-                                  </span>
+                                  <span className="font-semibold text-sm text-primary">{formatPrice(item.price)}</span>
                                 </div>
                               </div>
                             </div>
                           ))}
-                          
                           {order.items.length > 2 && (
-                            <p className="text-sm text-muted-foreground text-center py-2">
-                              + {order.items.length - 2} sản phẩm khác
-                            </p>
+                            <p className="text-sm text-muted-foreground text-center py-1 bg-muted/20 rounded">+ {order.items.length - 2} sản phẩm khác</p>
                           )}
                         </div>
 
@@ -256,92 +234,52 @@ export function OrdersPage({
                         {order.estimatedDelivery && order.status === 'shipping' && (
                           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                             <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                              <Truck className="w-4 h-4" />
-                              Dự kiến giao: {new Date(order.estimatedDelivery).toLocaleDateString('vi-VN')}
+                              <Truck className="w-4 h-4" /> Dự kiến giao: {new Date(order.estimatedDelivery).toLocaleDateString('vi-VN')}
                             </p>
                           </div>
                         )}
                       </div>
 
                       {/* Order Footer */}
-                      <div className="flex items-center justify-between p-4 bg-muted/30 border-t">
+                      <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between p-4 bg-muted/30 border-t gap-4">
                         <div className="flex items-baseline gap-2">
                           <span className="text-sm text-muted-foreground">Tổng tiền:</span>
-                          <span className="text-xl font-bold text-primary">
-                            {formatPrice(order.finalPrice)}
-                          </span>
+                          <span className="text-xl font-bold text-primary">{formatPrice(order.finalPrice)}</span>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                           {order.status === 'pending' && (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => onCancelOrder(order.id)}
-                              className="text-red-600 hover:text-red-700"
+                              // Fix lỗi 'e' implicitly any
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                if(confirm('Bạn có chắc muốn hủy đơn hàng này?')) app.handleCancelOrder(order.id);
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               Hủy đơn
                             </Button>
                           )}
 
                           {order.status === 'shipping' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewDetail(order)}
-                            >
-                              Theo dõi
-                            </Button>
+                            <Button variant="outline" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleViewDetail(order); }}>Theo dõi</Button>
                           )}
 
                           {order.status === 'completed' && (
                             <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onReview(order.id)}
-                                className="gap-2"
-                              >
-                                <Star className="w-4 h-4" />
-                                Đánh giá
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onReorder(order.id)}
-                              >
-                                Mua lại
-                              </Button>
+                              <Button variant="outline" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleReview(order.id); }} className="gap-2"><Star className="w-4 h-4" /> Đánh giá</Button>
+                              <Button variant="outline" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); app.handleReorder(order.id); }}>Mua lại</Button>
                             </>
                           )}
 
                           {(order.status === 'cancelled' || order.status === 'refund') && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onReorder(order.id)}
-                            >
-                              Mua lại
-                            </Button>
+                            <Button variant="outline" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); app.handleReorder(order.id); }}>Mua lại</Button>
                           )}
 
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleViewDetail(order)}
-                          >
-                            Xem chi tiết
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onContactShop(order.id)}
-                            className="gap-2"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                            Liên hệ
-                          </Button>
+                          <Button variant="default" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleViewDetail(order); }}>Xem chi tiết</Button>
+                          <Button variant="ghost" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); app.handleContactShop(order.id); }} className="gap-2 px-2" title="Liên hệ Shop"><MessageSquare className="w-4 h-4" /></Button>
                         </div>
                       </div>
                     </Card>
@@ -354,15 +292,27 @@ export function OrdersPage({
       </div>
 
       {/* Order Detail Modal */}
-      <OrderDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
-        order={selectedOrder}
-        onCancelOrder={onCancelOrder}
-        onReorder={onReorder}
-        onReview={onReview}
-        onContactShop={onContactShop}
-      />
+      {isDetailModalOpen && (
+        <OrderDetailModal
+            isOpen={isDetailModalOpen}
+            onClose={() => setIsDetailModalOpen(false)}
+            order={selectedOrder}
+            onCancelOrder={app.handleCancelOrder}
+            onReorder={app.handleReorder}
+            onReview={(id) => handleReview(id)}
+            onContactShop={app.handleContactShop}
+        />
+      )}
+
+      {/* Review Modal */}
+      {isReviewModalOpen && (
+        <ReviewModal
+            isOpen={isReviewModalOpen}
+            onClose={() => setIsReviewModalOpen(false)}
+            order={selectedOrder}
+            onSubmitReview={handleReviewSubmit}
+        />
+      )}
     </div>
   );
 }

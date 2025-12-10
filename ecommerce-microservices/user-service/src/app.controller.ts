@@ -82,11 +82,11 @@ export class AppController {
 
   @MessagePattern('user.updateRoleSeller')
   @UseGuards(JwtKafkaAuthGuard)
-  async updateRoleSeller(@Payload() payload: any, @CurrentUser() user: any) {
-    const userId = user.sub;
-    console.log(payload)
+  async updateRoleSeller(@Payload() Payload: any, @CurrentUser() user: any) {
     try {
-      return this.AppService.updateRoleSeller(userId, payload);
+      const userId = user.sub;
+      const payload = Payload.payload; 
+      return await this.AppService.updateRoleSeller(userId, payload);
     } catch (error) {
       console.log("loi", error.message)
       return error

@@ -12,6 +12,7 @@ export class AppController {
   @UseGuards(JwtKafkaAuthGuard)
   create(@Payload() { dto }: any, @CurrentUser() user: any) {
     const userId = user?.sub || user?.id;
+    console.log('Current User in Product Service:', user);
     if (user.role == 'seller') {
     return this.appService.create(dto, userId);
     } else {

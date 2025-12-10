@@ -67,7 +67,7 @@ export function CartSidebar({
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => {
+    <Sheet open={isOpen} onOpenChange={(open: any) => {
       if (!open) {
         onClose();
       }
