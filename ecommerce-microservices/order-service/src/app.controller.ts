@@ -19,7 +19,7 @@ export class AppController {
 @UseGuards(JwtKafkaAuthGuard)
 async createOrders(@Payload() data: any, @CurrentUser() user: any) {
   const userId = user?.sub || user?.id;
-  const { carts, paymentMethod } = data;
+  const { carts, paymentMethod, orderCode } = data;
   console.log('controller order.create', carts)
   if (!carts || !Array.isArray(carts)) {
     throw new BadRequestException('Invalid payload: carts[] required');
@@ -32,6 +32,7 @@ async createOrders(@Payload() data: any, @CurrentUser() user: any) {
   try{
     return this.appService.createOrders({
     userId,
+    orderCode,
     paymentMethod,
     carts,
   });
@@ -63,5 +64,15 @@ timeout(@Payload() data: any) {
 async updateOrderStatus(@Payload() data:any) {
   return this.appService.updateOrderStatus_paymentSuccess(data)
 } 
+// order.app.controller.ts
+@MessagePattern('order.payment.banking.requested')
+@UseGuards(JwtKafkaAuthGuard)
+async handlePaymentBankingRequested(@Payload() data: any, @CurrentUser() user: any) {
+  console.log('Received banking payment request for orders:', data);
+  const userId = user?.sub || user?.id;
+  const {  orderIds } = data;
+  return this.appService.requestBankingForOrders({ userId, orderIds });
+}
+
   
 }

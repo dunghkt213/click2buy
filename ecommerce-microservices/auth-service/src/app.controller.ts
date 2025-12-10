@@ -50,6 +50,25 @@ export class AppController {
     }
   }
 
+   @MessagePattern('auth.new_token')
+  async handleGentoken(
+    @Payload() message: any,
+  ) {
+    try {
+      const result = await this.appService.genToken(message);
+      return {
+        success: true,
+        message: 'Login successful',
+        data: {
+          accessToken: result.accessToken,
+          refreshTokenInfo: result.refreshTokenInfo,
+        },
+      };
+    } catch (err) {
+      return { success: false, error: err.message, message: err.message };
+    }
+  }
+
   @MessagePattern('auth.logout')
   async handleLogout(@Payload() message: { refreshToken: string }) {
     try {

@@ -419,6 +419,122 @@ paths:
           description: ""
       tags:
         - MediaGateway
+  /seller/orders:
+    get:
+      operationId: SellerAnalyticsGateway_getOrders
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: &a6
+        - SellerAnalyticsGateway
+  /seller/orders/{id}/confirm:
+    put:
+      operationId: SellerAnalyticsGateway_confirmOrder
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a6
+  /seller/orders/{id}/reject:
+    put:
+      operationId: SellerAnalyticsGateway_rejectOrder
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a6
+  /analytics/revenue:
+    get:
+      operationId: SellerAnalyticsGateway_getRevenue
+      parameters:
+        - name: type
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a6
+  /orders:
+    post:
+      operationId: OrderGateway_create
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: &a7
+        - OrderGateway
+  /orders/seller:
+    get:
+      operationId: OrderGateway_getCart
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: *a7
+  /payment/payos/callback:
+    post:
+      operationId: PaymentGateway_handlePayOS
+      parameters:
+        - name: x-signature
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: &a8
+        - PaymentGateway
+  /payment/create-banking:
+    post:
+      operationId: PaymentGateway_requestBanking
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: *a8
+  /sse/payments/{userId}:
+    get:
+      operationId: SseController_streamPayment
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags:
+        - Sse
 info:
   title: Click2Buy - API Gateway
   description: API Gateway for Click2Buy microservices.
