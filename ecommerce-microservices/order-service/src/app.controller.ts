@@ -63,5 +63,11 @@ timeout(@Payload() data: any) {
 async updateOrderStatus(@Payload() data:any) {
   return this.appService.updateOrderStatus_paymentSuccess(data)
 } 
-  
+
+@MessagePattern('order.confirm')
+@UseGuards(JwtKafkaAuthGuard)
+async confirmOrder(@Payload() data: { orderId: string }, @CurrentUser() user: any) {
+  const sellerId = user?.sub || user?.id;
+  return this.appService.confirmOrder(data.orderId, sellerId);
+}  
 }

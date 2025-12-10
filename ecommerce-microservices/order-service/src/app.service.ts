@@ -153,5 +153,40 @@ async createOrders(input: {
     };
   }
 
+  async confirmOrder(orderId: string, sellerId: string) {
+  const order = await this.orderModel.findById(orderId);
+  
+  if (!order) {
+    throw new NotFoundException(`Order not found: ${orderId}`);
+  }
+  
+  if (order.ownerId !== sellerId) {
+    throw new BadRequestException('You are not the owner of this order');
+  }
+  
+  if (order.status !== 'PENDING_ACCEPT') {
+    throw new BadRequestException(`Cannot confirm order with status: ${order.status}`);
+  }
 
+  // Cập nhật trạng thái
+  order.status = 'CONFIRMED';
+  await order.save();
+
+  // 🔥 EMIT EVENT CHO SELLER-ANALYTICS-SERVICE
+  await this.kafka.emit('order.confirmed', {
+    orderId: order._id.toString(),
+    sellerId: order.ownerId,
+    totalAmount: order.total,
+    confirmedAt: new Date().toISOString(),
+    items: order.items.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price,
+    })),
+  });
+
+  this.logger.log(`✅ Order ${orderId} confirmed, event emitted to Kafka`);
+  
+  return { success: true, status: 'CONFIRMED' };
+  }
 }
