@@ -6,6 +6,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { User, UserSchema } from './schemas/user.schema';
 import { AuthModule } from './auth/auth.module';
+import { ClientsModule } from '@nestjs/microservices/module/clients.module';
+import { Transport } from '@nestjs/microservices/enums/transport.enum';
 @Module({
   imports: [
     AuthModule,
@@ -27,9 +29,24 @@ import { AuthModule } from './auth/auth.module';
         };
       },
     }),
-
+    ClientsModule.register([
+  {
+    name: 'USER_SERVICE',
+    transport: Transport.KAFKA,
+    options: {
+      client: {
+        clientId: 'user-service',
+        brokers: ['click2buy_kafka:9092'],
+      },
+      consumer: {
+        groupId: 'user-service-consumer',
+      },
+    },
+  },
+]),
     // 3️⃣ Sau khi có connection, mới đăng ký schema
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    
   ],
 
   controllers: [AppController],
