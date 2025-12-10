@@ -279,7 +279,7 @@ services:
       CHOKIDAR_INTERVAL: 500
       CHOKIDAR_DEPTH: 99
 
-    command: sh -c "npm install && npm run start:prod"
+    command: sh -c "npm install && npm run build && npm run start:prod"
     depends_on:
       - kafka
       - mongo
@@ -306,6 +306,7 @@ services:
     depends_on:
       - kafka
       - mongo
+      - redis
     networks:
       - click2buy_net
     restart: unless-stopped

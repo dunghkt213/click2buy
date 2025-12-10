@@ -10,10 +10,19 @@ import {
   ProductAnalyticsDocument,
 } from "./schemas/product-analytics.schema";
 
+// Payload khi Seller duyệt đơn - KHÔNG chứa totalAmount
 interface OrderConfirmedPayload {
+  orderId: string;
+  sellerId: string;
+  confirmedAt?: string | Date;
+}
+
+// Payload khi đơn hàng giao thành công - CHỨA totalAmount để cộng doanh thu
+interface OrderCompletedPayload {
+  orderId: string;
   sellerId: string;
   totalAmount: number;
-  confirmedAt?: string | Date;
+  completedAt?: string | Date;
   items?: Array<{
     productId: string;
     productName?: string;
@@ -35,32 +44,66 @@ export class AnalyticsService {
   ) {}
 
   /**
-   * Kafka consumer handler for order.confirmed events.
-   * Aggregates revenue + product stats inside a Mongo transaction.
+   * Handler khi Seller duyệt đơn - CHỈ đếm số đơn được duyệt, KHÔNG cộng doanh thu
    */
   async handleOrderConfirmed(data: OrderConfirmedPayload) {
+    try {
+      const normalizedDate = this.normalizeDate(
+        data.confirmedAt ? new Date(data.confirmedAt) : new Date(),
+      );
+
+      // Chỉ tăng totalOrders (số đơn được duyệt), KHÔNG tăng totalRevenue
+      await this.dailyRevenueModel.findOneAndUpdate(
+        { sellerId: data.sellerId, date: normalizedDate },
+        {
+          $inc: { totalOrders: 1 },
+          $setOnInsert: {
+            sellerId: data.sellerId,
+            date: normalizedDate,
+            totalRevenue: 0,
+          },
+        },
+        { upsert: true, new: true },
+      );
+
+      this.logger.log(
+        `📊 Order count updated for seller ${data.sellerId} - order.confirmed (no revenue added)`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `❌ Failed to process order.confirmed for seller ${data.sellerId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Handler khi đơn hàng giao thành công - CỘNG DOANH THU TẠI ĐÂY
+   */
+  async handleOrderCompleted(data: OrderCompletedPayload) {
     const session = await this.connection.startSession();
     try {
       await session.withTransaction(async () => {
         const normalizedDate = this.normalizeDate(
-          data.confirmedAt ? new Date(data.confirmedAt) : new Date(),
+          data.completedAt ? new Date(data.completedAt) : new Date(),
         );
 
+        // Cộng doanh thu khi đơn hàng hoàn tất
         await this.dailyRevenueModel.findOneAndUpdate(
           { sellerId: data.sellerId, date: normalizedDate },
           {
-            $inc: {
-              totalRevenue: data.totalAmount,
-              totalOrders: 1,
-            },
+            $inc: { totalRevenue: data.totalAmount },
             $setOnInsert: {
               sellerId: data.sellerId,
               date: normalizedDate,
+              totalOrders: 0,
             },
           },
           { upsert: true, new: true, session },
         );
 
+        // Cập nhật thống kê sản phẩm
         for (const item of data.items || []) {
           const quantity = item.quantity ?? 0;
           const price = item.price ?? 0;
@@ -81,9 +124,7 @@ export class AnalyticsService {
                 productId: item.productId,
               },
               ...(item.productName
-                ? {
-                    $set: { productName: item.productName },
-                  }
+                ? { $set: { productName: item.productName } }
                 : {}),
             },
             { upsert: true, new: true, session },
@@ -92,11 +133,11 @@ export class AnalyticsService {
       });
 
       this.logger.log(
-        `✅ Analytics updated for seller ${data.sellerId} - order.confirmed`,
+        `💰 Revenue updated for seller ${data.sellerId} - order.completed (+${data.totalAmount})`,
       );
     } catch (error) {
       this.logger.error(
-        `❌ Failed to aggregate analytics for seller ${data.sellerId}: ${error.message}`,
+        `❌ Failed to aggregate revenue for seller ${data.sellerId}: ${error.message}`,
         error.stack,
       );
       throw error;
