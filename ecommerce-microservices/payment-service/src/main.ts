@@ -8,8 +8,7 @@ async function bootstrap() {
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.KAFKA,
     options: {
-      client: { clientId: 'payment-service', 
-      brokers: ['click2buy_kafka:9092'] },
+      client: { clientId: 'payment-service', brokers: ['click2buy_kafka:9092'] },
       consumer: { groupId: 'payment-service-consumer' },
     },
   });
@@ -18,3 +17,4 @@ async function bootstrap() {
   await app.listen(3007);
 }
 bootstrap();
+

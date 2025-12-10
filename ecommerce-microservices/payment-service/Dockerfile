@@ -12,6 +12,8 @@ COPY package*.json ./
 # Cài dependencies
 RUN npm install
 
+COPY . .
+
 # Expose cổng nếu cần (Nest thường là 3000, nhưng microservice có thể không cần)
 EXPOSE 3001
 
