@@ -1,13 +1,12 @@
-import { Injectable, Logger, Inject, NotFoundException ,BadRequestException} from '@nestjs/common';
+import { Injectable, Logger, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ClientKafka } from '@nestjs/microservices';
-
 import { Order, OrderDocument } from './schemas/order.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-status.dto';
 import Redis from 'ioredis/built/Redis';
-import { timeout } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 @Injectable()
 export class AppService {
   private readonly logger = new Logger(AppService.name);
@@ -24,6 +23,7 @@ export class AppService {
 async onModuleInit() {
   // Các topic RPC API Gateway phải subscribe để nhận response
   this.kafka.subscribeToResponseOf('product.findOne');
+  this.kafka.subscribeToResponseOf('order.created');
   await this.kafka.connect();
 }
 
@@ -50,6 +50,7 @@ async getAllOrderForUser (userId: string) {
 }
 async createOrders(input: {
   userId: string;
+  orderCode: string;
   paymentMethod: string;
   carts: {
     cartId: string;
@@ -58,7 +59,19 @@ async createOrders(input: {
   }[];
 }) {
   console.log('=>> service order.create')
-  const { userId, paymentMethod, carts } = input;
+  const { userId, orderCode, paymentMethod, carts } = input;
+  const existing = await this.orderModel.findOne({ orderCode });
+
+  if (existing) {
+    console.log("⚠️ Duplicate Order -> return existing without creating new");
+
+    return {
+      success: true,
+      duplicate: true,
+      orderIds: [existing._id],
+      message: "Order already created, waiting for payment QR",
+    };
+  }
   const orderIds = [];
   const products= [];
   let totalAllOrders = 0;
@@ -74,6 +87,7 @@ async createOrders(input: {
         quantity: p.quantity,
       })
       if (!product) {
+        console.log(`Product not found: ${p.productId}`);
         throw new NotFoundException(`Product not found: ${p.productId}`);
       }
 
@@ -96,6 +110,7 @@ async createOrders(input: {
 
     // ---- 3. Tạo order ----
     const order = new this.orderModel({
+      orderCode,
       userId,
       ownerId: cart.sellerId,
       items,
@@ -109,16 +124,25 @@ async createOrders(input: {
     orderIds.push(saved._id.toString());
 
   }
-  await this.kafka.emit('order.created', {
+  console.log('🔥 EMIT order.created PAYLOAD:', {
     userId,
     orderIds,
     paymentMethod,
     products,
     total: totalAllOrders,
   });
-  return { success: true, orderIds };
-}
 
+  this.kafka.emit('order.created', {
+    userId,
+    orderIds,
+    paymentMethod,
+    products,
+    total: totalAllOrders,
+  });
+
+  return { success: true, orderIds, message: 'Order created, payment-service dang xu ly' };
+
+}
 
   async calculateOrdersTotal(orderIds: string[]) {
     const orders = await this.orderModel.find({
@@ -153,6 +177,50 @@ async createOrders(input: {
     };
   }
 
+  async requestBankingForOrders(input: { userId: string; orderIds: string[] }) {
+    const { userId, orderIds } = input;
+  
+    const orders = await this.orderModel.find({
+      _id: { $in: orderIds },
+      userId,                               // đảm bảo đúng chủ
+    });
+  
+    if (!orders.length) {
+      console.log('Orders not found or not owned by user');
+      throw new NotFoundException('Orders not found or not owned by user');
+    }
+  
+    const totalAllOrders = orders.reduce((sum, o) => sum + o.total, 0);
+
+    const allowed = [
+      'PENDING_PAYMENT',
+      'PENDING_ACCEPT',    // COD đổi sang QR
+      'PAYMENT_FAILED',  // thanh toán fail được tạo lại
+    ];
+  
+    // (optional) kiểm tra status phải là PENDING_PAYMENT
+    for (const o of orders) {
+      if (!allowed.includes(o.status)) {
+        throw new BadRequestException(
+          `Order ${o._id} cannot request banking payment in status: ${o.status}`,
+        );
+      }
+    }
+  console.log('🔥 EMIT order.payment.banking.requested PAYLOAD:', orderIds)
+    // 👉 CHÍNH ORDER-SERVICE là nơi bắn đi event sang payment
+    this.kafka.emit('payment.banking.requested', {
+      userId,
+      orderIds: orders.map((o) => o._id.toString()),
+      paymentMethod: 'BANKING',
+      total: totalAllOrders,   // total lấy từ DB, an toàn
+    });
+  
+    return {
+      success: true,
+      message: 'Requested banking payment, waiting for QR',
+    };
+  }
+  
   /**
    * Seller duyệt đơn hàng - KHÔNG cộng doanh thu ở bước này
    * Chỉ emit event để tracking số đơn được duyệt

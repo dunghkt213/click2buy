@@ -22,8 +22,21 @@ export class Payment {
   @Prop({ required: true })
   paidAmount: number;
 
-  @Prop({ default: 'PENDING' })
+  @Prop({ default: 'PENDING', enum:['PENDING', 'EXPIRED', 'FAIL', 'SUCCESS'] })
   status: string;
+
+  @Prop()
+  checkoutUrl: string;   // 👈 BẮT BUỘC THÊM
+
+  @Prop()
+  qrCode: string;        // 👈 BẮT BUỘC THÊM
+
+  @Prop()
+  expireAt: number;      // optional
+  
+  @Prop()
+  paymentLinkId: string; // optional
+
 }
 
 export const PaymentSchema = SchemaFactory.createForClass(Payment);
