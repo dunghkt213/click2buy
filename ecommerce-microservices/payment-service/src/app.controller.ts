@@ -12,7 +12,8 @@ export class PaymentController {
   ) {}
 
   @MessagePattern('order.created')
-  create(@Body() dto: any) {
+  create(dto: any) {
+    console.log('=>> controller payment.order.created', dto)
     return this.paymentService.create(dto);
   }
 
@@ -20,5 +21,16 @@ export class PaymentController {
   findAll(@Query() query: any) {
     return this.paymentService.findAll(query);
   }
-  
+
+  @MessagePattern('payment.payos.callback')
+  handlePayOSCallback(body) {
+   return this.paymentService.handlePayOSCallback(body);
+}
+
+@MessagePattern('payment.banking.requested')
+async handleBankingRequested(data: any) {
+  console.log('📥 payment.banking.requested RECEIVED', data);
+  return this.paymentService.createBankingPayments(data.orderIds, data.userId, data.total);
+}
+
 }
