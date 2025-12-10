@@ -4,67 +4,30 @@ import { AppService } from './app.service';
 import { CurrentUser } from './auth/current-user.decorator';
 import { UseGuards } from '@nestjs/common';
 import { JwtKafkaAuthGuard } from './auth/jwt-kafka.guard';
-import { JwtService } from './auth/jwt.service';
-import { UserPayload } from './auth/jwt-payload.interface';
-
 @Controller()
 export class AppController {
-  constructor(
-    private readonly appService: AppService,
-    private readonly jwtService: JwtService,
-  ) { }
+  constructor(private readonly appService: AppService) {}
 
   @MessagePattern('product.create')
   @UseGuards(JwtKafkaAuthGuard)
   create(@Payload() { dto }: any, @CurrentUser() user: any) {
     const userId = user?.sub || user?.id;
     if (user.role == 'seller') {
-      return this.appService.create(dto, userId);
+    return this.appService.create(dto, userId);
     } else {
       return { success: false, message: 'Only sellers can create products' };
     }
   }
 
   @MessagePattern('product.findAll')
-  async findAll(@Payload() { q, auth }: any) {
-    let user: UserPayload | null = null;
-
-    if (auth) {
-      try {
-        const token = auth.split(' ')[1];
-        user = this.jwtService.validateToken(token);
-        console.log("DECODED USER:", user);
-      } catch { }
-    }
-
-    if (user?.role === 'seller') {
-      return this.appService.findAllOfSeller(q, user.sub || user.id);
-    }
-
+  findAll(@Payload() { q }: any) {
     return this.appService.findAll(q);
   }
 
   @MessagePattern('product.findOne')
-  async findOne(@Payload() { id, auth }: any) {
-    let user: UserPayload | null = null;
-
-    if (auth) {
-      try {
-        const token = auth.split(' ')[1];
-        user = this.jwtService.validateToken(token);
-        console.log("DECODED USER:", user.sub || user.id);
-      } catch (e) {
-        user = null;  // Cho phép public access nếu token invalid
-      }
-    }
-
-    if (user?.role === 'seller') {
-      return this.appService.findOneOfSeller(id, user.sub || user.id);
-    }
-
+  findOne(@Payload() { id }: any) {
     return this.appService.findOne(id);
   }
-
 
   @MessagePattern('product.update')
   @UseGuards(JwtKafkaAuthGuard)

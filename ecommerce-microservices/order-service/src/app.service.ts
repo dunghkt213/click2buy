@@ -41,7 +41,13 @@ async getAllOrderForSaller (ownerId: string) {
     throw err.message;
   }
 }
-
+async getAllOrderForUser (userId: string) {
+  try {
+    return this.orderModel.find({userId});
+  } catch(err){
+    throw err.message;
+  }
+}
 async createOrders(input: {
   userId: string;
   orderCode: string;

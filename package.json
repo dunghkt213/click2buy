@@ -5,5 +5,11 @@
   },
   "devDependencies": {
     "@types/ioredis": "^4.28.10"
+    "axios": "^1.13.2",
+    "react-router-dom": "^7.9.6",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36"
   }
 }
