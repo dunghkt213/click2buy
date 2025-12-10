@@ -23,3 +23,6 @@ Thumbs.db
 google-service-account.json
 
 package-lock.json
+# Ignore Vite cache
+.vite-cache/
+frontend/.vite-cache/
