@@ -173,7 +173,9 @@ export class AnalyticsService {
 
     const map = new Map<string, DailyRevenueDocument>();
     revenues.forEach((record) => {
-      map.set(record.date.toISOString(), record);
+      // Normalize date để khớp với cursor date
+      const normalizedDate = this.normalizeDate(record.date);
+      map.set(normalizedDate.toISOString(), record);
     });
 
     const result: Array<{
@@ -216,4 +218,6 @@ export class AnalyticsService {
     normalized.setHours(0, 0, 0, 0);
     return normalized;
   }
+
+
 }
