@@ -49,27 +49,36 @@ async reserveStock(data: any ) {
   return { success: true, results };
 }
 
-async commitStock(data: { order: any }) {
-  const { order } = data;
-
-  console.log('commit stock for order', order);
+/**
+ * Khi đơn hàng giao thành công → chốt kho (giảm reservedStock)
+ * Payload từ order.completed: { orderId, sellerId, totalAmount, items }
+ */
+async commitStock(data: {
+  orderId: string;
+  sellerId: string;
+  totalAmount: number;
+  completedAt?: string;
+  items: Array<{ productId: string; quantity: number; price: number }>;
+}) {
+  console.log('🔒 Commit stock for completed order:', data.orderId);
 
   const results = [];
 
-  for (const { productId, quantity } of order.items) {
+  for (const { productId, quantity } of data.items) {
     const inventory = await this.inventoryModel.findOne({ productId });
 
     if (!inventory) {
       results.push({
         productId,
         success: false,
-        message: 'Inventory not found'
+        message: 'Inventory not found',
       });
       continue;
     }
 
     // Giảm reserved vì hàng đã bán thành công
-    inventory.reservedStock -= quantity;
+    inventory.reservedStock = Math.max(0, inventory.reservedStock - quantity);
+    inventory.status = this.resolveStatus(inventory);
 
     await inventory.save();
 
@@ -78,14 +87,16 @@ async commitStock(data: { order: any }) {
       success: true,
       committed: quantity,
       newAvailable: inventory.availableStock,
-      newReserved: inventory.reservedStock
+      newReserved: inventory.reservedStock,
     });
   }
 
+  console.log('✅ Stock committed for order:', data.orderId);
+
   return {
     success: true,
-    orderId: order._id,
-    results
+    orderId: data.orderId,
+    results,
   };
 }
 
