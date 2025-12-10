@@ -1,7 +1,7 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Headers,  } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Res,Post, Put, Query, Headers, HttpException } from '@nestjs/common';
 import  {ClientKafka}from '@nestjs/microservices';
 import {Inject} from '@nestjs/common/decorators/core/inject.decorator';
-
+import type { Response, Request } from 'express';
 @Controller('users')
 export class UserGateway {
   constructor(@Inject('KAFKA_SERVICE') private readonly kafka: ClientKafka) {}
@@ -47,15 +47,45 @@ export class UserGateway {
   deactivate(@Param('id') id: string, @Headers('authorization') auth?: string) {
     return this.kafka.send('user.deactivate', { id, auth });
   }
-  @Post('seller')
-  updateRoleSeller(
+
+@Post('seller')
+async updateRoleSeller(
   @Body() payload: any,
-  @Headers('authorization') auth?: string
+  @Headers('authorization') auth: string,
+  @Res({ passthrough: true }) res: Response
 ) {
-  return this.kafka.send('user.updateRoleSeller', {      
-    ...payload,    
-    auth,          
-  });
+  try {
+    const result = await this.kafka.send(
+      'user.updateRoleSeller',
+      { payload, auth }
+    ).toPromise();
+
+    console.log("📥 RESULT FROM MS:",result);
+    if (!result?.user || !result?.accessToken) {
+      throw new HttpException('Invalid response from user.updateRoleSeller', 500);
+    }
+
+    const { user, accessToken, refreshTokenInfo } = result;
+
+    // optional guard để tránh crash
+    if (refreshTokenInfo) {
+      res.cookie(
+        refreshTokenInfo.name,
+        refreshTokenInfo.value,
+        refreshTokenInfo.options
+      );
+    }
+
+    return { user, accessToken };
+
+  } catch (error) {
+    console.log("❌ Gateway error:", error);
+
+    throw new HttpException(
+      error?.message || 'Internal server error',
+      error?.status || 500
+    );
+  }
 }
 
 }

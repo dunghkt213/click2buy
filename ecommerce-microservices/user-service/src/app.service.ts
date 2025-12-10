@@ -1,18 +1,27 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
+import{  Inject,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { User, UserDocument, UserRole, AuthProvider } from './schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { UserDto } from './dto/user.dto';
-import { log } from 'console';
+import { error, log } from 'console';
 // TEST HOT RELOAD
-
+import { ClientKafka } from '@nestjs/microservices';
 @Injectable() 
 export class AppService  {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>,
+  @Inject('USER_SERVICE')
+  private readonly UserClient: ClientKafka,
+) {}
+    async onModuleInit() {
+    // cần để send().toPromise() hoạt động
+    this.UserClient.subscribeToResponseOf('auth.new_token');
+  }
 
   // Map Document -> DTO (ẩn passwordHash, chuẩn hóa id…)
   private toUserDto(doc: UserDocument): UserDto {
@@ -232,9 +241,6 @@ async findBy(field: 'username' | 'email' | '_id', value: string) {
 }
 
 
-
-
-
   async deactivate(id: string): Promise<{ deactivated: true }> {
     const res = await this.userModel.findByIdAndUpdate(id, { $set: { isActive: false } }, { new: true }).exec();
     if (!res) throw new NotFoundException('User không tồn tại');
@@ -255,6 +261,7 @@ async findBy(field: 'username' | 'email' | '_id', value: string) {
   // user.service.ts
  async updateRoleSeller(userId: string, payload: any) {
   // Validate tối thiểu
+  console.log("payload:", payload.shopName, payload.shopAddress, payload.shopPhone);
   if (!payload.shopName || !payload.shopAddress || !payload.shopPhone) {
     throw new BadRequestException(
       'shopName, shopAddress and shopPhone are required for seller registration'
@@ -268,12 +275,23 @@ async findBy(field: 'username' | 'email' | '_id', value: string) {
     { $set: payload },
     { new: true }
   );
-
+  console.log("updated user role seller:", updated);
   if (!updated) {
-    throw new NotFoundException('User not found');
+    throw new error('User not found');
   }
+  const tokenResponse = await this.UserClient
+  .send('auth.new_token', { userId, userRole: UserRole.SELLER })
+  .toPromise();
 
-  return this.toUserDto(updated);
+  const accessToken = tokenResponse?.data?.accessToken;
+  const refreshTokenInfo = tokenResponse?.data?.refreshTokenInfo;
+
+  console.log("new token after update role:", accessToken, refreshTokenInfo);
+  return {
+    user: this.toUserDto(updated),
+    accessToken: accessToken,
+    refreshTokenInfo: refreshTokenInfo,
+  };
 }
 
 // ==================== SOCIAL LOGIN ====================

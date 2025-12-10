@@ -96,6 +96,7 @@ export const userApi = {
 
   /**
    * Cập nhật role user lên seller
+   * Server trả về { user, accessToken }
    */
   updateRoleSeller: (payload: {
     shopName: string;
@@ -104,7 +105,7 @@ export const userApi = {
     shopPhone: string;
     shopEmail: string;
   }) =>
-    request<BackendUser>('/users/seller', {
+    request<{ user: BackendUser; accessToken: string }>('/users/seller', {
       method: 'POST',
       body: JSON.stringify(payload),
       requireAuth: true,
