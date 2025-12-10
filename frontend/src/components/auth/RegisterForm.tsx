@@ -209,7 +209,7 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
           <Checkbox 
             id="agreeToTerms" 
             checked={agreeToTerms}
-            onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
+            onCheckedChange={(checked: boolean) => setAgreeToTerms(checked as boolean)}
             className="mt-1"
           />
           <label

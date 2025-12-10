@@ -100,7 +100,7 @@ export function CartPage({
                     <Checkbox
                       id="select-all"
                       checked={allSelected}
-                      onCheckedChange={(checked) => {
+                      onCheckedChange={(checked: any) => {
                         if (checked) {
                           onSelectAllItems();
                         } else {

@@ -277,7 +277,7 @@ export function HotDealsSection({
                 {/* Buy Now Button */}
                 <Button
                   className="w-full gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
-                  onClick={(e) => handleBuyNow(product, e)}
+                  onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => handleBuyNow(product, e)}
                   disabled={!product.inStock}
                 >
                   <ShoppingCart className="w-4 h-4" />

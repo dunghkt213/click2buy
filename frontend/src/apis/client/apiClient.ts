@@ -2,13 +2,11 @@ import { authApi, authStorage } from '../auth/authApi';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
-
 export interface ApiError {
   message: string;
   status?: number;
   data?: any;
 }
-
 // Lock để tránh multiple refresh calls đồng thời
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
