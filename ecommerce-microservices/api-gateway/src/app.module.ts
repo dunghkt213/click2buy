@@ -11,10 +11,13 @@ import { ReviewGateway } from './gateways/review.gateway';
 import { MediaGateway } from './gateways/media.gateway';
 import { SellerAnalyticsGateway } from './gateways/seller-analytics.gateway';
 import { AuthModule } from './auth/auth.module';
+import { AiGuardModule } from './modules/ai-guard';
 
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderGateway } from './gateways/order.gateway';
+import { AiReviewGuard } from './guards/ai-review.guard';
+import { ChatGateway } from './gateways/chat.gateway';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -24,6 +27,9 @@ import { OrderGateway } from './gateways/order.gateway';
 
     // Auth Module cho Passport strategies (Google, Facebook)
     AuthModule,
+
+    // AI Guard Module cho content moderation
+    AiGuardModule,
 
     ClientsModule.register([
       {
@@ -58,7 +64,7 @@ import { OrderGateway } from './gateways/order.gateway';
     OrderGateway
   ],
 
-  providers: [],
+  providers: [AiReviewGuard, ChatGateway],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
