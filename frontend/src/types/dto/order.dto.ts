@@ -7,14 +7,17 @@
 // ============================================
 
 export interface CreateOrderDto {
-  items: Array<{
-    productId: string;
-    quantity: number;
-    price: number;
+  orderCode: string;
+  paymentMethod: string;
+  carts: Array<{
+    cartId: string;
     sellerId: string;
+    products: Array<{
+      productId: string;
+      quantity: number;
+    }>;
   }>;
   shippingAddress: ShippingAddressDto;
-  paymentMethod: string;
   shippingMethod?: string;
   note?: string;
 }

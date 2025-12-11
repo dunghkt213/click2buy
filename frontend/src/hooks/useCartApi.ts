@@ -65,6 +65,10 @@ export const useCartApi = () => {
       
       // Transform results to CartItem[]
       for (const { product, item, sellerId } of results) {
+        // Find the cart ID for this seller
+        const cart = carts.find((c: any) => c.sellerId === sellerId);
+        const cartId = cart?._id || cart?.id;
+
         if (product) {
           items.push({
             ...product,
@@ -72,6 +76,7 @@ export const useCartApi = () => {
             quantity: item.quantity,
             selected: true,
             sellerId: sellerId,
+            cartId: cartId,
           } as CartItem & { sellerId?: string });
         } else {
           // Fallback: use basic info from cart item
@@ -82,6 +87,7 @@ export const useCartApi = () => {
             quantity: item.quantity,
             selected: true,
             sellerId: sellerId,
+            cartId: cartId,
             image: '',
             category: '',
             rating: 0,

@@ -3,7 +3,7 @@
  * Chuyển từ modal sang page riêng với header, footer và nút quay lại
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -27,10 +27,12 @@ import {
   CheckCircle,
   Star
 } from 'lucide-react';
-import { CartItem, Address, PaymentMethod, ShippingMethod, Product } from '../../types';
+import { CartItem, Address, PaymentMethod, ShippingMethod } from '../../types';
 import { formatPrice } from '../../utils/utils';
 import { useAppContext } from '../../providers/AppProvider';
 import { toast } from 'sonner';
+import { useSSE, PaymentQR } from '../../hooks/useSSE';
+import { QRPaymentModal } from '../../components/payment/QRPaymentModal';
 
 const defaultAddresses: Address[] = [
   {
@@ -58,7 +60,7 @@ const defaultAddresses: Address[] = [
 const paymentMethods: PaymentMethod[] = [
   {
     id: 'bank',
-    type: 'bank',
+    type: 'BANKING',
     name: 'Chuyển khoản ngân hàng',
     description: 'Chuyển khoản qua ứng dụng ngân hàng',
     icon: '🏦',
@@ -153,16 +155,46 @@ export function CheckoutPage() {
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // QR Payment Modal states
+  const [qrPayments, setQrPayments] = useState<PaymentQR[]>([]);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
   // Scroll to top khi mount
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
-    
+
     // Nếu không có items, chuyển về cart
     if (!items || items.length === 0) {
       toast.error('Vui lòng chọn sản phẩm để thanh toán');
       navigate('/cart');
     }
   }, []);
+
+  // SSE for payment updates
+  const { isConnected } = useSSE({
+    userId: app.user?.id,
+    isLoggedIn: app.isLoggedIn,
+    onQRCreated: (payments: PaymentQR[]) => {
+      console.log('QR Created:', payments);
+      setQrPayments(payments);
+      setIsQrModalOpen(true);
+      setIsProcessing(false); // Stop loading when QR is ready
+    },
+    onPaymentSuccess: (data: any) => {
+      console.log('Payment Success:', data);
+      setIsQrModalOpen(false);
+      toast.success('Thanh toán thành công! Đang chuyển hướng...');
+      // Navigate to orders page after a short delay
+      setTimeout(() => {
+        navigate('/orders');
+      }, 2000);
+    },
+    onQRExpired: (data: any) => {
+      console.log('QR Expired:', data);
+      setIsQrModalOpen(false);
+      toast.error('Mã QR đã hết hạn. Vui lòng thử lại.');
+    },
+  });
 
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -194,7 +226,16 @@ export function CheckoutPage() {
         note: note || undefined
       };
       
-      await app.handleCheckout(checkoutData);
+      const orderResult = await app.handleCheckout(checkoutData);
+
+      // Redirect to payment process page
+      navigate('/payment/process', {
+        state: {
+          orderCode: orderResult?.orderCode || `ORD_${Date.now()}`,
+          totalAmount: finalTotal,
+          paymentMethod: selectedPayment.type
+        }
+      });
     } catch (error: any) {
       console.error('Checkout error:', error);
       toast.error('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
@@ -557,6 +598,18 @@ export function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* QR Payment Modal */}
+      <QRPaymentModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        payments={qrPayments}
+        totalAmount={finalTotal}
+        onPaymentSuccess={() => {
+          setIsQrModalOpen(false);
+          navigate('/orders');
+        }}
+      />
     </div>
   );
 }

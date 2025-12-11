@@ -41,6 +41,7 @@ export interface CartItem extends Product {
   quantity: number;
   selected?: boolean;
   variant?: string; // THÊM: Phân loại hàng
+  cartId?: string; // ID của cart trong database
 }
 
 // THÊM: Order types
@@ -213,7 +214,7 @@ export interface Address {
 
 export interface PaymentMethod {
   id: string;
-  type: 'bank' | 'zalopay' | 'momo' | 'shopeepay' | 'credit-card' | 'cod';
+  type: 'BANKING' | 'zalopay' | 'momo' | 'shopeepay' | 'credit-card' | 'cod';
   name: string;
   description: string;
   icon: string;

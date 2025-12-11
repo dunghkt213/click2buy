@@ -2,11 +2,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package.json trước
 COPY package*.json ./
+RUN npm install --production
 
-# Cài đặt dependency (sẽ bao gồm kafkajs)
-RUN npm install
+COPY . .
 
-EXPOSE 3000
-CMD ["npm", "run", "start:dev"]
+RUN npm run build
+
+CMD ["npm", "run", "start:prod"]

@@ -291,7 +291,7 @@ export function useApp() {
 
   // Checkout handler wrapper
   const handleCheckout = async (checkoutData: any) => {
-    await checkout.handleCheckout(checkoutData);
+    return await checkout.handleCheckout(checkoutData);
   };
 
   return {

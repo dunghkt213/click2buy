@@ -56,6 +56,7 @@ export default function App() {
         {/* --- CÁC TRANG CHỨC NĂNG USER (Đã kết nối Context, không cần truyền Props) --- */}
         <Route path="/cart" element={<MainLayout><CartPage /></MainLayout>} />
         <Route path="/checkout" element={<MainLayout><CheckoutPage /></MainLayout>} />
+        <Route path="/payment/process" element={<PaymentProcessPage />} />
         <Route path="/orders" element={<MainLayout><OrdersPage /></MainLayout>} />
 
         <Route path="/profile" element={<MainLayout><ProfilePage /></MainLayout>} />

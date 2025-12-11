@@ -1,4 +1,4 @@
-name: Click2Buy
+version: "3.8"
 
 services:
   # ============================
@@ -11,8 +11,6 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "22181:2181"
     networks:
       - click2buy_net
 
@@ -31,322 +29,134 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://click2buy_kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-
     ports:
       - "19092:9092"
     networks:
       - click2buy_net
 
   # ============================
-  # MongoDB
+  # Redis & Mongo
   # ============================
+  redis:
+    image: redis:7
+    container_name: click2buy_redis
+    restart: always
+    networks:
+      - click2buy_net
+
   mongo:
     image: mongo:6
     container_name: click2buy_mongo
     restart: always
-    ports:
-      - "27027:27017"
     volumes:
       - click2buy_mongo_data:/data/db
     networks:
       - click2buy_net
 
   # ============================
-  # Redis
+  # MICROSERVICES (PRODUCTION)
   # ============================
-  redis:
-    image: redis:7
-    container_name: redis
-    restart: always
-    ports:
-      - "6379:6379"
-    networks:
-      - click2buy_net
-
-  # ============================
-  # MICROSERVICES (NestJS)
-  # ============================
-
   auth-service:
     build: ./auth-service
     container_name: click2buy_auth-service
-    working_dir: /app
-    volumes:
-      - ./auth-service:/app:delegated
-      - auth_node_modules:/app/node_modules
-    ports:
-      - "3101:3001"
     env_file:
       - ./auth-service/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-
-    command: sh -c "npm install && npm run start:dev"
-    depends_on:
-      - kafka
-      - mongo
+    restart: always
     networks:
       - click2buy_net
-    restart: unless-stopped
 
   payment-service:
     build: ./payment-service
     container_name: click2buy_payment-service
-    working_dir: /app
-    volumes:
-      - ./payment-service:/app:delegated
-      - payment_node_modules:/app/node_modules
-    ports:
-      - "3007:3007"
     env_file:
       - ./payment-service/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-    depends_on:
-      - kafka
-      - mongo
+    restart: always
     networks:
       - click2buy_net
-    restart: unless-stopped
 
   user-service:
     build: ./user-service
     container_name: click2buy_user-service
-    working_dir: /app
-    volumes:
-      - ./user-service:/app:delegated
-      - user_node_modules:/app/node_modules
-    ports:
-      - "3102:3002"
     env_file:
       - ./user-service/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-
-    command: sh -c "npm install && npm run start:dev"
-    depends_on:
-      - kafka
-      - mongo
+    restart: always
     networks:
       - click2buy_net
-    restart: unless-stopped
 
   product-service:
     build: ./product-service
     container_name: click2buy_product-service
-    working_dir: /app
-    volumes:
-      - ./product-service:/app:delegated
-      - product_node_modules:/app/node_modules
-    ports:
-      - "3103:3003"
     env_file:
       - ./product-service/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-
-    command: sh -c "npm install && npm run start:dev"
-    depends_on:
-      - kafka
-      - mongo
+    restart: always
     networks:
       - click2buy_net
-    restart: unless-stopped
 
   cart-service:
     build: ./cart-service
     container_name: click2buy_cart-service
-    working_dir: /app
-    volumes:
-      - ./cart-service:/app:delegated
-      - cart_node_modules:/app/node_modules
-    ports:
-      - "3104:3004"
     env_file:
       - ./cart-service/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-
-    command: sh -c "npm install && npm run start:dev"
-    depends_on:
-      - kafka
-      - mongo
+    restart: always
     networks:
       - click2buy_net
-    restart: unless-stopped
 
   review-service:
     build: ./review-service
     container_name: click2buy_review-service
-    working_dir: /app
-    volumes:
-      - ./review-service:/app:delegated
-      - review_node_modules:/app/node_modules
-    ports:
-      - "3105:3005"
     env_file:
       - ./review-service/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-
-    command: sh -c "npm install && npm run start:dev"
-    depends_on:
-      - kafka
-      - mongo
+    restart: always
     networks:
       - click2buy_net
-    restart: unless-stopped
-
-  # media-service:
-  #   build: ./media-service
-  #   container_name: click2buy_media-service
-  #   working_dir: /app
-  #   volumes:
-  #     - ./media-service:/app:delegated
-  #     - media_node_modules:/app/node_modules
-  #   ports:
-  #     - "3106:3006"
-  #   env_file:
-  #     - ./media-service/.env
-  #   environment:
-  #     CHOKIDAR_USEPOLLING: "true"
-  #     CHOKIDAR_INTERVAL: 500
-  #     CHOKIDAR_DEPTH: 99
-  #     NODE_ENV: development
-
-  #   command: sh -c "npm install && npm run start:dev"
-
-  #   depends_on:
-  #     - kafka
-  #     - mongo
-
-  #   networks:
-  #     - click2buy_net
-
-  #   restart: unless-stopped
 
   inventory-service:
     build: ./inventory-service
     container_name: click2buy_inventory-service
-    working_dir: /app
-    volumes:
-      - ./inventory-service:/app:delegated
-      - inventory_node_modules:/app/node_modules
-    ports:
-      - "3108:3008"
     env_file:
       - ./inventory-service/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-    command: sh -c "npm install --legacy-peer-deps && npm run start:dev"
-    depends_on:
-      - kafka
-      - mongo
+    restart: always
     networks:
       - click2buy_net
-    restart: unless-stopped
-
-
-  api-gateway:
-    build: ./api-gateway
-    container_name: click2buy_api-gateway
-    working_dir: /app
-    volumes:
-      - ./api-gateway:/app:delegated
-      - gateway_node_modules:/app/node_modules
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./api-gateway/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-
-    command: sh -c "npm install && npm run build && npm run start:prod"
-    depends_on:
-      - kafka
-      - mongo
-    networks:
-      - click2buy_net
-    restart: unless-stopped
 
   order-service:
     build: ./order-service
     container_name: click2buy_order-service
-    working_dir: /app
-    volumes:
-      - ./order-service:/app:delegated
-      - order_node_modules:/app/node_modules
-    ports:
-      - "3109:3009"
     env_file:
       - ./order-service/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-    command: sh -c "npm install && npm run start:dev"
-    depends_on:
-      - kafka
-      - mongo
-      - redis
+    restart: always
     networks:
       - click2buy_net
-    restart: unless-stopped
 
   seller-analytics-service:
     build: ./seller-analytics-service
     container_name: click2buy_seller-analytics-service
-    working_dir: /app
-    volumes:
-      - ./seller-analytics-service:/app:delegated
-      - seller_analytics_node_modules:/app/node_modules
-    ports:
-      - "3110:3010" 
     env_file:
       - ./seller-analytics-service/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 500
-      CHOKIDAR_DEPTH: 99
-    command: sh -c "npm install --legacy-peer-deps && npm run start:dev"
+    restart: always
+    networks:
+      - click2buy_net
+
+  # ============================
+  # Gateway (PRO MODE)
+  # ============================
+  api-gateway:
+    build: ./api-gateway
+    container_name: click2buy_api-gateway
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./api-gateway/.env
     depends_on:
       - kafka
       - mongo
+      - redis
+    restart: always
     networks:
       - click2buy_net
-    restart: unless-stopped
 
 volumes:
   click2buy_mongo_data:
-  auth_node_modules:
-  user_node_modules:
-  product_node_modules:
-  cart_node_modules:
-  review_node_modules:
-  gateway_node_modules:
-  payment_node_modules:
-  media_node_modules:
-  inventory_node_modules:
-  order_node_modules:
-  seller_analytics_node_modules:
 
 networks:
   click2buy_net:
