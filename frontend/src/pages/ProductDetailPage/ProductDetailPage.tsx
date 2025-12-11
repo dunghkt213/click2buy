@@ -3,24 +3,23 @@
  * Hiển thị đầy đủ thông tin sản phẩm, shop, mô tả, đánh giá và sản phẩm liên quan
  */
 
-import { ArrowLeft, ChevronLeft, ChevronRight, Package, Share2, Shield, ShoppingCart, Star, Store, ThumbsUp, TruckIcon } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, MessageCircle, Package, Share2, Shield, ShoppingCart, Star, Store, ThumbsUp, TruckIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Product, ProductReview, CartItem } from 'types';
-import { mapReviewResponse, reviewApi } from '../../apis/review';
-import { userApi, BackendUser } from '../../apis/user';
+import { CartItem, Product, ProductReview } from 'types';
 import { productApi } from '../../apis/product';
+import { mapReviewResponse, reviewApi } from '../../apis/review';
+import { BackendUser, userApi } from '../../apis/user';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { ProductCard } from '../../components/product/ProductCard';
 import { Avatar } from '../../components/ui/avatar';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/card';
 import { Progress } from '../../components/ui/progress';
 import { Separator } from '../../components/ui/separator';
-import { Card } from '../../components/ui/card';
 import { useAppContext } from '../../providers/AppProvider';
-import { formatPrice } from '../../utils/utils';
-import { ProductCard } from '../../components/product/ProductCard';
 
 const REVIEWS_PER_PAGE = 5;
 
@@ -191,7 +190,7 @@ export function ProductDetailPage() {
     'Thương hiệu': product.brand,
     'Xuất xứ': 'Việt Nam',
     'Bảo hành': '12 tháng',
-    'Tình trạng': product.inStock ? 'Còn hàng' : 'Hết hàng',
+    'Số lượng còn lại': typeof product.stock === 'number' ? `${product.stock} sản phẩm` : '0 sản phẩm',
   };
 
   const handlePrevImage = () => {
@@ -409,10 +408,10 @@ export function ProductDetailPage() {
                 <span className="text-sm font-medium">{product.brand}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground w-32">Tình trạng:</span>
-                <Badge variant={product.inStock ? 'default' : 'secondary'}>
-                  {product.inStock ? 'Còn hàng' : 'Hết hàng'}
-                </Badge>
+                <span className="text-sm text-muted-foreground w-32">Số lượng còn lại:</span>
+                <span className="text-sm font-medium">
+                  {typeof product.stock === 'number' ? `${product.stock} sản phẩm` : '0 sản phẩm'}
+                </span>
               </div>
             </div>
 
@@ -441,7 +440,7 @@ export function ProductDetailPage() {
                   </Button>
                 </div>
                 <span className="text-sm text-muted-foreground">
-                  {product.inStock ? 'Còn hàng' : 'Hết hàng'}
+                  {typeof product.stock === 'number' ? `Còn ${product.stock} sản phẩm` : '0 sản phẩm'}
                 </span>
               </div>
             </div>
@@ -528,12 +527,30 @@ export function ProductDetailPage() {
               </div>
 
               {/* Shop Actions */}
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/shop?ownerId=${shopId}`)}
-              >
-                Xem shop
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/shop?ownerId=${shopId}`)}
+                >
+                  Xem shop
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!app.isLoggedIn) {
+                      app.handleLogin();
+                      return;
+                    }
+                    // TODO: Implement chat với shop
+                    toast.info(`Chat với ${shopInfo?.shopName || 'shop'} sẽ được phát triển sau`);
+                    // Có thể mở chat floating button hoặc navigate đến chat page
+                  }}
+                  className="gap-2"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Chat với shop
+                </Button>
+              </div>
             </div>
           </Card>
         )}
@@ -753,7 +770,7 @@ export function ProductDetailPage() {
             <h2 className="text-xl font-semibold mb-6">
               Sản phẩm khác của {shopInfo?.shopName || 'shop'}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {shopProducts.map((shopProduct) => (
                 <ProductCard
                   key={shopProduct.id}

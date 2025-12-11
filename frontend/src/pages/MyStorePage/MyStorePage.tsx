@@ -5,44 +5,45 @@
  * - Merge sản phẩm trùng lặp
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../providers/AppProvider';
 
 // Import UI Components
+import { sellerService } from '../../apis/seller-analytics/sellerAnalyticsApi';
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
-import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { sellerService } from '../../apis/seller-analytics/sellerAnalyticsApi';
+import { Separator } from '../../components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Textarea } from '../../components/ui/textarea';
 import { RevenueDataItem, TopProductItem } from '../../types/dto/seller-analytics.dto';
 // Icons
 import {
-  Package,
-  Search,
-  Filter,
-  Edit,
-  Trash2,
-  Plus,
-  Clock,
-  Truck,
   CheckCircle,
-  TrendingUp,
+  Clock,
   DollarSign,
-  RotateCcw
+  Edit,
+  Filter,
+  Package,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
+  TrendingUp,
+  Truck
 } from 'lucide-react';
 
 // Types & Utils
-import { StoreProduct, Order } from '../../types';
-import { formatPrice } from '../../utils/utils';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { Order, StoreProduct } from '../../types';
+import { formatPrice } from '../../utils/utils';
 
 // --- TYPES ---
 interface ProductFilters {
@@ -50,8 +51,6 @@ interface ProductFilters {
   status: string;
   minPrice: string;
   maxPrice: string;
-  stockStatus: string;
-  sortBy: string;
 }
 
 type OrderTab = 'pending' | 'shipping' | 'completed';
@@ -159,19 +158,24 @@ export function MyStorePage() {
     category: 'all',
     status: 'all',
     minPrice: '',
-    maxPrice: '',
-    stockStatus: 'all',
-    sortBy: 'name-asc'
+    maxPrice: ''
   });
 
   const [productForm, setProductForm] = useState({
     name: '',
-    price: 0,
-    originalPrice: 0,
-    stock: 0,
-    category: '',
     description: '',
-    image: ''
+    price: 0,
+    salePrice: 0,
+    stock: 0,
+    brand: '',
+    condition: 'new' as 'new' | 'used',
+    category: '',
+    warehouseAddress: ''
+  });
+
+  // Raw input strings for images (for user input)
+  const [rawInputs, setRawInputs] = useState({
+    images: ''
   });
 
   useEffect(() => {
@@ -236,21 +240,62 @@ const renderCustomLabel = (props: any) => {
 };
 // --- 4. HANDLERS ---
 const handleAddProduct = () => {
-  app.store.handleAddProduct({
-    ...productForm,
-    sold: 0,
-    status: 'active',
-    createdAt: new Date().toISOString(),
-    rating: 0,
-    reviews: 0
-  });
+  // Parse images from raw input (mỗi URL một dòng)
+  const images = rawInputs.images.split('\n').map(url => url.trim()).filter(url => url.length > 0);
+
+  const productData = {
+    name: productForm.name,
+    description: productForm.description,
+    price: productForm.price,
+    salePrice: productForm.salePrice || 0,
+    stock: productForm.stock,
+    brand: productForm.brand,
+    condition: productForm.condition,
+    category: productForm.category,
+    images: images,
+    warehouseAddress: productForm.warehouseAddress,
+    isActive: true
+  };
+
+  app.store.handleAddProduct(productData);
+  
+  // Reset form
   setIsAddProductOpen(false);
-  setProductForm({ name: '', price: 0, originalPrice: 0, stock: 0, category: '', description: '', image: '' });
+  setProductForm({
+    name: '',
+    description: '',
+    price: 0,
+    salePrice: 0,
+    stock: 0,
+    brand: '',
+    condition: 'new',
+    category: '',
+    warehouseAddress: ''
+  });
+  setRawInputs({
+    images: ''
+  });
 };
 
 const handleEditProduct = () => {
   if (selectedProduct) {
-    app.store.handleUpdateProduct(selectedProduct.id, productForm);
+    // Parse images from raw input (mỗi URL một dòng)
+    const images = rawInputs.images.split('\n').map(url => url.trim()).filter(url => url.length > 0);
+
+    const productData = {
+      name: productForm.name,
+      description: productForm.description,
+      price: productForm.price,
+      salePrice: productForm.salePrice || 0,
+      stock: productForm.stock,
+      brand: productForm.brand,
+      condition: productForm.condition,
+      category: productForm.category,
+      images: images,
+      warehouseAddress: productForm.warehouseAddress
+    };
+
+    app.store.handleUpdateProduct(selectedProduct.id, productData);
     setIsEditProductOpen(false);
     setSelectedProduct(null);
   }
@@ -258,15 +303,27 @@ const handleEditProduct = () => {
 
 const openEditDialog = (product: StoreProduct) => {
   setSelectedProduct(product);
+  
+  // Map StoreProduct to productForm format
+  const images = product.images || (product.image ? [product.image] : []);
+  
   setProductForm({
     name: product.name,
+    description: product.description || '',
     price: product.price,
-    originalPrice: product.originalPrice || 0,
-    stock: product.stock,
-    category: product.category,
-    description: product.description,
-    image: product.image
+    salePrice: product.originalPrice || product.price,
+    stock: product.stock || 0,
+    brand: (product as any).brand || '',
+    condition: 'new' as 'new' | 'used', // Default to 'new' if not available
+    category: product.category || '',
+    warehouseAddress: '' // Default empty if not available
   });
+  
+  // Set raw inputs for display
+  setRawInputs({
+    images: images.join('\n')
+  });
+  
   setIsEditProductOpen(true);
 };
 
@@ -287,7 +344,7 @@ const handleUpdateOrderStatus = (orderId: string, status: string) => {
 const categories = Array.from(new Set(mergedStoreProducts.map((p: StoreProduct) => p.category)));
 
 const resetFilters = () => {
-  setFilters({ category: 'all', status: 'all', minPrice: '', maxPrice: '', stockStatus: 'all', sortBy: 'name-asc' });
+  setFilters({ category: 'all', status: 'all', minPrice: '', maxPrice: '' });
   setSearchQuery('');
 };
 
@@ -298,24 +355,7 @@ const filteredProducts = mergedStoreProducts
     if (filters.status !== 'all' && product.status !== filters.status) return false;
     if (filters.minPrice && product.price < Number(filters.minPrice)) return false;
     if (filters.maxPrice && product.price > Number(filters.maxPrice)) return false;
-    if (filters.stockStatus === 'in-stock' && product.stock === 0) return false;
-    if (filters.stockStatus === 'low-stock' && (product.stock === 0 || product.stock >= 10)) return false;
-    if (filters.stockStatus === 'out-of-stock' && product.stock > 0) return false;
     return true;
-  })
-  .sort((a: StoreProduct, b: StoreProduct) => {
-    switch (filters.sortBy) {
-      case 'name-asc': return a.name.localeCompare(b.name);
-      case 'name-desc': return b.name.localeCompare(a.name);
-      case 'price-asc': return a.price - b.price;
-      case 'price-desc': return b.price - a.price;
-      case 'stock-asc': return a.stock - b.stock;
-      case 'stock-desc': return b.stock - a.stock;
-      case 'sold-desc': return (b.sold || 0) - (a.sold || 0);
-      case 'date-desc': return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      case 'date-asc': return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      default: return 0;
-    }
   });
 
 const filteredOrders = storeOrders.filter((order: Order) => {
@@ -367,7 +407,7 @@ return (
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}><Filter className="w-4 h-4 mr-2" /> Lọc</Button>
-            <Button onClick={() => setIsAddProductOpen(true)} className="gap-2"><Plus className="w-4 h-4" /> Thêm sản phẩm</Button>
+            <Button onClick={() => navigate('/my-store/add-product')} className="gap-2"><Plus className="w-4 h-4" /> Thêm sản phẩm</Button>
           </div>
         </div>
 
@@ -375,13 +415,11 @@ return (
         {showFilters && (
           <Card className="mb-4">
             <div className="p-4">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div><Label>Danh mục</Label><Select value={filters.category} onValueChange={(value) => setFilters({ ...filters, category: value })}><SelectTrigger className="w-full"><SelectValue>{filters.category === 'all' ? 'Tất cả' : filters.category}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">Tất cả</SelectItem>{categories.map(category => (<SelectItem key={category} value={category}>{category}</SelectItem>))}</SelectContent></Select></div>
                 <div><Label>Trạng thái</Label><Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}><SelectTrigger className="w-full"><SelectValue>{STATUS_MAP[filters.status]}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">Tất cả</SelectItem><SelectItem value="active">Đang bán</SelectItem><SelectItem value="inactive">Tạm ngưng</SelectItem><SelectItem value="out_of_stock">Hết hàng</SelectItem></SelectContent></Select></div>
                 <div><Label>Giá từ</Label><Input type="number" value={filters.minPrice} onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })} placeholder="Min" /></div>
                 <div><Label>Giá đến</Label><Input type="number" value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} placeholder="Max" /></div>
-                <div><Label>Tình trạng kho</Label><Select value={filters.stockStatus} onValueChange={(value) => setFilters({ ...filters, stockStatus: value })}><SelectTrigger className="w-full"><SelectValue>{STOCK_MAP[filters.stockStatus]}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">Tất cả</SelectItem><SelectItem value="in-stock">Còn hàng</SelectItem><SelectItem value="low-stock">Sắp hết</SelectItem><SelectItem value="out-of-stock">Hết hàng</SelectItem></SelectContent></Select></div>
-                <div><Label>Sắp xếp theo</Label><Select value={filters.sortBy} onValueChange={(value) => setFilters({ ...filters, sortBy: value })}><SelectTrigger className="w-full"><SelectValue>{SORT_MAP[filters.sortBy]}</SelectValue></SelectTrigger><SelectContent><SelectItem value="name-asc">Tên (A-Z)</SelectItem><SelectItem value="name-desc">Tên (Z-A)</SelectItem><SelectItem value="price-asc">Giá tăng dần</SelectItem><SelectItem value="price-desc">Giá giảm dần</SelectItem><SelectItem value="stock-asc">Tồn kho tăng dần</SelectItem><SelectItem value="stock-desc">Tồn kho giảm dần</SelectItem><SelectItem value="date-desc">Mới nhất</SelectItem><SelectItem value="date-asc">Cũ nhất</SelectItem></SelectContent></Select></div>
               </div>
               <div className="flex justify-end mt-4"><Button variant="outline" size="sm" onClick={resetFilters}><RotateCcw className="w-4 h-4 mr-2" /> Đặt lại</Button></div>
             </div>
@@ -432,7 +470,7 @@ return (
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(product)}><Edit className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/my-store/edit-product/${product.id}`)}><Edit className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="sm" onClick={() => { if (confirm('Bạn có chắc muốn xóa sản phẩm này?')) app.store.handleDeleteProduct(product.id); }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                       </div>
                     </td>
@@ -623,34 +661,145 @@ return (
 
     {/* --- ADD PRODUCT DIALOG --- */}
     <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Thêm sản phẩm mới</DialogTitle>
           <DialogDescription>Điền thông tin sản phẩm để thêm vào cửa hàng</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-1 pr-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4">
           <div className="space-y-4 p-1">
-            <div><Label>Tên sản phẩm</Label><Input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-4"><div><Label>Giá bán</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })} /></div><div><Label>Giá gốc</Label><Input type="number" value={productForm.originalPrice} onChange={(e) => setProductForm({ ...productForm, originalPrice: Number(e.target.value) })} /></div></div>
-            <div className="grid grid-cols-2 gap-4"><div><Label>Kho</Label><Input type="number" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })} /></div><div><Label>Danh mục</Label><Input value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} /></div></div>
-
-            {/* FIX: Thêm giới hạn 400 ký tự và break-all cho text dài */}
-            <div>
-              <Label>Mô tả</Label>
-              <Textarea
-                value={productForm.description}
-                onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                rows={4}
-                maxLength={400}
-                placeholder="Mô tả sản phẩm (tối đa 400 ký tự)..."
-                className="break-all whitespace-pre-wrap" // Giúp xuống dòng kể cả từ dài
-              />
-              <p className="text-xs text-muted-foreground text-right mt-1">
-                {productForm.description.length}/400
-              </p>
+            {/* Basic Info */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Thông tin cơ bản</Label>
+              <div>
+                <Label>Tên sản phẩm *</Label>
+                <Input 
+                  value={productForm.name} 
+                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} 
+                  placeholder="iPhone 15 Pro Max" 
+                />
+              </div>
+              <div>
+                <Label>Mô tả</Label>
+                <Textarea
+                  value={productForm.description}
+                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                  rows={4}
+                  placeholder="Điện thoại cao cấp 2025"
+                  className="break-all whitespace-pre-wrap"
+                />
+              </div>
             </div>
 
-            <div><Label>Ảnh URL</Label><Input value={productForm.image} onChange={(e) => setProductForm({ ...productForm, image: e.target.value })} /></div>
+            <Separator />
+
+            {/* Pricing */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Giá cả & Kho hàng</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Giá gốc (VND) *</Label>
+                  <Input 
+                    type="number" 
+                    value={productForm.price || ''} 
+                    onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })} 
+                    placeholder="29990000" 
+                  />
+                </div>
+                <div>
+                  <Label>Giá khuyến mãi (VND)</Label>
+                  <Input 
+                    type="number" 
+                    value={productForm.salePrice || ''} 
+                    onChange={(e) => setProductForm({ ...productForm, salePrice: Number(e.target.value) })} 
+                    placeholder="27990000" 
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Số lượng trong kho *</Label>
+                  <Input 
+                    type="number" 
+                    value={productForm.stock || ''} 
+                    onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })} 
+                    placeholder="10" 
+                  />
+                </div>
+                <div>
+                  <Label>Thương hiệu *</Label>
+                  <Input 
+                    value={productForm.brand} 
+                    onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })} 
+                    placeholder="Apple" 
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Tình trạng *</Label>
+                <Select 
+                  value={productForm.condition} 
+                  onValueChange={(value: 'new' | 'used') => setProductForm({ ...productForm, condition: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">Mới</SelectItem>
+                    <SelectItem value="used">Đã qua sử dụng</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Category */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Loại mặt hàng</Label>
+              <div>
+                <Label>Loại mặt hàng *</Label>
+                <Input 
+                  value={productForm.category} 
+                  onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} 
+                  placeholder="Điện thoại, Máy tính, Quần áo..." 
+                />
+                <p className="text-xs text-muted-foreground mt-1">Ví dụ: Điện thoại, Máy tính, Quần áo</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Images */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Ảnh</Label>
+              <div>
+                <Label>URL hình ảnh (mỗi URL một dòng) *</Label>
+                <Textarea
+                  value={rawInputs.images}
+                  onChange={(e) => setRawInputs({ ...rawInputs, images: e.target.value })}
+                  rows={4}
+                  placeholder="https://img.com/a.jpg&#10;https://img.com/b.jpg"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Nhập mỗi URL trên một dòng</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Warehouse Address */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Địa chỉ kho hàng</Label>
+              <div>
+                <Label>Địa chỉ kho hàng *</Label>
+                <Input 
+                  value={productForm.warehouseAddress} 
+                  onChange={(e) => setProductForm({ ...productForm, warehouseAddress: e.target.value })} 
+                  placeholder="123 Nguyễn Trãi, Thanh Xuân, Hà Nội" 
+                />
+                <p className="text-xs text-muted-foreground mt-1">Nhập địa chỉ đầy đủ của kho hàng</p>
+              </div>
+            </div>
           </div>
         </ScrollArea>
         <div className="flex justify-end gap-2 mt-4 pt-2 border-t"><Button variant="outline" onClick={() => setIsAddProductOpen(false)}>Hủy</Button><Button onClick={handleAddProduct}>Thêm</Button></div>
@@ -659,32 +808,138 @@ return (
 
     {/* --- EDIT PRODUCT DIALOG --- */}
     <Dialog open={isEditProductOpen} onOpenChange={setIsEditProductOpen}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Sửa sản phẩm</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="flex-1 pr-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4">
           <div className="space-y-4 p-1">
-            <div><Label>Tên</Label><Input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-4"><div><Label>Giá</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })} /></div><div><Label>Giá gốc</Label><Input type="number" value={productForm.originalPrice} onChange={(e) => setProductForm({ ...productForm, originalPrice: Number(e.target.value) })} /></div></div>
-            <div className="grid grid-cols-2 gap-4"><div><Label>Kho</Label><Input type="number" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })} /></div><div><Label>Danh mục</Label><Input value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} /></div></div>
-
-            {/* FIX: Thêm giới hạn 400 ký tự và break-all */}
-            <div>
-              <Label>Mô tả</Label>
-              <Textarea
-                value={productForm.description}
-                onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                rows={4}
-                maxLength={400}
-                className="break-all whitespace-pre-wrap"
-              />
-              <p className="text-xs text-muted-foreground text-right mt-1">
-                {productForm.description.length}/400
-              </p>
+            {/* Basic Info */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Thông tin cơ bản</Label>
+              <div>
+                <Label>Tên sản phẩm *</Label>
+                <Input 
+                  value={productForm.name} 
+                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} 
+                />
+              </div>
+              <div>
+                <Label>Mô tả</Label>
+                <Textarea
+                  value={productForm.description}
+                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                  rows={4}
+                  className="break-all whitespace-pre-wrap"
+                />
+              </div>
             </div>
 
-            <div><Label>Ảnh URL</Label><Input value={productForm.image} onChange={(e) => setProductForm({ ...productForm, image: e.target.value })} /></div>
+            <Separator />
+
+            {/* Pricing */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Giá cả & Kho hàng</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Giá gốc (VND) *</Label>
+                  <Input 
+                    type="number" 
+                    value={productForm.price || ''} 
+                    onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })} 
+                  />
+                </div>
+                <div>
+                  <Label>Giá khuyến mãi (VND)</Label>
+                  <Input 
+                    type="number" 
+                    value={productForm.salePrice || ''} 
+                    onChange={(e) => setProductForm({ ...productForm, salePrice: Number(e.target.value) })} 
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Số lượng trong kho *</Label>
+                  <Input 
+                    type="number" 
+                    value={productForm.stock || ''} 
+                    onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })} 
+                  />
+                </div>
+                <div>
+                  <Label>Thương hiệu *</Label>
+                  <Input 
+                    value={productForm.brand} 
+                    onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })} 
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Tình trạng *</Label>
+                <Select 
+                  value={productForm.condition} 
+                  onValueChange={(value: 'new' | 'used') => setProductForm({ ...productForm, condition: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">Mới</SelectItem>
+                    <SelectItem value="used">Đã qua sử dụng</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Category */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Loại mặt hàng</Label>
+              <div>
+                <Label>Loại mặt hàng *</Label>
+                <Input 
+                  value={productForm.category} 
+                  onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} 
+                  placeholder="Điện thoại, Máy tính, Quần áo..." 
+                />
+                <p className="text-xs text-muted-foreground mt-1">Ví dụ: Điện thoại, Máy tính, Quần áo</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Images */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Ảnh</Label>
+              <div>
+                <Label>URL hình ảnh (mỗi URL một dòng) *</Label>
+                <Textarea
+                  value={rawInputs.images}
+                  onChange={(e) => setRawInputs({ ...rawInputs, images: e.target.value })}
+                  rows={4}
+                  placeholder="https://img.com/a.jpg&#10;https://img.com/b.jpg"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Nhập mỗi URL trên một dòng</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Warehouse Address */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Địa chỉ kho hàng</Label>
+              <div>
+                <Label>Địa chỉ kho hàng *</Label>
+                <Input 
+                  value={productForm.warehouseAddress} 
+                  onChange={(e) => setProductForm({ ...productForm, warehouseAddress: e.target.value })} 
+                  placeholder="123 Nguyễn Trãi, Thanh Xuân, Hà Nội" 
+                />
+                <p className="text-xs text-muted-foreground mt-1">Nhập địa chỉ đầy đủ của kho hàng</p>
+              </div>
+            </div>
           </div>
         </ScrollArea>
         <div className="flex justify-end gap-2 mt-4 pt-2 border-t"><Button variant="outline" onClick={() => setIsEditProductOpen(false)}>Hủy</Button><Button onClick={handleEditProduct}>Lưu</Button></div>

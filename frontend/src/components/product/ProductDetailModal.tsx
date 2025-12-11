@@ -83,7 +83,7 @@ export function ProductDetailModal({
     'Thương hiệu': product.brand,
     'Xuất xứ': 'Việt Nam',
     'Bảo hành': '12 tháng',
-    'Tình trạng': product.inStock ? 'Còn hàng' : 'Hết hàng',
+    'Số lượng còn lại': typeof product.stock === 'number' ? `${product.stock} sản phẩm` : '0 sản phẩm',
   };
 
   const handlePrevImage = () => {
@@ -252,10 +252,10 @@ export function ProductDetailModal({
                     <span className="text-sm">{product.brand}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground w-32">Tình trạng:</span>
-                    <Badge variant={product.inStock ? 'default' : 'secondary'}>
-                      {product.inStock ? 'Còn hàng' : 'Hết hàng'}
-                    </Badge>
+                    <span className="text-sm text-muted-foreground w-32">Số lượng còn lại:</span>
+                    <span className="text-sm font-medium">
+                      {typeof product.stock === 'number' ? `${product.stock} sản phẩm` : '0 sản phẩm'}
+                    </span>
                   </div>
                 </div>
 
@@ -284,7 +284,7 @@ export function ProductDetailModal({
                       </Button>
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      {product.inStock ? 'Còn hàng' : 'Hết hàng'}
+                      {typeof product.stock === 'number' ? `Còn ${product.stock} sản phẩm` : '0 sản phẩm'}
                     </span>
                   </div>
                 </div>

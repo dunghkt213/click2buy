@@ -1,8 +1,8 @@
 import { Clock, Flame, ShoppingCart } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Product, CartItem } from 'types';
+import { CartItem, Product } from 'types';
 import { productApi } from '../../apis/product';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
@@ -24,8 +24,16 @@ export function HotDealsSection({
   onLogin
 }: HotDealsSectionProps) {
   const navigate = useNavigate();
-  const [hotDeals, setHotDeals] = useState<Product[]>([]);
+  const [allHotDeals, setAllHotDeals] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const sectionHeaderRef = useRef<HTMLDivElement>(null);
+
+  // Tính discount percentage từ originalPrice và price
+  const calculateDiscount = (originalPrice: number, price: number): number => {
+    if (!originalPrice || originalPrice <= price) return 0;
+    return Math.round(((originalPrice - price) / originalPrice) * 100);
+  };
 
   // Load hot deals products từ API
   useEffect(() => {
@@ -39,20 +47,30 @@ export function HotDealsSection({
       const products = await productApi.getAll({
         // Có thể filter theo category hoặc các tiêu chí khác
       });
-      // Filter để lấy các sản phẩm có sale hoặc best seller
-      const deals = products
-        .filter(p => p.isSale || p.isBestSeller)
-        .slice(0, 4); // Lấy 4 sản phẩm đầu tiên
-      setHotDeals(deals);
+      // Filter và sort các sản phẩm có sale theo discount giảm dần
+      const dealsWithDiscount = products
+        .filter(p => p.isSale && p.originalPrice && p.originalPrice > p.price)
+        .map(p => ({
+          ...p,
+          discount: calculateDiscount(p.originalPrice!, p.price)
+        }))
+        .sort((a, b) => (b.discount || 0) - (a.discount || 0)); // Sort theo discount giảm dần
+      
+      setAllHotDeals(dealsWithDiscount);
     } catch (error: any) {
       console.error('Failed to load hot deals:', error);
       toast.error('Không thể tải sản phẩm hot deals');
       // Fallback to empty array
-      setHotDeals([]);
+      setAllHotDeals([]);
     } finally {
       setLoading(false);
     }
   };
+
+  // Lấy sản phẩm để hiển thị: 8 sản phẩm khi collapse, 72 sản phẩm (9 hàng x 8) khi expand
+  const displayedProducts = isExpanded 
+    ? allHotDeals.slice(0, 72) // 9 hàng x 8 cột = 72 sản phẩm
+    : allHotDeals.slice(0, 8); // 1 hàng x 8 cột = 8 sản phẩm
 
   // Mock hot deals products (fallback)
   const mockHotDeals: Product[] = [
@@ -171,7 +189,7 @@ export function HotDealsSection({
     <section className="py-12 bg-gradient-to-b from-muted/30 to-background">
       <div className="container mx-auto px-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div ref={sectionHeaderRef} className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
               <Flame className="w-6 h-6 text-white" />
@@ -189,24 +207,26 @@ export function HotDealsSection({
           </div>
         </div>
 
-        {/* Hot Deals Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {hotDeals.map((product) => (
+        {/* Hot Deals Grid - 8 cột trên desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+          {displayedProducts.map((product) => (
             <div
               key={product.id}
-              className="group relative bg-card border border-border rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+              className="group relative bg-card border border-border rounded-md overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 cursor-pointer"
               onClick={() => handleCardClick(product)}
             >
               {/* Discount Badge */}
-              <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                -{product.discount}%
+              <div className="absolute top-1 left-1 z-10 bg-gradient-to-r from-orange-500 to-red-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md">
+                -{product.discount || calculateDiscount(product.originalPrice || 0, product.price)}%
               </div>
 
               {/* Timer Badge */}
-              <div className="absolute top-3 right-3 z-10 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-md text-xs flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {product.timeLeft}
-              </div>
+              {product.timeLeft && (
+                <div className="absolute top-1 right-1 z-10 bg-black/70 backdrop-blur-sm text-white px-1 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                  <Clock className="w-2 h-2" />
+                  <span className="text-[10px]">{product.timeLeft}</span>
+                </div>
+              )}
 
               {/* Image */}
               <div className="relative aspect-square overflow-hidden bg-muted">
@@ -215,58 +235,59 @@ export function HotDealsSection({
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
-                
               </div>
 
               {/* Content */}
-              <div className="p-4 space-y-3">
+              <div className="p-1.5 space-y-1">
                 {/* Brand */}
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
                     {product.brand}
                   </Badge>
                   {product.isBestSeller && (
-                    <Badge className="text-xs bg-yellow-500/10 text-yellow-700 border-yellow-500/20">
+                    <Badge className="text-[10px] bg-yellow-500/10 text-yellow-700 border-yellow-500/20 px-1 py-0 h-4">
                       Bán chạy
                     </Badge>
                   )}
                 </div>
 
                 {/* Name */}
-                <h3 className="font-medium line-clamp-2 min-h-[3rem]">
+                <h3 className="font-medium line-clamp-2 text-xs min-h-[2rem] leading-tight">
                   {product.name}
                 </h3>
 
                 {/* Rating */}
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="flex items-center gap-1">
-                    <span className="text-yellow-500">★</span>
-                    <span className="font-medium">{product.rating}</span>
+                <div className="flex items-center gap-1 text-[10px]">
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-yellow-500 text-[10px]">★</span>
+                    <span className="font-medium text-[10px]">{product.rating}</span>
                   </div>
-                  <span className="text-muted-foreground">({product.reviews.toLocaleString()})</span>
+                  <span className="text-muted-foreground text-[10px]">({product.reviews > 999 ? '999+' : product.reviews})</span>
                 </div>
 
                 {/* Price */}
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-red-500">
+                <div className="space-y-0">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm font-bold text-red-500">
                       {product.price.toLocaleString('vi-VN')}₫
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground line-through">
-                      {product.originalPrice?.toLocaleString('vi-VN')}₫
-                    </span>
-                  </div>
+                  {product.originalPrice && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground line-through">
+                        {product.originalPrice.toLocaleString('vi-VN')}₫
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Progress Bar - Sold Quantity */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Đã bán 234</span>
-                    <span>Còn lại 66</span>
+                <div className="space-y-0.5">
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>Đã bán</span>
+                    <span>234</span>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-1 bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
                       style={{ width: '78%' }}
@@ -276,23 +297,54 @@ export function HotDealsSection({
 
                 {/* Buy Now Button */}
                 <Button
-                  className="w-full gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+                  className="w-full gap-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-[10px] h-6 px-1"
                   onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => handleBuyNow(product, e)}
                   disabled={!product.inStock}
                 >
-                  <ShoppingCart className="w-4 h-4" />
-                  Mua ngay
+                  <ShoppingCart className="w-2.5 h-2.5" />
+                  <span className="text-[10px]">Mua ngay</span>
                 </Button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* View All Button */}
+        {/* Toggle Expand/Collapse Button */}
         <div className="flex justify-center mt-8">
-          <Button variant="outline" size="lg" className="gap-2">
-            Xem tất cả Flash Sale
-            <Flame className="w-4 h-4" />
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="gap-2"
+            onClick={() => {
+              const wasExpanded = isExpanded;
+              setIsExpanded(!isExpanded);
+              
+              // Nếu đang thu gọn (từ expanded về collapsed), cuộn lên header
+              if (wasExpanded && sectionHeaderRef.current) {
+                setTimeout(() => {
+                  const headerOffset = 80; // Offset cho fixed header
+                  const elementPosition = sectionHeaderRef.current?.getBoundingClientRect().top;
+                  const offsetPosition = (elementPosition || 0) + window.pageYOffset - headerOffset;
+                  
+                  window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                  });
+                }, 100); // Delay nhỏ để state update xong
+              }
+            }}
+          >
+            {isExpanded ? (
+              <>
+                Thu gọn
+                <Flame className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                Xem tất cả Flash Sale
+                <Flame className="w-4 h-4" />
+              </>
+            )}
           </Button>
         </div>
       </div>

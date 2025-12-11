@@ -2,34 +2,33 @@
  * Header.tsx - Component Header của ứng dụng
  * Đã sửa lỗi đường dẫn import và TypeScript
  */
+import {
+    Bell,
+    Menu,
+    Search,
+    ShoppingCart,
+    Store
+} from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  ShoppingCart, 
-  Heart, 
-  Menu, 
-  Bell, 
-  Store 
-} from 'lucide-react';
 
 // --- UI COMPONENTS ---
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Badge } from '../ui/badge';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from '../ui/popover';
 
 // --- FEATURE COMPONENTS ---
 // Import từ ../shared và ../cart dựa trên cấu trúc thư mục của bạn
-import { AccountDropdown } from '../shared/AccountDropdown'; 
-import { CartPreview } from '../cart/CartPreview'; 
+import { CartPreview } from '../cart/CartPreview';
+import { AccountDropdown } from '../shared/AccountDropdown';
 
 // --- TYPES ---
-import { User, CartItem } from '../../types';
+import { CartItem, User } from '../../types';
 
 interface HeaderProps {
   // Các props bắt buộc
@@ -131,7 +130,7 @@ export function Header({
   };
 
   return (
-    <header className="fixed top-0 w-full bg-card/95 backdrop-blur-md border-b border-border z-50">
+    <header className="fixed top-0 left-0 right-0 w-full bg-card/95 backdrop-blur-md border-b border-border z-50 will-change-transform transform-gpu">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           
@@ -174,7 +173,7 @@ export function Header({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="hidden md:flex relative"
+              className="hidden md:flex relative min-w-[2.5rem]"
               onClick={() => {
                 if (!isLoggedIn) {
                   onLogin();
@@ -192,37 +191,16 @@ export function Header({
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="hidden md:flex relative"
+                className="hidden md:flex relative min-w-[2.5rem]"
                 onClick={onNotificationsClick}
               >
                 <Bell className="w-4 h-4" />
                 {unreadNotifications > 0 && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
+                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs pointer-events-none"
                   >
                     {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                  </Badge>
-                )}
-              </Button>
-            )}
-            
-            {/* Wishlist */}
-            {isLoggedIn && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="hidden md:flex relative"
-                onClick={onWishlistClick}
-                ref={wishlistIconRef}
-              >
-                <Heart className="w-4 h-4" />
-                {wishlistItemsCount > 0 && (
-                  <Badge 
-                    variant="secondary" 
-                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-primary/10 text-primary"
-                  >
-                    {wishlistItemsCount > 99 ? '99+' : wishlistItemsCount}
                   </Badge>
                 )}
               </Button>
@@ -241,7 +219,7 @@ export function Header({
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="relative"
+                    className="relative min-w-[2.5rem]"
                     onClick={(e: { preventDefault: () => void; }) => {
                        e.preventDefault();
                        setIsCartPreviewOpen(false);
@@ -253,7 +231,7 @@ export function Header({
                     {cartItemsCount > 0 && (
                       <Badge 
                         variant="destructive" 
-                        className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
+                        className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs pointer-events-none"
                       >
                         {cartItemsCount > 99 ? '99+' : cartItemsCount}
                       </Badge>
@@ -264,6 +242,7 @@ export function Header({
                 <PopoverContent 
                   className="w-80 p-0" 
                   align="end"
+                  sideOffset={4}
                   onMouseEnter={() => setIsCartPreviewOpen(true)}
                   onMouseLeave={() => setIsCartPreviewOpen(false)}
                 >
