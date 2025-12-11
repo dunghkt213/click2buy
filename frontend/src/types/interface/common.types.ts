@@ -62,7 +62,7 @@ export interface Address {
 
 export interface PaymentMethod {
   id: string;
-  type: 'bank' | 'zalopay' | 'momo' | 'shopeepay' | 'credit-card' | 'cod';
+  type: 'BANKING' | 'zalopay' | 'momo' | 'shopeepay' | 'credit-card' | 'cod';
   name: string;
   description: string;
   icon: string;

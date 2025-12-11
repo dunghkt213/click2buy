@@ -1,19 +1,12 @@
-# -----------------------------
-# Stage 1: Base
-# -----------------------------
-FROM node:18-alpine
+FROM node:20-alpine
 
-# Tạo thư mục làm việc trong container
 WORKDIR /app
 
-# Copy package.json trước để cài dependencies
 COPY package*.json ./
+RUN npm install --production
 
-# Cài dependencies
-RUN npm install
+COPY . .
 
-# Expose cổng nếu cần (Nest thường là 3000, nhưng microservice có thể không cần)
-EXPOSE 3001
+RUN npm run build
 
-# Lệnh chạy cho môi trường dev
-CMD ["npm", "run", "start:dev"]
+CMD ["npm", "run", "start:prod"]

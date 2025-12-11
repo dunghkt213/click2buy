@@ -102,7 +102,7 @@ export function OrdersPage() {
       return;
     }
     app.orders.loadOrders();
-  }, [app.isLoggedIn, app.orders, navigate]);
+  }, [app.isLoggedIn, navigate]); // Remove app.orders from dependencies
   const fakeCompletedOrder: any = {
     // Dùng any tạm thời để đỡ phải điền full các trường thừa
     id: "fake-review-order-01",

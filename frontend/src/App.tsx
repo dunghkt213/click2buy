@@ -18,6 +18,7 @@ import { OrdersPage } from "./pages/OrdersPage/OrdersPage";
 import { ShopPage } from "./pages/ShopPage/ShopPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage/ProductDetailPage";
 import { CheckoutPage } from "./pages/CheckoutPage/CheckoutPage";
+import { PaymentProcessPage } from "./pages/PaymentProcessPage";
 
 // Component cuộn lên đầu trang khi chuyển route
 function ScrollToTop() {
@@ -55,6 +56,7 @@ export default function App() {
         {/* --- CÁC TRANG CHỨC NĂNG USER (Đã kết nối Context, không cần truyền Props) --- */}
         <Route path="/cart" element={<MainLayout><CartPage /></MainLayout>} />
         <Route path="/checkout" element={<MainLayout><CheckoutPage /></MainLayout>} />
+        <Route path="/payment/process" element={<PaymentProcessPage />} />
         <Route path="/orders" element={<MainLayout><OrdersPage /></MainLayout>} />
         
         <Route path="/profile" element={<MainLayout><ProfilePage /></MainLayout>} />
