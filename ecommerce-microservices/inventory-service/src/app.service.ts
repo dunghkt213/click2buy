@@ -49,27 +49,36 @@ async reserveStock(data: any ) {
   return { success: true, results };
 }
 
-async commitStock(data: { order: any }) {
-  const { order } = data;
-
-  console.log('commit stock for order', order);
+/**
+ * Khi đơn hàng giao thành công → chốt kho (giảm reservedStock)
+ * Payload từ order.completed: { orderId, sellerId, totalAmount, items }
+ */
+async commitStock(data: {
+  orderId: string;
+  sellerId: string;
+  totalAmount: number;
+  completedAt?: string;
+  items: Array<{ productId: string; quantity: number; price: number }>;
+}) {
+  console.log('🔒 Commit stock for completed order:', data.orderId);
 
   const results = [];
 
-  for (const { productId, quantity } of order.items) {
+  for (const { productId, quantity } of data.items) {
     const inventory = await this.inventoryModel.findOne({ productId });
 
     if (!inventory) {
       results.push({
         productId,
         success: false,
-        message: 'Inventory not found'
+        message: 'Inventory not found',
       });
       continue;
     }
 
     // Giảm reserved vì hàng đã bán thành công
-    inventory.reservedStock -= quantity;
+    inventory.reservedStock = Math.max(0, inventory.reservedStock - quantity);
+    inventory.status = this.resolveStatus(inventory);
 
     await inventory.save();
 
@@ -78,14 +87,16 @@ async commitStock(data: { order: any }) {
       success: true,
       committed: quantity,
       newAvailable: inventory.availableStock,
-      newReserved: inventory.reservedStock
+      newReserved: inventory.reservedStock,
     });
   }
 
+  console.log('✅ Stock committed for order:', data.orderId);
+
   return {
     success: true,
-    orderId: order._id,
-    results
+    orderId: data.orderId,
+    results,
   };
 }
 
@@ -102,18 +113,73 @@ async commitStock(data: { order: any }) {
       if (!inventory) continue;
 
       inventory.availableStock += quantity;
-
       inventory.reservedStock -= quantity;
+      inventory.status = this.resolveStatus(inventory);
 
       await inventory.save();
     }
 
     this.kafka.emit('inventory.released', {
-      orderId: data,
+      orderId: data.orderId,
+      reason: 'payment_cancelled',
     });
 
-    console.log('Emitted inventory.released event for orderId:', data);
+    console.log('Emitted inventory.released event for orderId:', data.orderId);
     return { success: true };
+  }
+
+  /**
+   * Khi Seller từ chối đơn hàng → hoàn lại stock
+   */
+  async restockOnReject(data: {
+    orderId: string;
+    sellerId: string;
+    userId: string;
+    reason?: string;
+    items: Array<{ productId: string; quantity: number; price: number }>;
+  }) {
+    console.log('🔄 Restocking due to order rejection:', data.orderId);
+
+    const results = [];
+
+    for (const item of data.items) {
+      const { productId, quantity } = item;
+
+      const inventory = await this.inventoryModel.findOne({ productId });
+      if (!inventory) {
+        results.push({
+          productId,
+          success: false,
+          message: 'Inventory not found',
+        });
+        continue;
+      }
+
+      // Hoàn lại available stock, giảm reserved
+      inventory.availableStock += quantity;
+      inventory.reservedStock = Math.max(0, inventory.reservedStock - quantity);
+      inventory.status = this.resolveStatus(inventory);
+
+      await inventory.save();
+
+      results.push({
+        productId,
+        success: true,
+        restocked: quantity,
+        newAvailable: inventory.availableStock,
+      });
+    }
+
+    // Emit event để các service khác biết (payment refund, notification...)
+    this.kafka.emit('inventory.restocked', {
+      orderId: data.orderId,
+      userId: data.userId,
+      reason: 'order_rejected',
+      items: results.filter((r) => r.success),
+    });
+
+    console.log('✅ Restocked inventory for rejected order:', data.orderId);
+    return { success: true, results };
   }
 
   // ============================================

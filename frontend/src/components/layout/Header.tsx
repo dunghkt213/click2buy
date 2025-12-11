@@ -242,7 +242,7 @@ export function Header({
                     variant="ghost" 
                     size="sm" 
                     className="relative"
-                    onClick={(e) => {
+                    onClick={(e: { preventDefault: () => void; }) => {
                        e.preventDefault();
                        setIsCartPreviewOpen(false);
                        onCartClick();
