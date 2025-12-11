@@ -36,11 +36,29 @@ export class ProductGateway {
   // GET ONE PRODUCT OF SELLER
   // ============================================================
   @Get('seller/:id')
-  findOneOfSeller(
+  async findOneOfSeller(
     @Param('id') id: string,
     @Headers('authorization') auth?: string,
   ) {
-    return this.kafka.send('product.findOne', { id, auth });
+   // 1. Gọi product-service
+   const product = await firstValueFrom(
+    this.kafka.send('product.findOne', { id })
+  );
+
+  if (!product) return product;
+console.log("Product in gateway: ", product);
+  // 2. Gọi inventory-service → inventory.getStock.request
+  const stock = await firstValueFrom(
+    this.kafka.send('inventory.getStock.request', { productId: id })
+  );
+  console.log("Stock in gateway: ", stock);
+
+  // 3. Merge
+  return {
+    ...product,
+    stock: stock?.availableStock ?? 0,
+    reservedStock: stock?.reservedStock ?? 0,
+  };
   }
   
 
