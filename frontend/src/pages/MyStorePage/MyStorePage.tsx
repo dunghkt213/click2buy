@@ -20,7 +20,8 @@ import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-
+import { sellerService } from '../../apis/seller-analytics/sellerAnalyticsApi';
+import { RevenueDataItem, TopProductItem } from '../../types/dto/seller-analytics.dto';
 // Icons
 import {
   Package,
@@ -38,7 +39,7 @@ import {
 } from 'lucide-react';
 
 // Types & Utils
-import { StoreProduct, Order } from '../../types'; 
+import { StoreProduct, Order } from '../../types';
 import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -84,7 +85,7 @@ const SORT_MAP: Record<string, string> = {
 
 export function MyStorePage() {
   const navigate = useNavigate();
-  const app = useAppContext(); 
+  const app = useAppContext();
 
   // --- 1. LOGIC BẢO VỆ & REDIRECT ---
   useEffect(() => {
@@ -150,7 +151,9 @@ export function MyStorePage() {
   const [isEditProductOpen, setIsEditProductOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-
+  const [revenueData, setRevenueData] = useState<RevenueDataItem[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
+  const [timeRange, setTimeRange] = useState<'WEEK' | 'MONTH'>('WEEK');
   // Filter state
   const [filters, setFilters] = useState<ProductFilters>({
     category: 'all',
@@ -171,6 +174,64 @@ export function MyStorePage() {
     image: ''
   });
 
+  useEffect(() => {
+    if (selectedTab === 'revenue') {
+      const fetchData = async () => {
+        // ... loading state ...
+        try {
+          const [revData, topProdData] = await Promise.all([
+            sellerService.getRevenue(timeRange),
+            sellerService.getTopProducts(10) // Lấy top 10 sản phẩm
+          ]);
+          setRevenueData(revData);
+          setTopProducts(topProdData);
+        } catch (error) {
+          console.error(error);
+        }
+        // ... set loading false ...
+      };
+      fetchData();
+    }
+  }, [selectedTab, timeRange]);
+
+  // 4. QUAN TRỌNG: Mapping dữ liệu Swagger -> Recharts
+  // Swagger trả về: { productName, totalSold, totalRevenue }
+  // Recharts cần:   { name, value, revenue }
+
+  const chartData = useMemo(() => {
+    return topProducts.map((item) => ({
+      name: item.productName,
+      value: Number(item.totalSold),       // Ép kiểu số cho chắc chắn
+      revenue: Number(item.totalRevenue),
+    }));
+  }, [topProducts]);
+
+  const apiTotalRevenue = useMemo(() => {
+    return revenueData.reduce((sum, item) => sum + Number(item.totalRevenue || 0), 0);
+  }, [revenueData]);
+
+  // Cách 2: Tính tổng sản lượng bán ra (Nếu API revenue có field totalOrders thì dùng, không thì tạm dùng tổng top products)
+  // Ở đây tôi dùng tổng từ revenueData (số đơn hàng) vì nó phản ánh đúng "Tổng quan" hơn là chỉ top 5 sp
+  const apiTotalSold = useMemo(() => {
+    return revenueData.reduce((sum, item) => sum + Number(item.totalOrders || 0), 0);
+  }, [revenueData]);
+
+  // Màu sắc biểu đồ (Giữ nguyên như mẫu)
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B6B', '#4ECDC4', '#45B7D1'];
+
+  // Hàm render nhãn biểu đồ (Giữ nguyên như mẫu)
+  const renderCustomLabel = (props: any) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+    if (percent < 0.05) return null;
+    return (
+      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-medium">
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
   // --- 4. HANDLERS ---
   const handleAddProduct = () => {
     app.store.handleAddProduct({
@@ -208,14 +269,14 @@ export function MyStorePage() {
   };
 
   const handleUpdateOrderStatus = (orderId: string, status: string) => {
-    app.orders.setOrders((prev: Order[]) => prev.map((order: Order) => 
-      order.id === orderId 
-        ? { 
-            ...order, 
-            status: status as any,
-            updatedAt: new Date().toISOString(),
-            timeline: [...order.timeline, { status: status as any, timestamp: new Date().toISOString(), description: `Đơn hàng đã chuyển sang trạng thái ${status}` }]
-          }
+    app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
+      order.id === orderId
+        ? {
+          ...order,
+          status: status as any,
+          updatedAt: new Date().toISOString(),
+          timeline: [...order.timeline, { status: status as any, timestamp: new Date().toISOString(), description: `Đơn hàng đã chuyển sang trạng thái ${status}` }]
+        }
         : order
     ));
   };
@@ -278,20 +339,6 @@ export function MyStorePage() {
 
   const totalSold = salesData.reduce((sum, item) => sum + item.value, 0);
   const totalRevenue = salesData.reduce((sum, item) => sum + item.revenue, 0);
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B6B', '#4ECDC4', '#45B7D1'];
-
-  const renderCustomLabel = (props: any) => {
-    const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
-    if (percent < 0.05) return null;
-    return (
-      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-medium">
-        {`${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  };
 
   if (!app.isLoggedIn || app.user?.role !== 'seller') return null;
 
@@ -440,7 +487,7 @@ export function MyStorePage() {
                         </div>
                         <div className="pt-3 border-t">
                           <div className="flex items-center justify-between mb-3"><div><p className="text-sm text-muted-foreground">Khách hàng: {order.shippingAddress.name}</p></div><div className="text-right"><p className="text-sm text-muted-foreground">Tổng tiền:</p><p className="text-xl font-bold text-primary">{formatPrice(order.finalPrice)}</p></div></div>
-                          {order.status === 'pending' && (<div className="flex gap-2"><Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')} className="flex-1">Xác nhận đơn</Button><Button variant="outline" size="sm" onClick={() => { if(confirm('Hủy đơn?')) handleUpdateOrderStatus(order.id, 'cancelled'); }}>Hủy đơn</Button></div>)}
+                          {order.status === 'pending' && (<div className="flex gap-2"><Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')} className="flex-1">Xác nhận đơn</Button><Button variant="outline" size="sm" onClick={() => { if (confirm('Hủy đơn?')) handleUpdateOrderStatus(order.id, 'cancelled'); }}>Hủy đơn</Button></div>)}
                           {order.status === 'confirmed' && (<Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'shipping')} className="w-full">Bắt đầu giao hàng</Button>)}
                           {order.status === 'shipping' && (<Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="w-full">Hoàn thành đơn hàng</Button>)}
                         </div>
@@ -455,14 +502,119 @@ export function MyStorePage() {
 
         {/* --- REVENUE TAB --- */}
         <TabsContent value="revenue" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="p-6"><div className="flex items-center justify-between mb-2"><p className="text-sm text-muted-foreground">Tổng sản lượng</p><Package className="w-5 h-5 text-primary" /></div><p className="text-3xl font-bold">{totalSold.toLocaleString()}</p></Card>
-            <Card className="p-6"><div className="flex items-center justify-between mb-2"><p className="text-sm text-muted-foreground">Tổng doanh thu</p><DollarSign className="w-5 h-5 text-green-500" /></div><p className="text-3xl font-bold text-green-600">{formatPrice(totalRevenue)}</p></Card>
-            <Card className="p-6"><div className="flex items-center justify-between mb-2"><p className="text-sm text-muted-foreground">Bán chạy nhất</p><TrendingUp className="w-5 h-5 text-orange-500" /></div><p className="text-xl font-bold line-clamp-1">{salesData[0]?.name || 'N/A'}</p></Card>
+
+          {/* Thêm nút chọn thời gian nếu chưa có */}
+          <div className="flex justify-end gap-2 mb-4">
+            <Button
+              variant={timeRange === 'WEEK' ? 'default' : 'outline'}
+              onClick={() => setTimeRange('WEEK')} size="sm"
+            >
+              Tuần này
+            </Button>
+            <Button
+              variant={timeRange === 'MONTH' ? 'default' : 'outline'}
+              onClick={() => setTimeRange('MONTH')} size="sm"
+            >
+              Tháng này
+            </Button>
           </div>
+
+          {/* Các thẻ Card thống kê */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
+                <Package className="w-5 h-5 text-primary" />
+              </div>
+              {/* 👇 Dùng biến apiTotalSold */}
+              <p className="text-3xl font-bold">{apiTotalSold.toLocaleString()}</p>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">Tổng doanh thu</p>
+                <DollarSign className="w-5 h-5 text-green-500" />
+              </div>
+              {/* 👇 Dùng biến apiTotalRevenue */}
+              <p className="text-3xl font-bold text-green-600">{formatPrice(apiTotalRevenue)}</p>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">Bán chạy nhất</p>
+                <TrendingUp className="w-5 h-5 text-orange-500" />
+              </div>
+              {/* 👇 Dùng topProducts[0] */}
+              <p className="text-xl font-bold line-clamp-1">
+                {topProducts.length > 0 ? topProducts[0].productName : 'Chưa có dữ liệu'}
+              </p>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2"><div className="p-6"><h3 className="text-lg font-semibold mb-4">Biểu đồ doanh số</h3>{salesData.length > 0 ? (<ResponsiveContainer width="100%" height={400}><PieChart><Pie data={salesData} cx="50%" cy="50%" labelLine={false} label={renderCustomLabel} outerRadius={140} fill="#8884d8" dataKey="value">{salesData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}</Pie><Tooltip formatter={(value: any, name: any, props: any) => [`${value} SP (${formatPrice(props.payload.revenue)})`, props.payload.name]} /></PieChart></ResponsiveContainer>) : (<div className="h-[400px] flex items-center justify-center text-muted-foreground">Chưa có dữ liệu</div>)}</div></Card>
-            <Card className="lg:col-span-1"><div className="p-6"><h3 className="text-lg font-semibold mb-4">Chi tiết</h3><ScrollArea className="h-[400px] pr-4"><div className="space-y-3">{salesData.map((item, index) => (<div key={index} className="flex items-start gap-3 p-3 rounded-lg border"><div className="w-3 h-3 rounded-full mt-1 flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} /><div className="flex-1 min-w-0"><p className="font-medium text-sm line-clamp-2 break-all">{item.name}</p><p className="text-xs text-muted-foreground">SL: {item.value} - DT: {formatPrice(item.revenue)}</p></div></div>))}</div></ScrollArea></div></Card>
+            {/* Biểu đồ tròn */}
+            <Card className="lg:col-span-2">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Top Sản Phẩm Bán Chạy</h3>
+                {/* 👇 Dùng chartData thay vì salesData */}
+                {chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <PieChart>
+                      <Pie
+                        data={chartData} // ✅ Biến mới
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={renderCustomLabel}
+                        outerRadius={140}
+                        fill="#8884d8"
+                        dataKey="value" // ✅ Key này map với chartData ở trên
+                      >
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: any, name: any, props: any) => [
+                        `${value} đã bán - ${formatPrice(props.payload.revenue)}`, // Custom tooltip
+                        props.payload.name
+                      ]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+                    Chưa có dữ liệu bán hàng trong thời gian này
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Danh sách chi tiết bên phải */}
+            <Card className="lg:col-span-1">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Chi tiết</h3>
+                <ScrollArea className="h-[400px] pr-4">
+                  <div className="space-y-3">
+                    {/* 👇 Dùng chartData để lặp */}
+                    {chartData.map((item, index) => (
+                      <div key={index} className="flex items-start gap-3 p-3 rounded-lg border">
+                        <div
+                          className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
+                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm line-clamp-2 break-all">
+                            {item.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            SL: {item.value} - DT: {formatPrice(item.revenue)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
@@ -479,15 +631,15 @@ export function MyStorePage() {
               <div><Label>Tên sản phẩm</Label><Input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-4"><div><Label>Giá bán</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })} /></div><div><Label>Giá gốc</Label><Input type="number" value={productForm.originalPrice} onChange={(e) => setProductForm({ ...productForm, originalPrice: Number(e.target.value) })} /></div></div>
               <div className="grid grid-cols-2 gap-4"><div><Label>Kho</Label><Input type="number" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })} /></div><div><Label>Danh mục</Label><Input value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} /></div></div>
-              
+
               {/* FIX: Thêm giới hạn 400 ký tự và break-all cho text dài */}
               <div>
                 <Label>Mô tả</Label>
-                <Textarea 
-                  value={productForm.description} 
-                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} 
-                  rows={4} 
-                  maxLength={400} 
+                <Textarea
+                  value={productForm.description}
+                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                  rows={4}
+                  maxLength={400}
                   placeholder="Mô tả sản phẩm (tối đa 400 ký tự)..."
                   className="break-all whitespace-pre-wrap" // Giúp xuống dòng kể cả từ dài
                 />
@@ -510,18 +662,18 @@ export function MyStorePage() {
             <DialogTitle>Sửa sản phẩm</DialogTitle>
           </DialogHeader>
           <ScrollArea className="flex-1 pr-4">
-             <div className="space-y-4 p-1">
+            <div className="space-y-4 p-1">
               <div><Label>Tên</Label><Input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-4"><div><Label>Giá</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })} /></div><div><Label>Giá gốc</Label><Input type="number" value={productForm.originalPrice} onChange={(e) => setProductForm({ ...productForm, originalPrice: Number(e.target.value) })} /></div></div>
               <div className="grid grid-cols-2 gap-4"><div><Label>Kho</Label><Input type="number" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })} /></div><div><Label>Danh mục</Label><Input value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} /></div></div>
-              
+
               {/* FIX: Thêm giới hạn 400 ký tự và break-all */}
               <div>
                 <Label>Mô tả</Label>
-                <Textarea 
-                  value={productForm.description} 
-                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} 
-                  rows={4} 
+                <Textarea
+                  value={productForm.description}
+                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                  rows={4}
                   maxLength={400}
                   className="break-all whitespace-pre-wrap"
                 />
