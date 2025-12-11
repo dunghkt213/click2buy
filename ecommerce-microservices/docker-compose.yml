@@ -58,7 +58,7 @@ services:
   # ============================
   redis:
     image: redis:7
-    container_name: redis
+    container_name: click2buy_redis
     restart: always
     ports:
       - "6379:6379"
@@ -143,9 +143,6 @@ services:
     build: ./product-service
     container_name: click2buy_product-service
     working_dir: /app
-    volumes:
-      - ./product-service:/app:delegated
-      - product_node_modules:/app/node_modules
     ports:
       - "3103:3003"
     env_file:
@@ -154,8 +151,6 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: 500
       CHOKIDAR_DEPTH: 99
-
-    command: sh -c "npm install && npm run start:dev"
     depends_on:
       - kafka
       - mongo
@@ -267,9 +262,6 @@ services:
     build: ./api-gateway
     container_name: click2buy_api-gateway
     working_dir: /app
-    volumes:
-      - ./api-gateway:/app:delegated
-      - gateway_node_modules:/app/node_modules
     ports:
       - "3000:3000"
     env_file:

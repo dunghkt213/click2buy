@@ -12,7 +12,6 @@ import { MediaGateway } from './gateways/media.gateway';
 import { SellerAnalyticsGateway } from './gateways/seller-analytics.gateway';
 import { AuthModule } from './auth/auth.module';
 import { AiGuardModule } from './modules/ai-guard';
-
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderGateway } from './gateways/order.gateway';
@@ -21,6 +20,8 @@ import { SseService } from './gateways/sse/sse.service';
 import { SseController } from './gateways/sse/sse.controller';
 import { AiReviewGuard } from './guards/ai-review.guard';
 import { ChatGateway } from './gateways/chat.gateway';
+import { JwtModule } from '@nestjs/jwt';
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -33,7 +34,7 @@ import { ChatGateway } from './gateways/chat.gateway';
 
     // AI Guard Module cho content moderation
     AiGuardModule,
-
+    
     ClientsModule.register([
       {
         name: 'KAFKA_SERVICE',
@@ -71,6 +72,9 @@ import { ChatGateway } from './gateways/chat.gateway';
   providers: [AiReviewGuard, ChatGateway,SseService],
 })
 export class AppModule implements NestModule {
+  constructor() {
+    console.log("🔥 JWT_SECRET FROM ENV:", process.env.JWT_SECRET);
+  }
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(RequestLoggerMiddleware).forRoutes('*');
   }
