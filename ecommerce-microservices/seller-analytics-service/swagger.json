@@ -99,27 +99,6 @@
           "Analytics"
         ]
       }
-    },
-    "/analytics/debug": {
-      "get": {
-        "description": "Trả về thông tin user từ JWT token để debug",
-        "operationId": "AnalyticsController_debugUser",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "JWT-auth": []
-          }
-        ],
-        "summary": "Debug endpoint - kiểm tra seller ID từ token",
-        "tags": [
-          "Analytics"
-        ]
-      }
     }
   },
   "info": {

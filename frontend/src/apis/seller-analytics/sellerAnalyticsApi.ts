@@ -1,68 +1,89 @@
-import { request } from '../client/apiClient';
+// src/services/sellerService.ts
+import { RevenueDataItem, TopProductItem } from '../../types/dto/seller-analytics.dto'; // Import type vừa tạo
 
-export interface SellerOrder {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  totalPrice: number;
-  status: string;
-  createdAt: string;
-}
+const API_URL = 'http://localhost:3000'; // Đổi port nếu cần
 
-export interface RevenueData {
-  total: number;
-  period: string;
-  orders: number;
-  growth?: number;
-}
+const getAuthHeaders = () => {
+  // 👇 SỬA LẠI: Lấy đúng key "click2buy:accessToken"
+  // LƯU Ý: Nếu token được lưu dưới dạng JSON String (ví dụ: "eyJhbGciOiJIUzI1NiI...") thì không cần parse.
+  // Nếu nó nằm trong 1 object bự hơn, bạn cần parse JSON.
+  
+  // Chúng ta sẽ thử lấy thẳng chuỗi token ra.
+  const rawToken = localStorage.getItem('click2buy:accessToken');
 
-export const sellerAnalyticsApi = {
-  /**
-   * Lấy danh sách đơn hàng của seller
-   */
-  getOrders: (query?: { status?: string; page?: number; limit?: number }) => {
-    const params = new URLSearchParams();
-    if (query?.status) params.append('status', query.status);
-    if (query?.page) params.append('page', query.page.toString());
-    if (query?.limit) params.append('limit', query.limit.toString());
-    
-    const queryString = params.toString();
-    return request<SellerOrder[]>(`/seller/orders${queryString ? `?${queryString}` : ''}`, {
-      method: 'GET',
-      requireAuth: true,
-    });
-  },
+  // Thường thì Local Storage sẽ lưu JSON String. Cần parse nó.
+  let token = null;
 
-  /**
-   * Xác nhận đơn hàng
-   */
-  confirmOrder: (orderId: string) =>
-    request<{ success: boolean; message: string }>(`/seller/orders/${orderId}/confirm`, {
-      method: 'PUT',
-      requireAuth: true,
-    }),
+  if (rawToken) {
+    try {
+      // Ví dụ: nó lưu là '{"token":"eyJhbGciOiJIUzI1NiI...","user":{...}}'
+      const parsed = JSON.parse(rawToken);
+      
+      // Nếu token nằm ngay ở root object sau khi parse (Rất phổ biến trong Redux-persist)
+      // Tìm field có chứa token. Thường là 'token' hoặc 'accessToken'.
+      token = parsed.accessToken || parsed.token;
+      
+      // Nếu nó chỉ là một chuỗi token trần (không phải JSON string), thì dùng rawToken
+      if (!token && typeof parsed === 'string') {
+          token = parsed;
+      }
 
-  /**
-   * Từ chối đơn hàng
-   */
-  rejectOrder: (orderId: string) =>
-    request<{ success: boolean; message: string }>(`/seller/orders/${orderId}/reject`, {
-      method: 'PUT',
-      requireAuth: true,
-    }),
+    } catch (e) {
+      // Trường hợp rawToken chỉ là chuỗi token trần (không phải JSON string)
+      token = rawToken; 
+    }
+  }
+  
+  // --- LOG ĐỂ KIỂM TRA ---
+  if (token) {
+      console.log("✅ Đã lấy Token thành công:", token.substring(0, 10) + "...");
+  } else {
+      console.error("❌ Lỗi: Không thể trích xuất Token từ LocalStorage Key 'click2buy:accessToken'.");
+  }
 
-  /**
-   * Lấy dữ liệu doanh thu
-   */
-  getRevenue: (type?: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
-    const params = new URLSearchParams();
-    if (type) params.append('type', type);
-    
-    const queryString = params.toString();
-    return request<RevenueData>(`/analytics/revenue${queryString ? `?${queryString}` : ''}`, {
-      method: 'GET',
-      requireAuth: true,
-    });
-  },
+
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}` 
+  };
 };
 
+export const sellerService = {
+  // API lấy doanh thu
+  getRevenue: async (type: 'WEEK' | 'MONTH') => {
+    try {
+      const response = await fetch(`${API_URL}/seller-analytics/revenue?type=${type}`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      
+      // Xử lý khi token hết hạn (401)
+      if (response.status === 401) {
+          console.error("⛔ Token hết hạn hoặc không hợp lệ. Hãy đăng nhập lại.");
+          // Tùy chọn: window.location.href = '/login';
+      }
+
+      if (!response.ok) throw new Error('Lỗi tải doanh thu');
+      return await response.json();
+    } catch (error) {
+      console.error("Lỗi getRevenue:", error);
+      return [];
+    }
+  },
+
+  // API lấy top sản phẩm
+  getTopProducts: async (limit: number = 5) => {
+    try {
+      const response = await fetch(`${API_URL}/seller-analytics/top-products?limit=${limit}`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) throw new Error('Lỗi tải top sản phẩm');
+      return await response.json();
+    } catch (error) {
+      console.error("Lỗi getTopProducts:", error);
+      return [];
+    }
+  }
+};
