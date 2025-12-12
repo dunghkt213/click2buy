@@ -48,4 +48,11 @@ export class AppController {
     return this.appService.adjustStock(data.productId, data.delta, data.ownerId);
   }
 
+  @MessagePattern('inventory.getStock.batch')
+  async getStockBatch(@Payload() data: { productIds: string[] }) {
+    console.log("Getting stock for product IDs:", data.productIds);
+    return this.appService.getStockByProductIds(data.productIds);
+  }
+
+
 }

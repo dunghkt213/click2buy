@@ -18,6 +18,7 @@ export class ProductGateway {
     this.kafka.subscribeToResponseOf('inventory.getStock.request');
     this.kafka.subscribeToResponseOf('inventory.addStock');
     this.kafka.subscribeToResponseOf('inventory.adjustStock');
+    this.kafka.subscribeToResponseOf('inventory.getStock.batch');
     
     await this.kafka.connect();
   }
@@ -25,12 +26,53 @@ export class ProductGateway {
   // GET ALL PRODUCTS (SELLER)
   // ============================================================
   @Get('seller')
-  findAllOfSeller(
-    @Query() q: any,
-    @Headers('authorization') auth?: string,
-  ) {
-    return this.kafka.send('product.findAll', { q, auth });
+async findAllOfSeller(
+  @Query() q: any,
+  @Headers('authorization') auth?: string,
+) {
+  const result = await firstValueFrom(
+    this.kafka.send<any>('product.findAll', { q, auth })
+  );
+
+  const products = result?.data ?? [];
+
+  if (products.length === 0) {
+    return {
+      success: result.success,
+      data: [],
+      pagination: result.pagination,
+    };
   }
+
+  const productIds = products.map(p => p._id || p.id);
+
+  const stocks = await firstValueFrom(
+    this.kafka.send<any[]>(
+      'inventory.getStock.batch',
+      { productIds }
+    )
+  );
+
+  const stockMap = new Map(
+    stocks.map(s => [s.productId, s])
+  );
+
+  const mergedProducts = products.map(p => {
+    const stock = stockMap.get(p._id || p.id);
+    return {
+      ...p,
+      stock: stock?.availableStock ?? 0,
+      reservedStock: stock?.reservedStock ?? 0,
+    };
+  });
+
+  return {
+    success: result.success,
+    data: mergedProducts,
+    pagination: result.pagination,
+  };
+}
+
 
   // ============================================================
   // GET ONE PRODUCT OF SELLER
