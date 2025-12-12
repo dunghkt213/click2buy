@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { authStorage } from '../auth';
 
 // 1. Tạo instance (bản sao) của axios với cấu hình mặc định
 const axiosClient = axios.create({
@@ -18,8 +19,8 @@ const axiosClient = axios.create({
 // Tác dụng: Tự động gắn Token vào mỗi API gửi đi
 axiosClient.interceptors.request.use(
   (config) => {
-    // Lấy token từ localStorage (hoặc nơi bạn lưu khi đăng nhập)
-    const token = localStorage.getItem('accessToken'); 
+    // Lấy token từ authStorage (sử dụng đúng key 'click2buy:accessToken')
+    const token = authStorage.getToken(); 
     
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;

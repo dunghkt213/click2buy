@@ -136,7 +136,8 @@ export function useApp() {
 
   const handleLogoutWithReload = async () => {
     await handleLogout();
-    setTimeout(() => window.location.reload(), 500);
+    // Chuyển về trang chủ sau khi đăng xuất
+    window.location.href = '/';
   };
 
   // OAuth callback check
@@ -291,7 +292,7 @@ export function useApp() {
 
   // Checkout handler wrapper
   const handleCheckout = async (checkoutData: any) => {
-    await checkout.handleCheckout(checkoutData);
+    return await checkout.handleCheckout(checkoutData);
   };
 
   return {

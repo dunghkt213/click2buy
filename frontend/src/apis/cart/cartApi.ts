@@ -1,5 +1,4 @@
 import { request } from '../client/apiClient';
-import { CartItem } from '../../types';
 
 export interface CartResponse {
   sellerId: string;

@@ -3,11 +3,12 @@
  * Hiển thị thông tin shop, giới thiệu và các sản phẩm của shop
  */
 
-import { Search, Star, Store } from 'lucide-react';
+import { Search, Store } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { productApi } from '../../apis/product';
-import { userApi, BackendUser } from '../../apis/user';
+import { BackendUser, userApi } from '../../apis/user';
 import { FlyingIcon } from '../../components/animation/FlyingIcon';
 import { ProductCard } from '../../components/product/ProductCard';
 import { Badge } from '../../components/ui/badge';
@@ -17,7 +18,6 @@ import { Input } from '../../components/ui/input';
 import { Separator } from '../../components/ui/separator';
 import { useAppContext } from '../../providers/AppProvider';
 import { Product } from '../../types';
-import { toast } from 'sonner';
 
 export function ShopPage() {
   const app = useAppContext();
@@ -267,7 +267,7 @@ export function ShopPage() {
               </div>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {filteredProducts.map((product) => (
                 <ProductCard
                   key={product.id}

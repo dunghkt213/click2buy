@@ -1,12 +1,21 @@
-FROM node:20-alpine
-
+# --- BUILD STAGE ---
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy package.json trước
 COPY package*.json ./
+RUN npm install        # <-- cần devDependencies để build
 
-# Cài đặt dependency (sẽ bao gồm kafkajs)
-RUN npm install
+COPY . .
+RUN npm run build      # <-- build ra dist/ vì có Nest CLI trong devDeps
 
-EXPOSE 3000
-CMD ["npm", "run", "start:dev"]
+
+# --- PRODUCTION STAGE ---
+FROM node:20-alpine AS production
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --only=production   # <-- chỉ cài deps thật sự cần khi chạy
+
+COPY --from=builder /app/dist ./dist
+
+CMD ["node", "dist/main.js"]

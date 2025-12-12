@@ -120,6 +120,7 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
     variants: Record<string, any>;
     warehouseAddress: {
       line1: string;
+      line2?: string;
       city: string;
       province: string;
       country: string;
@@ -133,6 +134,9 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
         line1: productFormData.warehouseAddress.line1,
         city: productFormData.warehouseAddress.city,
       };
+      if (productFormData.warehouseAddress.line2) {
+        warehouseAddress.line2 = productFormData.warehouseAddress.line2;
+      }
       if (productFormData.warehouseAddress.province) {
         warehouseAddress.province = productFormData.warehouseAddress.province;
       }
@@ -143,8 +147,8 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
         warehouseAddress.postalCode = productFormData.warehouseAddress.postalCode;
       }
 
-      // Gọi API POST product
-      const createdProduct = await productService.create({
+      // Chuẩn bị data để gọi API
+      const apiData = {
         name: productFormData.name,
         description: productFormData.description || undefined,
         price: productFormData.price,
@@ -158,7 +162,14 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
         attributes: Object.keys(productFormData.attributes).length > 0 ? productFormData.attributes : undefined,
         variants: Object.keys(productFormData.variants).length > 0 ? productFormData.variants : undefined,
         warehouseAddress: warehouseAddress.line1 && warehouseAddress.city ? warehouseAddress : undefined,
-      });
+      };
+
+      console.log('🚀 [useStore] Calling productService.create with data:', apiData);
+
+      // Gọi API POST product
+      const createdProduct = await productService.create(apiData);
+
+      console.log('✅ [useStore] Product created successfully:', createdProduct);
 
       toast.success('Sản phẩm đã được thêm thành công!');
       

@@ -11,7 +11,7 @@ export class AppController {
   reserveStock(@Payload() data: any) {
     return this.appService.reserveStock(data);
   }
-  @MessagePattern('order.success')
+  @MessagePattern('order.completed')
   commitStock(@Payload() data: any) {
     return this.appService.commitStock(data);
   }
@@ -19,6 +19,14 @@ export class AppController {
   @MessagePattern('payment.cancelled')
   releaseStock(@Payload() data: any) {
     return this.appService.releaseStock(data);
+  }
+
+  /**
+   * Khi Seller từ chối đơn hàng → hoàn lại stock
+   */
+  @MessagePattern('order.rejected')
+  restockOnReject(@Payload() data: any) {
+    return this.appService.restockOnReject(data);
   }
 
   // Khi product tạo → sync lần đầu

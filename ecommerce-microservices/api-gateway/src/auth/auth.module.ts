@@ -11,6 +11,7 @@ import { FacebookStrategy } from './strategies/facebook.strategy';
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '1d' },
     })
+
   ],
   providers: [GoogleStrategy, FacebookStrategy],
   exports: [PassportModule, JwtModule],

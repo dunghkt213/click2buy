@@ -90,4 +90,6 @@ export class AnalyticsController {
     const sellerId = user.sub || user.id;
     return this.analyticsService.getTopProducts(sellerId, limit || 5);
   }
+
+
 }

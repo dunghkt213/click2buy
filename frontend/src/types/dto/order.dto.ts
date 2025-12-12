@@ -9,23 +9,17 @@
 export interface CreateOrderDto {
   orderCode: string;
   paymentMethod: string;
-
-  // ❗ đổi items → carts để đúng payload FE gửi
-  carts: {
+  carts: Array<{
+    cartId: string;
     sellerId: string;
-    products: { productId: string; quantity: number }[];
-  }[];
+    products: Array<{
+      productId: string;
+      quantity: number;
+    }>;
+  }>;
+  shippingAddress: ShippingAddressDto;
+  shippingMethod?: string;
 
-  shippingAddress: {
-    name: string;
-    phone: string;
-    address: string;
-    ward: string;
-    district: string;
-    city: string;
-  };
-
-  shippingMethod: string;
   note?: string;
 }
 

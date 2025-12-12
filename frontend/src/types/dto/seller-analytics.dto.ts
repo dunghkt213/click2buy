@@ -1,48 +1,14 @@
-/**
- * Seller Analytics DTOs - Data Transfer Objects for Seller Analytics
- */
-
-// ============================================
-// Request DTOs
-// ============================================
-
-export interface SellerOrderQueryDto {
-  status?: string;
-  page?: number;
-  limit?: number;
+// Dựa trên schema: RevenueDataItem
+export interface RevenueDataItem {
+  date: string;          // ex: "2025-12-01"
+  totalRevenue: number;  // ex: 1500000
+  totalOrders: number;   // ex: 5
 }
 
-export interface RevenueQueryDto {
-  type?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+// Dựa trên schema: TopProductItem
+export interface TopProductItem {
+  productId: string;
+  productName: string;   // ex: "iPhone 15 Pro Max"
+  totalSold: number;     // ex: 150
+  totalRevenue: number;  // ex: 4500000000
 }
-
-// ============================================
-// Response DTOs
-// ============================================
-
-export interface SellerOrderDto {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  totalPrice: number;
-  status: string;
-  createdAt: string;
-}
-
-export interface RevenueDataDto {
-  total: number;
-  period: string;
-  orders: number;
-  growth?: number;
-}
-
-export interface ConfirmOrderResponseDto {
-  success: boolean;
-  message: string;
-}
-
-export interface RejectOrderResponseDto {
-  success: boolean;
-  message: string;
-}
-

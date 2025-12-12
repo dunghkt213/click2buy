@@ -62,7 +62,7 @@ const defaultAddresses: Address[] = [
 const paymentMethods: PaymentMethod[] = [
   {
     id: 'bank',
-    type: 'bank',
+    type: 'BANKING',
     name: 'Chuyển khoản ngân hàng',
     description: 'Chuyển khoản qua ứng dụng ngân hàng',
     icon: '🏦',

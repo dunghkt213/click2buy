@@ -43,12 +43,11 @@ import { OrderDetailModal } from "../../components/order/OrderDetailModal";
 import { ReviewModal, ReviewData } from "../../components/review/ReviewModal";
 
 // --- CONFIG ---
-type TabValue = "all" | OrderStatus;
+type TabValue = OrderStatus;
 
 const statusTabs = [
-  { value: "all" as TabValue, label: "Tất cả", icon: ShoppingBag },
-  { value: "pending" as TabValue, label: "Chờ xác nhận", icon: Clock },
-  { value: "confirmed" as TabValue, label: "Đã xác nhận", icon: CheckCircle },
+  { value: "pending" as TabValue, label: "Đang chờ thanh toán", icon: Clock },
+  { value: "confirmed" as TabValue, label: "Tình trạng", icon: CheckCircle },
   { value: "shipping" as TabValue, label: "Đang giao", icon: Truck },
   { value: "completed" as TabValue, label: "Hoàn thành", icon: CheckCircle },
   { value: "cancelled" as TabValue, label: "Đã hủy", icon: XCircle },
@@ -57,7 +56,7 @@ const statusTabs = [
 
 const statusConfig: Record<OrderStatus, { label: string; color: string }> = {
   pending: {
-    label: "Chờ xác nhận",
+    label: "Đang chờ thanh toán",
     color: "bg-yellow-500/10 text-yellow-700 border-yellow-200",
   },
   confirmed: {
@@ -87,7 +86,7 @@ export function OrdersPage() {
   const app = useAppContext();
 
   // --- 1. STATE & LOGIC ---
-  const [selectedTab, setSelectedTab] = useState<TabValue>("all");
+  const [selectedTab, setSelectedTab] = useState<TabValue>("pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
@@ -102,43 +101,14 @@ export function OrdersPage() {
       return;
     }
     app.orders.loadOrders();
-  }, [app.isLoggedIn, app.orders, navigate]);
-  const fakeCompletedOrder: any = {
-    // Dùng any tạm thời để đỡ phải điền full các trường thừa
-    id: "fake-review-order-01",
-    ownerId: "store-123",
-    orderNumber: "TEST-COMPLETE",
-    status: "completed", // <--- QUAN TRỌNG: Status này kích hoạt nút Đánh giá
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    paymentMethod: "COD",
-    finalPrice: 500000,
-    shippingAddress: {
-      name: "Tester",
-      phone: "0909090909",
-      address: "123 Test Street",
-    },
-    items: [
-      {
-        id: "item-1",
-        productId: "product-id-can-review", // Nên là ID sản phẩm thật nếu muốn submit review thành công
-        name: "Sản phẩm Test Đánh Giá",
-        image: "https://placehold.co/150", // Ảnh placeholder
-        price: 500000,
-        quantity: 1,
-        variant: "Màu Đỏ",
-      },
-    ],
-  };
+  }, [app.isLoggedIn, navigate]); // Remove app.orders from dependencies
 
-  // --- GỘP DỮ LIỆU THẬT VÀ GIẢ ---
-  // Lấy đơn hàng thật từ Context, nếu không có thì mảng rỗng, sau đó cộng thêm đơn giả
-  const orders: Order[] = [...(app.orders.orders || []), fakeCompletedOrder];
-  // const orders: Order[] = app.orders.orders || [];
+  // Lấy đơn hàng thật từ Context
+  const orders: Order[] = app.orders.orders || [];
 
   // --- 3. FILTERING (Fix lỗi 'order' implicitly any) ---
   const filteredOrders = orders.filter((order: Order) => {
-    const matchesTab = selectedTab === "all" || order.status === selectedTab;
+    const matchesTab = order.status === selectedTab;
     // Fix lỗi 'item' implicitly any bên trong some
     const matchesSearch =
       searchQuery === "" ||
@@ -152,7 +122,10 @@ export function OrdersPage() {
 
   // Count orders by status (Fix lỗi 'order' implicitly any)
   const getStatusCount = (status: TabValue) => {
-    if (status === "all") return orders.length;
+    // Tab "Tình trạng" (confirmed) đếm cả pending và confirmed
+    if (status === "confirmed") {
+      return orders.filter((order: Order) => order.status === "pending" || order.status === "confirmed").length;
+    }
     return orders.filter((order: Order) => order.status === status).length;
   };
 
@@ -260,8 +233,6 @@ export function OrdersPage() {
                   <p className="text-muted-foreground mb-6">
                     {searchQuery
                       ? "Không tìm thấy đơn hàng phù hợp"
-                      : selectedTab === "all"
-                      ? "Bạn chưa có đơn hàng nào"
                       : // Fix lỗi 't' implicitly any
                         `Bạn chưa có đơn hàng ${statusTabs
                           .find((t: any) => t.value === selectedTab)

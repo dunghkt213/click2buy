@@ -1,68 +1,55 @@
-import { request } from '../client/apiClient';
+// src/services/sellerService.ts
+import { RevenueDataItem, TopProductItem } from '../../types/dto/seller-analytics.dto'; // Import type vừa tạo
+import { authStorage } from '../auth';
 
-export interface SellerOrder {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  totalPrice: number;
-  status: string;
-  createdAt: string;
-}
+const API_URL = 'http://localhost:3000'; // Đổi port nếu cần
 
-export interface RevenueData {
-  total: number;
-  period: string;
-  orders: number;
-  growth?: number;
-}
+const getAuthHeaders = () => {
+  // Lấy token từ authStorage (sử dụng đúng key 'click2buy:accessToken')
+  const token = authStorage.getToken();
 
-export const sellerAnalyticsApi = {
-  /**
-   * Lấy danh sách đơn hàng của seller
-   */
-  getOrders: (query?: { status?: string; page?: number; limit?: number }) => {
-    const params = new URLSearchParams();
-    if (query?.status) params.append('status', query.status);
-    if (query?.page) params.append('page', query.page.toString());
-    if (query?.limit) params.append('limit', query.limit.toString());
-    
-    const queryString = params.toString();
-    return request<SellerOrder[]>(`/seller/orders${queryString ? `?${queryString}` : ''}`, {
-      method: 'GET',
-      requireAuth: true,
-    });
-  },
-
-  /**
-   * Xác nhận đơn hàng
-   */
-  confirmOrder: (orderId: string) =>
-    request<{ success: boolean; message: string }>(`/seller/orders/${orderId}/confirm`, {
-      method: 'PUT',
-      requireAuth: true,
-    }),
-
-  /**
-   * Từ chối đơn hàng
-   */
-  rejectOrder: (orderId: string) =>
-    request<{ success: boolean; message: string }>(`/seller/orders/${orderId}/reject`, {
-      method: 'PUT',
-      requireAuth: true,
-    }),
-
-  /**
-   * Lấy dữ liệu doanh thu
-   */
-  getRevenue: (type?: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
-    const params = new URLSearchParams();
-    if (type) params.append('type', type);
-    
-    const queryString = params.toString();
-    return request<RevenueData>(`/analytics/revenue${queryString ? `?${queryString}` : ''}`, {
-      method: 'GET',
-      requireAuth: true,
-    });
-  },
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
 };
 
+export const sellerService = {
+  // API lấy doanh thu
+  getRevenue: async (type: 'WEEK' | 'MONTH') => {
+    try {
+      const response = await fetch(`${API_URL}/seller-analytics/revenue?type=${type}`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      
+      // Xử lý khi token hết hạn (401)
+      if (response.status === 401) {
+          console.error("⛔ Token hết hạn hoặc không hợp lệ. Hãy đăng nhập lại.");
+          // Tùy chọn: window.location.href = '/login';
+      }
+
+      if (!response.ok) throw new Error('Lỗi tải doanh thu');
+      return await response.json();
+    } catch (error) {
+      console.error("Lỗi getRevenue:", error);
+      return [];
+    }
+  },
+
+  // API lấy top sản phẩm
+  getTopProducts: async (limit: number = 5) => {
+    try {
+      const response = await fetch(`${API_URL}/seller-analytics/top-products?limit=${limit}`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) throw new Error('Lỗi tải top sản phẩm');
+      return await response.json();
+    } catch (error) {
+      console.error("Lỗi getTopProducts:", error);
+      return [];
+    }
+  }
+};

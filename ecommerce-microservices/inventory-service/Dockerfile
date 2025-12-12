@@ -1,19 +1,23 @@
-# -----------------------------
-# Stage 1: Base
-# -----------------------------
-    FROM node:20-alpine
 
-    # Tạo thư mục làm việc trong container
-    WORKDIR /app
-    
-    # Copy package.json trước để cài dependencies
-    COPY package*.json ./
-    
-    # Cài dependencies
-    RUN npm install
-    
-    # Expose cổng nếu cần (Nest thường là 3000, nhưng microservice có thể không cần)
-    EXPOSE 3001
-    
-    # Lệnh chạy cho môi trường dev
-    CMD ["npm", "run", "start:dev"]
+# --- BUILD STAGE ---
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install        # <-- cần devDependencies để build
+
+COPY . .
+RUN npm run build      # <-- build ra dist/ vì có Nest CLI trong devDeps
+
+
+# --- PRODUCTION STAGE ---
+FROM node:20-alpine AS production
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --only=production   # <-- chỉ cài deps thật sự cần khi chạy
+
+COPY --from=builder /app/dist ./dist
+
+CMD ["node", "dist/main.js"]
+

@@ -2,7 +2,7 @@
  * useOrders - Custom hook for order management
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { orderService, mapOrderResponse } from '../apis/order';
 import { Order } from '../types/interface';
 import { toast } from 'sonner';
@@ -27,10 +27,10 @@ export function useOrders() {
   }, []);
 
   const handleUpdateOrderStatus = useCallback((orderId: string, status: string) => {
-    setOrders(prev => prev.map(order => 
-      order.id === orderId 
-        ? { 
-            ...order, 
+    setOrders(prev => prev.map(order =>
+      order.id === orderId
+        ? {
+            ...order,
             status: status as Order['status'],
             updatedAt: new Date().toISOString(),
             timeline: [
@@ -46,15 +46,27 @@ export function useOrders() {
     ));
   }, []);
 
-  return {
+  const setOrdersCallback = useCallback((orders: Order[] | ((prev: Order[]) => Order[])) => {
+    setOrders(orders);
+  }, []);
+
+  const setLoadingOrdersCallback = useCallback((loading: boolean) => {
+    setLoadingOrders(loading);
+  }, []);
+
+  const setIsOrdersPageOpenCallback = useCallback((open: boolean) => {
+    setIsOrdersPageOpen(open);
+  }, []);
+
+  return useMemo(() => ({
     orders,
     loadingOrders,
     isOrdersPageOpen,
-    setOrders,
-    setLoadingOrders,
-    setIsOrdersPageOpen,
+    setOrders: setOrdersCallback,
+    setLoadingOrders: setLoadingOrdersCallback,
+    setIsOrdersPageOpen: setIsOrdersPageOpenCallback,
     loadOrders,
     handleUpdateOrderStatus,
-  };
+  }), [orders, loadingOrders, isOrdersPageOpen, setOrdersCallback, setLoadingOrdersCallback, setIsOrdersPageOpenCallback, loadOrders, handleUpdateOrderStatus]);
 }
 

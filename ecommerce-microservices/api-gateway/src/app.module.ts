@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { HttpModule } from '@nestjs/axios';
+import { JwtModule } from '@nestjs/jwt'; // 👈 thêm
 
 import { AuthGateway } from './gateways/auth.gateway';
 import { UserGateway } from './gateways/user.gateway';
@@ -26,15 +27,18 @@ import { JwtModule } from '@nestjs/jwt';
   imports: [
     ConfigModule.forRoot(),
 
-    // HttpModule để proxy HTTP requests đến seller-analytics-service
     HttpModule,
 
-    // Auth Module cho Passport strategies (Google, Facebook)
     AuthModule,
 
-    // AI Guard Module cho content moderation
     AiGuardModule,
-    
+
+    // 👇 thêm JwtModule để Nest biết cung cấp JwtService cho SseController
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'default_secret',
+      signOptions: { expiresIn: '7d' },
+    }),
+
     ClientsModule.register([
       {
         name: 'KAFKA_SERVICE',
@@ -47,9 +51,8 @@ import { JwtModule } from '@nestjs/jwt';
           consumer: {
             groupId: 'api-gateway-consumer',
           },
-
           subscribe: {
-            fromBeginning: false
+            fromBeginning: false,
           },
           producerOnlyMode: false,
         },
@@ -64,12 +67,17 @@ import { JwtModule } from '@nestjs/jwt';
     CartGateway,
     ReviewGateway,
     MediaGateway,
-    SellerAnalyticsGateway, // Route /seller/* và /analytics/* về seller-analytics-service
+    SellerAnalyticsGateway,
     OrderGateway,
     PaymentGateway,
-    SseController
+    SseController, // 👈 vẫn giữ nguyên
   ],
-  providers: [AiReviewGuard, ChatGateway,SseService],
+
+  providers: [
+    AiReviewGuard,
+    ChatGateway,
+    SseService, // 👈 vẫn giữ nguyên
+  ],
 })
 export class AppModule implements NestModule {
   constructor() {
