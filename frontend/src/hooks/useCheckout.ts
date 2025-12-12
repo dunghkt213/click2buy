@@ -1,25 +1,9 @@
-/**
- * useCheckout - Custom hook for checkout functionality
- */
-
-import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { mapOrderResponse, orderService } from '../apis/order';
-import { CartItem } from '../types/interface';
+import { orderService } from '../apis/order';
+import { useCallback } from 'react';  // ⚠ import lại ở đây
 
-interface UseCheckoutProps {
-  getSelectedItems: () => CartItem[];
-  removeFromCart: (productId: string) => Promise<void>;
-  refreshCart: () => Promise<void>;
-  onOrderCreated?: (order: any) => void;
-}
+export function useCheckout({ getSelectedItems, removeFromCart, refreshCart, onOrderCreated }: any) {
 
-export function useCheckout({
-  getSelectedItems,
-  removeFromCart,
-  refreshCart,
-  onOrderCreated,
-}: UseCheckoutProps) {
   const handleCheckout = useCallback(async (checkoutData: any) => {
     console.log('🛒 useCheckout called with checkoutData:', checkoutData);
 
@@ -104,14 +88,11 @@ export function useCheckout({
 
       return mappedOrder;
     } catch (error: any) {
-      console.error('Checkout failed:', error);
-      toast.error(error.message || 'Đặt hàng thất bại. Vui lòng thử lại.');
+      console.error("Checkout failed:", error);
+      toast.error("Checkout thất bại!");
       throw error;
     }
-  }, [getSelectedItems, removeFromCart, refreshCart, onOrderCreated]);
-
-  return {
-    handleCheckout,
-  };
+  }, []);
+  
+  return { handleCheckout };
 }
-

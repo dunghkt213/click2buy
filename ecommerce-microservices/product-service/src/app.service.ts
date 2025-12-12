@@ -94,9 +94,42 @@ export class AppService {
     const limit = Math.max(parseInt(q?.limit || '10', 10), 1);
     const skip = (page - 1) * limit;
 
-    const filter: FilterQuery<Product> = {};
+    const filter: FilterQuery<Product> = {
+      status: ProductStatus.ACTIVE,
+      isActive: true,
+    };
     if (q?.keyword) {
       filter.name = new RegExp(q.keyword.trim(), 'i');
+    }
+
+    if (q?.categoryId && q.categoryId !== 'all') {
+      filter.categoryIds = q.categoryId;
+    }
+
+    if (q?.minPrice || q?.maxPrice) {
+      filter.price = {};
+      if (q.minPrice) filter.price.$gte = Number(q.minPrice);
+      if (q.maxPrice) filter.price.$lte = Number(q.maxPrice);
+    }
+
+    if (q?.minRating) {
+      filter.ratingAvg = { $gte: Number(q.minRating) };
+    }
+
+    if (q?.brand) {
+      filter.brand = q.brand;
+    }
+
+    if (q?.tag) {
+      filter.tags = q.tag;
+    }
+
+    if (q?.condition) {
+      filter.condition = q.condition;
+    }
+
+    if (q?.hasDiscount === 'true') {
+      filter.discount = { $gt: 0 };
     }
 
     const sort = q?.sort ? q.sort.replace(/,/g, ' ') : '-createdAt';
@@ -219,4 +252,11 @@ export class AppService {
 
     return { success: true, data };
   }
+
+  async findBatch(ids: string[]) {
+    return this.productModel
+      .find({ _id: { $in: ids } })
+      .lean();
+  }
+  
 }

@@ -6,7 +6,7 @@ const axiosClient = axios.create({
   // URL gốc của API Gateway (Backend)
   // Nếu bạn chạy Next.js/React local thì thường là localhost:3000 hoặc 3001
   // Dựa vào docker-compose của bạn, API Gateway đang chạy port 3000
-  baseURL: 'http://localhost:3000', 
+  baseURL: 'http://127.0.0.1:3000', 
   
   headers: {
     'Content-Type': 'application/json',

@@ -209,21 +209,42 @@ export function CheckoutPage() {
       app.handleLogin();
       return;
     }
-
+  
     setIsProcessing(true);
-    
+  
     try {
-      const checkoutData = {
+      const cartsMap: Record<string, any> = {};
+  
+      items.forEach((item: any) => {
+        if (!item.sellerId) throw new Error("Thiếu sellerId trong item FE");
+        if (!item.id) throw new Error("Thiếu productId trong item FE (id)");
+  
+        if (!cartsMap[item.sellerId]) {
+          cartsMap[item.sellerId] = {
+            sellerId: item.sellerId,
+            products: []
+          };
+        }
+  
+        cartsMap[item.sellerId].products.push({
+          productId: item.id,
+          quantity: item.quantity
+        });
+      });
+  
+      const checkoutPayload = {
+        orderCode: Date.now().toString(),
+        paymentMethod: selectedPayment.id, // bank, cod...
+        carts: Object.values(cartsMap),
+  
+        // giữ lại nhưng BE không dùng
         shippingAddress: selectedAddress,
-        paymentMethod: selectedPayment,
-        shippingMethod: selectedShipping,
-        items,
-        subtotal: totalPrice,
-        shippingFee,
+        shippingMethod: selectedShipping.name,
+        note,
+        voucher,
         discount: totalDiscount,
-        voucher: voucher || undefined,
+        shippingFee,
         total: finalTotal,
-        note: note || undefined
       };
       
       const orderResult = await app.handleCheckout(checkoutData);
@@ -240,8 +261,13 @@ export function CheckoutPage() {
       console.error('Checkout error:', error);
       toast.error('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
       setIsProcessing(false);
+
     }
+  
+    setIsProcessing(false);
   };
+  
+  
 
   const applyVoucher = () => {
     if (voucher === 'SAVE10') {
