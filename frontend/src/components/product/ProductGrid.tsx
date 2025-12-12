@@ -44,7 +44,7 @@ export function ProductGrid({
   // Fetch products từ backend
   useEffect(() => {
     setLoading(true);
-    productApi.getAll()
+    productApi.getAll({ limit: 80 })
       .then((products) => {
         setAllProducts(products);
         console.log('Products loaded:', products);

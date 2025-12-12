@@ -45,6 +45,7 @@ export function HotDealsSection({
       setLoading(true);
       // Load products với filter isSale hoặc isBestSeller
       const products = await productApi.getAll({
+        limit: 40,
         // Có thể filter theo category hoặc các tiêu chí khác
       });
       // Filter và sort các sản phẩm có sale theo discount giảm dần
