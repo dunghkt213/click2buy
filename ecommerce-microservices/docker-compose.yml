@@ -58,7 +58,7 @@ services:
   # ============================
   redis:
     image: redis:7
-    container_name: click2buy_redis
+    container_name: redis
     restart: always
     ports:
       - "6379:6379"
@@ -144,7 +144,10 @@ services:
     container_name: click2buy_product-service
     working_dir: /app
     volumes:
-      - ./product-service:/app:delegated
+      - ./product-service/src:/app/src:delegated
+      - ./product-service/package.json:/app/package.json
+      - ./product-service/tsconfig.json:/app/tsconfig.json
+      - ./product-service/tsconfig.build.json:/app/tsconfig.build.json
       - product_node_modules:/app/node_modules
     ports:
       - "3103:3003"
@@ -211,33 +214,33 @@ services:
       - click2buy_net
     restart: unless-stopped
 
-  # media-service:
-  #   build: ./media-service
-  #   container_name: click2buy_media-service
-  #   working_dir: /app
-  #   volumes:
-  #     - ./media-service:/app:delegated
-  #     - media_node_modules:/app/node_modules
-  #   ports:
-  #     - "3106:3006"
-  #   env_file:
-  #     - ./media-service/.env
-  #   environment:
-  #     CHOKIDAR_USEPOLLING: "true"
-  #     CHOKIDAR_INTERVAL: 500
-  #     CHOKIDAR_DEPTH: 99
-  #     NODE_ENV: development
+  media-service:
+     build: ./media-service
+     container_name: click2buy_media-service
+     working_dir: /app
+     volumes:
+      - ./media-service:/app:delegated
+      - media_node_modules:/app/node_modules
+     ports:
+       - "3106:3006"
+     env_file:
+       - ./media-service/.env
+     environment:
+       CHOKIDAR_USEPOLLING: "true"
+       CHOKIDAR_INTERVAL: 500
+       CHOKIDAR_DEPTH: 99
+       NODE_ENV: development
 
-  #   command: sh -c "npm install && npm run start:dev"
+     command: sh -c "npm install && npm run start:dev"
 
-  #   depends_on:
-  #     - kafka
-  #     - mongo
+     depends_on:
+       - kafka
+       - mongo
 
-  #   networks:
-  #     - click2buy_net
+     networks:
+       - click2buy_net
 
-  #   restart: unless-stopped
+     restart: unless-stopped
 
   inventory-service:
     build: ./inventory-service
@@ -268,7 +271,10 @@ services:
     container_name: click2buy_api-gateway
     working_dir: /app
     volumes:
-      - ./api-gateway:/app:delegated
+      - ./api-gateway/src:/app/src:delegated
+      - ./api-gateway/package.json:/app/package.json
+      - ./api-gateway/tsconfig.json:/app/tsconfig.json
+      - ./api-gateway/tsconfig.build.json:/app/tsconfig.build.json
       - gateway_node_modules:/app/node_modules
     ports:
       - "3000:3000"
@@ -279,7 +285,7 @@ services:
       CHOKIDAR_INTERVAL: 500
       CHOKIDAR_DEPTH: 99
 
-    command: sh -c "npm install && npm run start:prod"
+    command: sh -c "npm install && npm run build && npm run start:dev"
     depends_on:
       - kafka
       - mongo
@@ -292,8 +298,12 @@ services:
     container_name: click2buy_order-service
     working_dir: /app
     volumes:
-      - ./order-service:/app:delegated
+      - ./order-service/src:/app/src:delegated
+      - ./order-service/package.json:/app/package.json
+      - ./order-service/tsconfig.json:/app/tsconfig.json
+      - ./order-service/tsconfig.build.json:/app/tsconfig.build.json
       - order_node_modules:/app/node_modules
+      - ../../shared:/app/shared
     ports:
       - "3109:3009"
     env_file:

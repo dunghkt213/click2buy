@@ -483,15 +483,15 @@ export function ProductDetailModal({
 
                 {/* Actions */}
                 <div className="flex gap-3 mb-6">
-                  <Button
+                    <Button
                     variant="outline"
                     className="flex-1 gap-2 text-black"
-                    onClick={(e) => handleAddToCart(e)}
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleAddToCart(e)}
                     disabled={!product.inStock}
-                  >
+                    >
                     <ShoppingCart className="w-4 h-4" />
                     Thêm vào giỏ hàng
-                  </Button>
+                    </Button>
                   <Button
                     className="flex-1 gap-2"
                     onClick={handleBuyNow}

@@ -121,8 +121,26 @@ export class AppService {
       return null;
     }
   }
+async genToken (dto: any) {
 
-
+    const accessToken = await this.generateAccessToken(dto.userRole, dto.userId);
+    const refreshToken = await this.generateRefreshToken(dto.userRole, dto.userId);
+    console.log("gen_new_token",accessToken)
+    return {
+      accessToken: accessToken,
+      refreshTokenInfo: {
+        name: 'refreshToken',
+        value: refreshToken,
+        options: {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'strict' as const,
+          path: '/auth/refresh',
+          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 ngày
+        },
+      },
+    };
+  }
   async login(dto: LoginDto) {
     const user = await this.validateUser(dto);
 

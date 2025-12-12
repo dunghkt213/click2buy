@@ -2,6 +2,7 @@ import { AlertCircle, Store } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { StoreInfo } from 'types';
+import { authStorage, normalizeUser } from '../../apis/auth/authApi';
 import { userApi } from '../../apis/user';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -85,7 +86,17 @@ export function StoreRegistrationModal({
       };
 
       // Call API to update user role to seller
-      await userApi.updateRoleSeller(payload);
+      const response = await userApi.updateRoleSeller(payload);
+
+      // Lấy accessToken từ response và lưu vào localStorage
+      if (response.accessToken) {
+        // Update user info và token trong localStorage
+        const user = normalizeUser(response.user);
+        authStorage.save(user, response.accessToken);
+        console.log('✅ Token mới đã được lưu vào localStorage sau khi upgrade seller');
+      } else {
+        console.warn('⚠️ Server không trả về accessToken sau khi upgrade seller');
+      }
 
       toast.success('Đăng ký cửa hàng thành công! Vai trò của bạn đã được cập nhật thành seller.');
       

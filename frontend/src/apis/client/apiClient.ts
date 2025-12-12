@@ -2,19 +2,18 @@ import { authApi, authStorage } from '../auth/authApi';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
-
 export interface ApiError {
   message: string;
   status?: number;
   data?: any;
 }
-
 // Lock để tránh multiple refresh calls đồng thời
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
 
 /**
  * Refresh access token và trả về token mới
+ * Có thể được gọi từ bên ngoài để refresh token thủ công
  */
 async function refreshAccessToken(): Promise<string | null> {
   // Nếu đang refresh, đợi promise hiện tại
@@ -279,5 +278,5 @@ async function requestFormData<T>(
   return (payload?.data ?? payload) as T;
 }
 
-export { API_BASE_URL, request, requestFormData };
+export { API_BASE_URL, request, requestFormData, refreshAccessToken };
 
