@@ -33,6 +33,7 @@ import { useAppContext } from '../../providers/AppProvider';
 import { toast } from 'sonner';
 import { useSSE, PaymentQR } from '../../hooks/useSSE';
 import { QRPaymentModal } from '../../components/payment/QRPaymentModal';
+import { usePaymentSocket } from '@/hooks/usePaymentSocket';
 
 const defaultAddresses: Address[] = [
   {
@@ -59,7 +60,7 @@ const defaultAddresses: Address[] = [
 
 const paymentMethods: PaymentMethod[] = [
   {
-    id: 'bank',
+    id: 'BANKING',
     type: 'BANKING',
     name: 'Chuyển khoản ngân hàng',
     description: 'Chuyển khoản qua ứng dụng ngân hàng',
@@ -97,7 +98,7 @@ const paymentMethods: PaymentMethod[] = [
     icon: '💳'
   },
   {
-    id: 'cod',
+    id: 'COD',
     type: 'cod',
     name: 'Thanh toán khi nhận hàng',
     description: 'Thanh toán bằng tiền mặt khi nhận hàng',
@@ -171,8 +172,7 @@ export function CheckoutPage() {
   }, []);
 
   // SSE for payment updates
-  const { isConnected } = useSSE({
-    userId: app.user?.id,
+  const { isConnected } = usePaymentSocket({
     isLoggedIn: app.isLoggedIn,
     onQRCreated: (payments: PaymentQR[]) => {
       console.log('QR Created:', payments);
@@ -209,34 +209,34 @@ export function CheckoutPage() {
       app.handleLogin();
       return;
     }
-  
+
     setIsProcessing(true);
-  
+
     try {
       const cartsMap: Record<string, any> = {};
-  
+
       items.forEach((item: any) => {
         if (!item.sellerId) throw new Error("Thiếu sellerId trong item FE");
         if (!item.id) throw new Error("Thiếu productId trong item FE (id)");
-  
+
         if (!cartsMap[item.sellerId]) {
           cartsMap[item.sellerId] = {
             sellerId: item.sellerId,
             products: []
           };
         }
-  
+
         cartsMap[item.sellerId].products.push({
           productId: item.id,
           quantity: item.quantity
         });
       });
-  
+
       const checkoutPayload = {
         orderCode: Date.now().toString(),
         paymentMethod: selectedPayment.id, // bank, cod...
         carts: Object.values(cartsMap),
-  
+
         // giữ lại nhưng BE không dùng
         shippingAddress: selectedAddress,
         shippingMethod: selectedShipping.name,
@@ -246,24 +246,30 @@ export function CheckoutPage() {
         shippingFee,
         total: finalTotal,
       };
-      
-      const orderResult = await app.handleCheckout(checkoutData);
 
-      // Redirect to payment process page
-      navigate('/payment/process', {
-        state: {
-          orderCode: orderResult?.orderCode || `ORD_${Date.now()}`,
-          totalAmount: finalTotal,
-          paymentMethod: selectedPayment.type
-        }
-      });
+      const orderResult = await app.handleCheckout(checkoutPayload);
+
+      // Logic xử lý theo payment method
+      if (selectedPayment.id === 'cod') {
+        // COD: redirect thẳng đến orders
+        toast.success('Đặt hàng thành công! Đơn hàng sẽ được giao trong 3-5 ngày.');
+        navigate('/orders');
+      } else {
+        // Banking/ZaloPay/MoMo/ShopeePay: redirect đến payment process để hiển thị QR
+        navigate('/payment/process', {
+          state: {
+            orderCode: orderResult?.orderCode || `ORD_${Date.now()}`,
+            totalAmount: finalTotal,
+            paymentMethod: selectedPayment.type
+          }
+        });
+      }
     } catch (error: any) {
       console.error('Checkout error:', error);
       toast.error('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
       setIsProcessing(false);
-
     }
-  
+
     setIsProcessing(false);
   };
   

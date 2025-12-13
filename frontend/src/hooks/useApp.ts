@@ -101,11 +101,11 @@ export function useApp() {
     getSelectedItems,
     removeFromCart,
     refreshCart,
-    onOrderCreated: (order) => {
+    onOrderCreated: (order: any) => {
       orders.setOrders(prev => [order, ...prev]);
       modals.closeCheckout();
-      // Navigate to orders page
-      window.location.href = '/orders';
+      // Không tự động redirect nữa, để CheckoutPage tự quyết định
+      // dựa trên payment method (COD vs Banking)
     },
   });
 

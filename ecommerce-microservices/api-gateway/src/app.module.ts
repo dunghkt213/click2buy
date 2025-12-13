@@ -3,7 +3,6 @@ import { ConfigModule } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { HttpModule } from '@nestjs/axios';
 import { JwtModule } from '@nestjs/jwt'; // 👈 thêm
-
 import { AuthGateway } from './gateways/auth.gateway';
 import { UserGateway } from './gateways/user.gateway';
 import { ProductGateway } from './gateways/product.gateway';
@@ -21,7 +20,7 @@ import { SseService } from './gateways/sse/sse.service';
 import { SseController } from './gateways/sse/sse.controller';
 import { AiReviewGuard } from './guards/ai-review.guard';
 import { ChatGateway } from './gateways/chat.gateway';
-import { JwtModule } from '@nestjs/jwt';
+import { PaymentWsGateway } from './gateways/payment-ws.gateway';
 
 @Module({
   imports: [
@@ -70,13 +69,12 @@ import { JwtModule } from '@nestjs/jwt';
     SellerAnalyticsGateway,
     OrderGateway,
     PaymentGateway,
-    SseController, // 👈 vẫn giữ nguyên
   ],
 
   providers: [
     AiReviewGuard,
     ChatGateway,
-    SseService, // 👈 vẫn giữ nguyên
+    PaymentWsGateway,
   ],
 })
 export class AppModule implements NestModule {

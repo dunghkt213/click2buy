@@ -50,7 +50,7 @@ export function useSSE({
     const connectSSE = () => {
       try {
         console.log('SSE: Creating EventSource with credentials');
-        const eventSource = new EventSource('/api/sse/payments', {
+        const eventSource = new EventSource('http://localhost:3000/sse/payments', {
           withCredentials: true
         });
 
@@ -61,40 +61,38 @@ export function useSSE({
 
         eventSource.onmessage = (event) => {
           try {
-            const sseEvent: SSEEvent = JSON.parse(event.data);
+            const sseEvent = JSON.parse(event.data);
+        
+            // 👇 BỎ QUA EVENT HỆ THỐNG
+            if (sseEvent.type === 'CONNECTED' || sseEvent.type === 'PING') {
+              return;
+            }
+        
             console.log('📡 SSE Event received:', sseEvent);
-
+        
             switch (sseEvent.type) {
               case 'QR_CREATED':
-                console.log('🆔 QR Code created:', sseEvent.data);
-                if (onQRCreated) {
-                  onQRCreated(sseEvent.data);
-                }
+                onQRCreated?.(sseEvent.data);
                 break;
-
+        
               case 'PAYMENT_SUCCESS':
-                console.log('💰 Payment successful:', sseEvent.data);
                 toast.success('Thanh toán thành công!');
-                if (onPaymentSuccess) {
-                  onPaymentSuccess(sseEvent.data);
-                }
+                onPaymentSuccess?.(sseEvent.data);
                 break;
-
+        
               case 'QR_EXPIRED':
-                console.log('⏰ QR Code expired:', sseEvent.data);
                 toast.error('Mã QR đã hết hạn. Vui lòng thử lại.');
-                if (onQRExpired) {
-                  onQRExpired(sseEvent.data);
-                }
+                onQRExpired?.(sseEvent.data);
                 break;
-
+        
               default:
                 console.warn('Unknown SSE event type:', sseEvent.type);
             }
-          } catch (error) {
-            console.error('Failed to parse SSE event:', error);
+          } catch (err) {
+            console.error('Failed to parse SSE event:', err);
           }
         };
+        
 
         eventSource.onerror = (error) => {
           console.error('SSE connection error:', error);

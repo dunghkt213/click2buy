@@ -1,13 +1,14 @@
 import { Body, Controller, Post, Headers, Inject } from '@nestjs/common';
 import { ClientKafka, MessagePattern } from '@nestjs/microservices';
 import { SseService } from './sse/sse.service';
+import { PaymentWsGateway } from './payment-ws.gateway';
 
 @Controller('payment')
 export class PaymentGateway {
   constructor(
     @Inject('KAFKA_SERVICE')
     private readonly kafka: ClientKafka,
-    private readonly sseService: SseService
+    private readonly paymentWs: PaymentWsGateway,
   ) {}
 
   async onModuleInit() {
@@ -38,9 +39,9 @@ export class PaymentGateway {
   handleQrCreated(payload: any) {
     console.log('📡 EVENT payment.qr.created RECEIVED', payload);
 
-    this.sseService.pushToUser(payload.userId, {
+    this.paymentWs.sendToUser(payload.userId, {
       type: 'QR_CREATED',
-      data: payload.payments,
+      data: payload,
     });
   }
 
@@ -49,7 +50,7 @@ export class PaymentGateway {
   handlePaymentSuccess(payload: any) {
     console.log('📡 EVENT payment.success RECEIVED', payload);
 
-    this.sseService.pushToUser(payload.userId, {
+    this.paymentWs.sendToUser(payload.userId, {
       type: 'PAYMENT_SUCCESS',
       data: payload,
     });
@@ -67,7 +68,7 @@ export class PaymentGateway {
 
   @MessagePattern('payment.qr.expired')
   sendExpireToUser(msg) {
-  this.sseService.pushToUser(msg.userId, {
+  this.paymentWs.sendToUser(msg.userId, {
     type: 'QR_EXPIRED',
     orderId: msg.orderId
   });
