@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAppContext } from '../../providers/AppProvider';
 import { productService } from '../../apis/product/product.service';
+import { productApi } from '../../apis/product/productApi';
 
 // UI Components
 import { Button } from '../../components/ui/button';
@@ -27,6 +28,9 @@ export function EditProductPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [stockChangeAmount, setStockChangeAmount] = useState('');
+  const [updatingStock, setUpdatingStock] = useState(false);
+  const [currentStock, setCurrentStock] = useState<number>(0);
 
   // State cho form
   const [formData, setFormData] = useState({
@@ -94,12 +98,15 @@ export function EditProductPage() {
         const salePrice = productData.salePrice || productData.sale_price;
         const originalPrice = productData.price;
         
+        const stockValue = productData.stock || 0;
+        setCurrentStock(stockValue);
+        
         setFormData({
           name: productData.name || '',
           description: productData.description || '',
           price: originalPrice?.toString() || '',
           salePrice: salePrice && salePrice < originalPrice ? salePrice.toString() : '',
-          stock: productData.stock?.toString() || '0',
+          stock: stockValue.toString(),
           brand: productData.brand || '',
           condition: (productData.condition as 'new' | 'used') || 'new',
           categoryIds: Array.isArray(productData.categoryIds) 
@@ -228,8 +235,8 @@ export function EditProductPage() {
       return;
     }
 
-    // Validate required fields
-    if (!formData.name || !formData.price || !formData.stock || !formData.brand) {
+    // Validate required fields (không validate stock vì đã có API riêng để update)
+    if (!formData.name || !formData.price || !formData.brand) {
       toast.error('Vui lòng điền đầy đủ các trường bắt buộc (*)');
       return;
     }
@@ -261,7 +268,7 @@ export function EditProductPage() {
         description: formData.description || undefined,
         price: Number(formData.price),
         salePrice: formData.salePrice ? Number(formData.salePrice) : undefined,
-        stock: Number(formData.stock),
+        // Không gửi stock trong update này vì đã có API riêng PATCH /products/:id/stock
         brand: formData.brand,
         condition: formData.condition,
         categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
@@ -297,6 +304,49 @@ export function EditProductPage() {
         [field]: value
       }
     });
+  };
+
+  // Xử lý cập nhật số lượng tồn kho
+  const handleUpdateStock = async () => {
+    if (!id) {
+      toast.error('Không tìm thấy ID sản phẩm');
+      return;
+    }
+
+    const amount = Number(stockChangeAmount);
+    if (isNaN(amount) || amount === 0) {
+      toast.error('Vui lòng nhập số lượng thay đổi hợp lệ (khác 0)');
+      return;
+    }
+
+    try {
+      setUpdatingStock(true);
+      
+      const result = await productApi.updateStock(id, amount);
+      
+      if (result.success) {
+        toast.success(result.message || 'Cập nhật số lượng thành công');
+        
+        // Reload lại product data để cập nhật số lượng hiện tại
+        const { request } = await import('../../apis/client/apiClient');
+        const productData = await request<any>(`/products/${id}`, {
+          method: 'GET',
+          requireAuth: true,
+        });
+        
+        const newStock = productData.stock || 0;
+        setCurrentStock(newStock);
+        setFormData({ ...formData, stock: newStock.toString() });
+        setStockChangeAmount(''); // Reset input
+      } else {
+        toast.error(result.message || 'Có lỗi xảy ra khi cập nhật số lượng');
+      }
+    } catch (error: any) {
+      console.error('❌ [EditProductPage] Error updating stock:', error);
+      toast.error(error.message || 'Có lỗi xảy ra khi cập nhật số lượng');
+    } finally {
+      setUpdatingStock(false);
+    }
   };
 
   if (loading) {
@@ -442,20 +492,52 @@ export function EditProductPage() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="stock">
-                Số lượng trong kho <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="stock"
-                type="number"
-                value={formData.stock}
-                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                placeholder="10"
-                className="mt-1"
-                min="0"
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="currentStock">
+                  Số lượng trong kho <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="currentStock"
+                  type="number"
+                  value={currentStock}
+                  readOnly
+                  className="mt-1 bg-muted cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <Label htmlFor="stockChange">
+                  Số lượng thay đổi
+                </Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="stockChange"
+                    type="number"
+                    value={stockChangeAmount}
+                    onChange={(e) => setStockChangeAmount(e.target.value)}
+                    placeholder="+5 hoặc -10"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleUpdateStock}
+                    disabled={updatingStock || !stockChangeAmount || Number(stockChangeAmount) === 0}
+                    className="shrink-0"
+                  >
+                    {updatingStock ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Đang cập nhật...
+                      </>
+                    ) : (
+                      'Cập nhật'
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Nhập số dương để thêm, số âm để giảm
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

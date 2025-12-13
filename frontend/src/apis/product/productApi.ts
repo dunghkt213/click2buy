@@ -241,6 +241,28 @@ async function getAllBySeller(query?: {
 }
 
 // -------------------------------
+// Cập nhật số lượng tồn kho (seller)
+// -------------------------------
+async function updateStock(id: string, amount: number): Promise<{ success: boolean; message: string; availableStock?: number }> {
+  const data = await request<any>(`/products/${id}/stock`, {
+    method: 'PATCH',
+    body: JSON.stringify({ amount }),
+    requireAuth: true,
+  });
+  
+  // Backend có thể trả về { success: true, message: '...', availableStock: ... } hoặc chỉ message
+  if (typeof data === 'object' && data.success !== undefined) {
+    return data as { success: boolean; message: string; availableStock?: number };
+  }
+  
+  return {
+    success: true,
+    message: data?.message || 'Cập nhật số lượng thành công',
+    availableStock: data?.availableStock,
+  };
+}
+
+// -------------------------------
 // Export giống authApi
 // -------------------------------
 export const productApi = {
@@ -251,4 +273,5 @@ export const productApi = {
   update,
   remove,
   getAllBySeller,
+  updateStock,
 };

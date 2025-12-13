@@ -3,11 +3,11 @@
  * Đã sửa lỗi đường dẫn import và TypeScript
  */
 import {
-    Bell,
-    Menu,
-    Search,
-    ShoppingCart,
-    Store
+  Bell,
+  Menu,
+  Search,
+  ShoppingCart,
+  Store
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,9 +17,9 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '../ui/popover';
 
 // --- FEATURE COMPONENTS ---
@@ -207,56 +207,55 @@ export function Header({
             )}
 
             {/* Cart with Preview */}
-            <div 
-              className="relative"
-              onMouseEnter={() => {
-                if (cartItemsCount > 0) setIsCartPreviewOpen(true);
-              }}
-              onMouseLeave={() => setIsCartPreviewOpen(false)}
+            <Popover 
+              open={isCartPreviewOpen} 
+              onOpenChange={setIsCartPreviewOpen}
+              modal={false}
             >
-              <Popover open={isCartPreviewOpen} onOpenChange={setIsCartPreviewOpen}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="relative min-w-[2.5rem]"
-                    onClick={(e: { preventDefault: () => void; }) => {
-                       e.preventDefault();
-                       setIsCartPreviewOpen(false);
-                       onCartClick();
-                    }}
-                    ref={cartIconRef}
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    {cartItemsCount > 0 && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs pointer-events-none"
-                      >
-                        {cartItemsCount > 99 ? '99+' : cartItemsCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                
-                <PopoverContent 
-                  className="w-80 p-0" 
-                  align="end"
-                  sideOffset={4}
-                  onMouseEnter={() => setIsCartPreviewOpen(true)}
-                  onMouseLeave={() => setIsCartPreviewOpen(false)}
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="relative min-w-[2.5rem]"
+                  onMouseEnter={() => {
+                    if (cartItemsCount > 0) setIsCartPreviewOpen(true);
+                  }}
+                  onClick={(e: { preventDefault: () => void; }) => {
+                     e.preventDefault();
+                     setIsCartPreviewOpen(false);
+                     onCartClick();
+                  }}
+                  ref={cartIconRef}
                 >
-                  <CartPreview 
-                    items={cartItems || []} 
-                    totalPrice={totalPrice || 0}
-                    onViewCart={() => {
-                      setIsCartPreviewOpen(false);
-                      onCartClick();
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+                  <ShoppingCart className="w-4 h-4" />
+                  {cartItemsCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs pointer-events-none"
+                    >
+                      {cartItemsCount > 99 ? '99+' : cartItemsCount}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              
+              <PopoverContent 
+                className="w-80 max-w-[320px] p-0 z-50 shadow-lg overflow-hidden" 
+                align="end"
+                sideOffset={4}
+                onMouseEnter={() => setIsCartPreviewOpen(true)}
+                onMouseLeave={() => setIsCartPreviewOpen(false)}
+              >
+                <CartPreview 
+                  items={cartItems || []} 
+                  totalPrice={totalPrice || 0}
+                  onViewCart={() => {
+                    setIsCartPreviewOpen(false);
+                    onCartClick();
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
 
             {/* Account Dropdown */}
             <AccountDropdown

@@ -461,7 +461,19 @@ return (
                       <p className="font-medium">{formatPrice(product.price)}</p>
                       {product.originalPrice && <p className="text-sm text-muted-foreground line-through">{formatPrice(product.originalPrice)}</p>}
                     </td>
-                    <td className="p-4"><p className={product.stock < 10 ? 'text-red-500' : ''}>{product.stock}</p></td>
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <p className={`font-medium ${product.stock < 10 ? 'text-red-500' : 'text-foreground'}`}>
+                          {typeof product.stock === 'number' ? product.stock : 0}
+                        </p>
+                        {product.stock < 10 && product.stock > 0 && (
+                          <span className="text-xs text-muted-foreground">Sắp hết</span>
+                        )}
+                        {product.stock === 0 && (
+                          <span className="text-xs text-red-500">Hết hàng</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="p-4">{product.sold}</td>
                     <td className="p-4">
                       <Badge variant={product.status === 'active' ? 'default' : product.status === 'inactive' ? 'secondary' : 'destructive'}>
