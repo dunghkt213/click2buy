@@ -219,4 +219,23 @@ export class AppService {
 
     return { success: true, data };
   }
+
+  /** Cập nhật review summary cho sản phẩm (internal call từ API Gateway) */
+  async updateReviewSummary(productId: string, reviewSummary: string) {
+    try {
+      const updated = await this.productModel.findByIdAndUpdate(
+        productId,
+        { $set: { reviewSummary } },
+        { new: true }
+      );
+
+      if (!updated) {
+        return { success: false, message: 'Product not found' };
+      }
+
+      return { success: true, message: 'Review summary updated', data: { productId, reviewSummary } };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
 }

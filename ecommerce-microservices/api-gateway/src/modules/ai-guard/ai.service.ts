@@ -61,6 +61,58 @@ export class AiService {
   }
 
   /**
+   * Tóm tắt danh sách review cho sản phẩm
+   * @param reviews - Mảng nội dung review
+   * @returns Bản tóm tắt 2-3 câu bằng tiếng Việt
+   */
+  async summarizeReviews(reviews: string[]): Promise<string | null> {
+    // Nếu không có API key, bỏ qua
+    if (!this.configService.get<string>('GEMINI_API_KEY')) {
+      this.logger.warn('[AI Summary] Bỏ qua do thiếu GEMINI_API_KEY');
+      return null;
+    }
+
+    // Nếu không có review nào, bỏ qua
+    if (!reviews || reviews.length === 0) {
+      this.logger.debug('[AI Summary] Không có review để tóm tắt');
+      return null;
+    }
+
+    try {
+      const reviewsText = reviews
+        .map((r, i) => `${i + 1}. ${r}`)
+        .join('\n');
+
+      const prompt = `Bạn là trợ lý AI cho website thương mại điện tử.
+Nhiệm vụ: Tóm tắt các đánh giá sản phẩm dưới đây thành 2-3 câu ngắn gọn.
+
+Các đánh giá:
+"""
+${reviewsText}
+"""
+
+Yêu cầu:
+- Ngôn ngữ: Tiếng Việt
+- Văn phong: Trung lập, súc tích, dễ hiểu
+- Độ dài: 2-3 câu
+- Tập trung vào điểm nổi bật (ưu điểm, nhược điểm chính)
+- Không thêm thông tin không có trong review
+
+Chỉ trả về bản tóm tắt, không giải thích thêm.`;
+
+      const result = await this.model.generateContent(prompt);
+      const summary = result.response.text().trim();
+
+      this.logger.log(`[AI Summary] Tạo tóm tắt thành công: "${summary.substring(0, 50)}..."`);
+      return summary;
+    } catch (error) {
+      // Fail-safe: không throw error, chỉ log warning
+      this.logger.warn(`[AI Summary] Lỗi khi tạo tóm tắt: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Xây dựng prompt dựa trên loại nội dung
    */
   private buildPrompt(content: string, type: ContentType): string {
