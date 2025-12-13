@@ -1,12 +1,11 @@
 import { requestFormData } from '../client/apiClient';
 
 export interface UploadMediaResponse {
-  url: string;
-  publicId?: string;
-  format?: string;
-  width?: number;
-  height?: number;
-  bytes?: number;
+  success: boolean;
+  url: {
+    fileId: string;
+    thumbnailUrl: string;
+  };
 }
 
 export const mediaApi = {
