@@ -258,5 +258,46 @@ export class AppService {
       .find({ _id: { $in: ids } })
       .lean();
   }
+
+  async findAllOfSeller(q: any, sellerId: string) {
+    const page = Math.max(parseInt(q?.page || '1', 10), 1);
+    const limit = Math.max(parseInt(q?.limit || '10', 10), 1);
+    const skip = (page - 1) * limit;
+  
+    const filter: FilterQuery<Product> = {
+      status: ProductStatus.ACTIVE,
+      isActive: true,
+      ownerId: sellerId,              // ✅ quan trọng
+    };
+  
+    if (q?.keyword) filter.name = new RegExp(q.keyword.trim(), 'i');
+    if (q?.categoryId && q.categoryId !== 'all') filter.categoryIds = q.categoryId;
+  
+    const sort = q?.sort ? q.sort.replace(/,/g, ' ') : '-createdAt';
+  
+    const [data, total] = await Promise.all([
+      this.productModel.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+      this.productModel.countDocuments(filter),
+    ]);
+  
+    return {
+      success: true,
+      data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+  
+  async findOneOfSeller(id: string, sellerId: string) {
+    const product = await this.productModel.findById(id).lean();
+    if (!product) {
+      throw new RpcException({ statusCode: 404, message: 'Product not found' });
+    }
+  
+    if (product.ownerId?.toString() !== sellerId) {
+      throw new RpcException({ statusCode: 403, message: 'Forbidden' }); // ✅ chỉ owner
+    }
+  
+    return product;
+  }
   
 }

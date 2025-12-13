@@ -19,6 +19,8 @@ export class ProductGateway {
     this.kafka.subscribeToResponseOf('inventory.addStock');
     this.kafka.subscribeToResponseOf('inventory.adjustStock');
     this.kafka.subscribeToResponseOf('inventory.getStock.batch');
+
+    this.kafka.subscribeToResponseOf('product.seller.findAll');
     
     await this.kafka.connect();
   }
@@ -31,7 +33,7 @@ async findAllOfSeller(
   @Headers('authorization') auth?: string,
 ) {
   const result = await firstValueFrom(
-    this.kafka.send<any>('product.findAll', { q, auth })
+    this.kafka.send<any>('product.seller.findAll', { q, auth })
   );
 
   const products = result?.data ?? [];
@@ -84,7 +86,7 @@ async findAllOfSeller(
   ) {
    // 1. Gọi product-service
    const product = await firstValueFrom(
-    this.kafka.send('product.findOne', { id })
+    this.kafka.send('product.seller.findOne', { id , auth })
   );
 
   if (!product) return product;

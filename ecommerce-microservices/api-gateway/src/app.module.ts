@@ -16,8 +16,6 @@ import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware';
 import { OrderGateway } from './gateways/order.gateway';
 import { PaymentGateway } from './gateways/payment.gateway';
-import { SseService } from './gateways/sse/sse.service';
-import { SseController } from './gateways/sse/sse.controller';
 import { AiReviewGuard } from './guards/ai-review.guard';
 import { ChatGateway } from './gateways/chat.gateway';
 import { PaymentWsGateway } from './gateways/payment-ws.gateway';

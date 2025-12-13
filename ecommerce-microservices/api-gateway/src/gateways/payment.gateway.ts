@@ -1,6 +1,5 @@
 import { Body, Controller, Post, Headers, Inject } from '@nestjs/common';
 import { ClientKafka, MessagePattern } from '@nestjs/microservices';
-import { SseService } from './sse/sse.service';
 import { PaymentWsGateway } from './payment-ws.gateway';
 
 @Controller('payment')

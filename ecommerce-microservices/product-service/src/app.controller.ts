@@ -38,6 +38,21 @@ export class AppController {
     return this.appService.findOne(id);
   }
 
+  // SELLER PROTECTED
+  @MessagePattern('product.seller.findAll')
+  @UseGuards(JwtKafkaAuthGuard)
+  findAllOfSeller(@Payload() { q }: any, @CurrentUser() user: any) {
+    const sellerId = user?.sub || user?.id;
+    return this.appService.findAllOfSeller(q, sellerId);
+  }
+
+  @MessagePattern('product.seller.findOne')
+  @UseGuards(JwtKafkaAuthGuard)
+  findOneOfSeller(@Payload() { id }: any, @CurrentUser() user: any) {
+    const sellerId = user?.sub || user?.id;
+    return this.appService.findOneOfSeller(id, sellerId);
+  }
+
   @MessagePattern('product.update')
   @UseGuards(JwtKafkaAuthGuard)
   update(@Payload() { id, dto }: any, @CurrentUser() user: any) {
