@@ -24,28 +24,36 @@ export class GoogleDrive {
 
     async uploadBuffer(buffer: Buffer, mimeType: string) {
         const stream = this.bufferToStream(buffer);
-
+      
         const res = await this.drive.files.create({
-            requestBody: {
-                name: `media-${Date.now()}`,
-                parents: [process.env.DRIVE_FOLDER_ID],
-            },
-            media: {
-                mimeType,
-                body: stream,
-            },
-            fields: 'id',
+          requestBody: {
+            name: `media-${Date.now()}`,
+            parents: [process.env.DRIVE_FOLDER_ID],
+          },
+          media: {
+            mimeType,
+            body: stream,
+          },
+          fields: 'id',
         });
-
-        const fileId = res.data.id;
-
+      
+        const fileId = res.data.id!;
+      
+        // share public
         await this.drive.permissions.create({
-            fileId,
-            requestBody: { role: 'reader', type: 'anyone' },
+          fileId,
+          requestBody: {
+            role: 'reader',
+            type: 'anyone',
+          },
         });
-
-        return `https://drive.google.com/uc?id=${fileId}`;
-    }
+      
+        return {
+          fileId,
+          thumbnailUrl: `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`,
+        };
+      }
+      
 
 
     bufferToStream(buffer: Buffer) {
