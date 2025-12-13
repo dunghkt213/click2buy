@@ -48,4 +48,9 @@ export class AppController {
   search(@Payload() { q }: any) {
     return this.appService.search(q);
   }
+
+  @MessagePattern('product.updateReviewSummary')
+  updateReviewSummary(@Payload() { productId, reviewSummary }: { productId: string; reviewSummary: string }) {
+    return this.appService.updateReviewSummary(productId, reviewSummary);
+  }
 }
