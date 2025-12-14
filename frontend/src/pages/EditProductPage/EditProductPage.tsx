@@ -8,6 +8,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAppContext } from '../../providers/AppProvider';
 import { productService } from '../../apis/product/product.service';
+import { productApi } from '../../apis/product/productApi';
+import { mediaApi } from '../../apis/media';
 
 // UI Components
 import { Button } from '../../components/ui/button';
@@ -18,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../../components/ui/textarea';
 
 // Icons
-import { ArrowLeft, DollarSign, Image as ImageIcon, Layers, Package, Plus, Save, Tag, Warehouse, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, DollarSign, Image as ImageIcon, Layers, Package, Plus, Save, Tag, Upload, Warehouse, X, Loader2 } from 'lucide-react';
 
 export function EditProductPage() {
   const navigate = useNavigate();
@@ -27,6 +29,9 @@ export function EditProductPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [stockChangeAmount, setStockChangeAmount] = useState('');
+  const [updatingStock, setUpdatingStock] = useState(false);
+  const [currentStock, setCurrentStock] = useState<number>(0);
 
   // State cho form
   const [formData, setFormData] = useState({
@@ -53,6 +58,10 @@ export function EditProductPage() {
   // State cho attributes và variants (mảng các cặp key-value)
   const [attributes, setAttributes] = useState<Array<{ key: string; value: string }>>([]);
   const [variants, setVariants] = useState<Array<{ key: string; value: string }>>([]);
+  
+  // State cho uploaded images
+  const [uploadedImages, setUploadedImages] = useState<Array<{ url: string; loading?: boolean }>>([]);
+  const [uploading, setUploading] = useState(false);
 
   // Kiểm tra quyền truy cập và load dữ liệu sản phẩm
   useEffect(() => {
@@ -94,12 +103,15 @@ export function EditProductPage() {
         const salePrice = productData.salePrice || productData.sale_price;
         const originalPrice = productData.price;
         
+        const stockValue = productData.stock || 0;
+        setCurrentStock(stockValue);
+        
         setFormData({
           name: productData.name || '',
           description: productData.description || '',
           price: originalPrice?.toString() || '',
           salePrice: salePrice && salePrice < originalPrice ? salePrice.toString() : '',
-          stock: productData.stock?.toString() || '0',
+          stock: stockValue.toString(),
           brand: productData.brand || '',
           condition: (productData.condition as 'new' | 'used') || 'new',
           categoryIds: Array.isArray(productData.categoryIds) 
@@ -108,9 +120,7 @@ export function EditProductPage() {
           tags: Array.isArray(productData.tags) 
             ? productData.tags.join(', ') 
             : '',
-          images: Array.isArray(productData.images) && productData.images.length > 0
-            ? productData.images.join('\n')
-            : (productData.image || ''),
+          images: '', // Không cần lưu vào formData nữa, sẽ dùng uploadedImages
           warehouseAddress: productData.warehouseAddress || {
             line1: '',
             line2: '',
@@ -143,6 +153,15 @@ export function EditProductPage() {
             value: typeof value === 'string' ? value : JSON.stringify(value)
           }));
           setVariants(vars);
+        }
+
+        // Load existing images vào uploadedImages
+        const existingImages = Array.isArray(productData.images) && productData.images.length > 0
+          ? productData.images
+          : (productData.image ? [productData.image] : []);
+        
+        if (existingImages.length > 0) {
+          setUploadedImages(existingImages.map(url => ({ url, loading: false })));
         }
         
       } catch (error) {
@@ -228,8 +247,8 @@ export function EditProductPage() {
       return;
     }
 
-    // Validate required fields
-    if (!formData.name || !formData.price || !formData.stock || !formData.brand) {
+    // Validate required fields (không validate stock vì đã có API riêng để update)
+    if (!formData.name || !formData.price || !formData.brand) {
       toast.error('Vui lòng điền đầy đủ các trường bắt buộc (*)');
       return;
     }
@@ -240,10 +259,13 @@ export function EditProductPage() {
       return;
     }
 
-    // Validate images
-    const images = formData.images.split('\n').map(url => url.trim()).filter(url => url.length > 0);
+    // Validate images - chỉ sử dụng uploaded images
+    const images = uploadedImages
+      .filter(img => !img.loading && img.url.length > 0)
+      .map(img => img.url);
+    
     if (images.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một hình ảnh cho sản phẩm');
+      toast.error('Vui lòng tải lên ít nhất một hình ảnh cho sản phẩm');
       return;
     }
 
@@ -261,7 +283,7 @@ export function EditProductPage() {
         description: formData.description || undefined,
         price: Number(formData.price),
         salePrice: formData.salePrice ? Number(formData.salePrice) : undefined,
-        stock: Number(formData.stock),
+        // Không gửi stock trong update này vì đã có API riêng PATCH /products/:id/stock
         brand: formData.brand,
         condition: formData.condition,
         categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
@@ -297,6 +319,145 @@ export function EditProductPage() {
         [field]: value
       }
     });
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const fileArray = Array.from(files);
+    
+    // Validate file types
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    const invalidFiles = fileArray.filter(file => !validTypes.includes(file.type));
+    
+    if (invalidFiles.length > 0) {
+      toast.error('Chỉ chấp nhận file ảnh (JPEG, PNG, WEBP, GIF)');
+      return;
+    }
+
+    // Validate file size (max 10MB per file)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversizedFiles = fileArray.filter(file => file.size > maxSize);
+    
+    if (oversizedFiles.length > 0) {
+      toast.error('Kích thước file không được vượt quá 10MB');
+      return;
+    }
+
+    setUploading(true);
+
+    // Get current length to track new placeholders
+    const currentLength = uploadedImages.length;
+    
+    // Add loading placeholders
+    const loadingPlaceholders = fileArray.map(() => ({ url: '', loading: true }));
+    setUploadedImages(prev => [...prev, ...loadingPlaceholders]);
+
+    try {
+      // Upload all files sequentially
+      const results: Array<string> = [];
+      
+      for (let i = 0; i < fileArray.length; i++) {
+        try {
+          const response = await mediaApi.upload(fileArray[i]);
+          
+          // Extract thumbnailUrl from response
+          const imageUrl = response?.url?.thumbnailUrl || '';
+          
+          if (imageUrl) {
+            results.push(imageUrl);
+            
+            // Update the specific placeholder with the result
+            setUploadedImages(prev => {
+              const newImages = [...prev];
+              const targetIndex = currentLength + i;
+              if (targetIndex < newImages.length && newImages[targetIndex].loading) {
+                newImages[targetIndex] = { url: imageUrl, loading: false };
+              }
+              return newImages;
+            });
+          } else {
+            throw new Error('Không nhận được URL ảnh từ server');
+          }
+        } catch (error: any) {
+          console.error(`Error uploading file ${i + 1}:`, error);
+          toast.error(`Lỗi khi tải ảnh ${i + 1}: ${error?.message || 'Không xác định'}`);
+          
+          // Remove the failed placeholder
+          setUploadedImages(prev => {
+            const newImages = [...prev];
+            const targetIndex = currentLength + i;
+            if (targetIndex < newImages.length && newImages[targetIndex].loading) {
+              newImages.splice(targetIndex, 1);
+            }
+            return newImages;
+          });
+        }
+      }
+
+      if (results.length > 0) {
+        toast.success(`Đã tải lên ${results.length}/${fileArray.length} ảnh thành công`);
+      } else {
+        toast.error('Không thể tải lên ảnh. Vui lòng thử lại');
+      }
+    } catch (error: any) {
+      console.error('Error uploading images:', error);
+      toast.error(error?.message || 'Có lỗi xảy ra khi tải ảnh lên');
+      
+      // Remove all loading placeholders on error
+      setUploadedImages(prev => prev.filter(img => !img.loading || img.url));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Remove uploaded image
+  const removeImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Xử lý cập nhật số lượng tồn kho
+  const handleUpdateStock = async () => {
+    if (!id) {
+      toast.error('Không tìm thấy ID sản phẩm');
+      return;
+    }
+
+    const amount = Number(stockChangeAmount);
+    if (isNaN(amount) || amount === 0) {
+      toast.error('Vui lòng nhập số lượng thay đổi hợp lệ (khác 0)');
+      return;
+    }
+
+    try {
+      setUpdatingStock(true);
+      
+      const result = await productApi.updateStock(id, amount);
+      
+      if (result.success) {
+        toast.success(result.message || 'Cập nhật số lượng thành công');
+        
+        // Reload lại product data để cập nhật số lượng hiện tại
+        const { request } = await import('../../apis/client/apiClient');
+        const productData = await request<any>(`/products/${id}`, {
+          method: 'GET',
+          requireAuth: true,
+        });
+        
+        const newStock = productData.stock || 0;
+        setCurrentStock(newStock);
+        setFormData({ ...formData, stock: newStock.toString() });
+        setStockChangeAmount(''); // Reset input
+      } else {
+        toast.error(result.message || 'Có lỗi xảy ra khi cập nhật số lượng');
+      }
+    } catch (error: any) {
+      console.error('❌ [EditProductPage] Error updating stock:', error);
+      toast.error(error.message || 'Có lỗi xảy ra khi cập nhật số lượng');
+    } finally {
+      setUpdatingStock(false);
+    }
   };
 
   if (loading) {
@@ -442,20 +603,52 @@ export function EditProductPage() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="stock">
-                Số lượng trong kho <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="stock"
-                type="number"
-                value={formData.stock}
-                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                placeholder="10"
-                className="mt-1"
-                min="0"
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="currentStock">
+                  Số lượng trong kho <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="currentStock"
+                  type="number"
+                  value={currentStock}
+                  readOnly
+                  className="mt-1 bg-muted cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <Label htmlFor="stockChange">
+                  Số lượng thay đổi
+                </Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="stockChange"
+                    type="number"
+                    value={stockChangeAmount}
+                    onChange={(e) => setStockChangeAmount(e.target.value)}
+                    placeholder="+5 hoặc -10"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleUpdateStock}
+                    disabled={updatingStock || !stockChangeAmount || Number(stockChangeAmount) === 0}
+                    className="shrink-0"
+                  >
+                    {updatingStock ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Đang cập nhật...
+                      </>
+                    ) : (
+                      'Cập nhật'
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Nhập số dương để thêm, số âm để giảm
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -507,23 +700,71 @@ export function EditProductPage() {
               <ImageIcon className="w-5 h-5" />
               Hình ảnh sản phẩm
             </CardTitle>
-            <CardDescription>Thêm URL hình ảnh của sản phẩm (mỗi URL một dòng)</CardDescription>
+            <CardDescription>Tải lên hình ảnh sản phẩm của bạn (JPEG, PNG, WEBP, GIF - tối đa 10MB mỗi ảnh)</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Upload Button */}
             <div>
-              <Label htmlFor="images">URL hình ảnh</Label>
-              <Textarea
-                id="images"
-                value={formData.images}
-                onChange={(e) => setFormData({ ...formData, images: e.target.value })}
-                placeholder="https://img.com/product-1.jpg&#10;https://img.com/product-2.jpg&#10;https://img.com/product-3.jpg"
-                rows={5}
-                className="mt-1 font-mono text-sm"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Nhập mỗi URL trên một dòng riêng biệt
-              </p>
+              <Label htmlFor="image-upload">Tải ảnh lên</Label>
+              <div className="mt-2">
+                <Input
+                  id="image-upload"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                  multiple
+                  onChange={(e) => handleImageUpload(e.target.files)}
+                  disabled={uploading}
+                  className="cursor-pointer"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Chọn một hoặc nhiều ảnh để tải lên (có thể chọn nhiều ảnh cùng lúc)
+                </p>
+              </div>
             </div>
+
+            {/* Uploaded Images Preview */}
+            {uploadedImages.length > 0 && (
+              <div>
+                <Label>Ảnh đã tải lên ({uploadedImages.filter(img => !img.loading).length})</Label>
+                <div className="mt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {uploadedImages.map((image, index) => (
+                    <div
+                      key={index}
+                      className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted"
+                    >
+                      {image.loading ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                            <p className="text-xs text-muted-foreground">Đang tải...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <img
+                            src={image.url}
+                            alt={`Product image ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error('Error loading image:', image.url);
+                              (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3ELỗi tải ảnh%3C/text%3E%3C/svg%3E';
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Xóa ảnh"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
