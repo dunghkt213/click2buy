@@ -98,6 +98,16 @@ export class AppService {
       status: ProductStatus.ACTIVE,
       isActive: true,
     };
+
+    if (q.hotDeal === 'true') {
+      filter.$expr = {
+        $gte: [
+          { $multiply: ['$price', 1.0] },
+          { $multiply: ['$originalPrice', 0.4] }
+        ]
+      };
+    }
+
     if (q?.keyword) {
       filter.name = new RegExp(q.keyword.trim(), 'i');
     }
