@@ -103,8 +103,8 @@ export function ProductDetailPage() {
 
     try {
       setLoadingShopProducts(true);
-      const allProducts = await productApi.getAll({ limit: 1000 });
-      const filtered = allProducts.filter(
+      const result = await productApi.getAll({ limit: 1000 });
+      const filtered = result.products.filter(
         (p) => (p.ownerId === shopId || p.sellerId === shopId) && p.id !== product?.id
       );
       setShopProducts(filtered.slice(0, 12)); // Hiển thị tối đa 12 sản phẩm

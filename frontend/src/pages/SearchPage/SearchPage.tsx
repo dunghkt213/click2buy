@@ -2,10 +2,10 @@
  * SearchPage - Trang tìm kiếm
  */
 
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SearchModal } from '../../components/search/SearchModal';
 import { useAppContext } from '../../providers/AppProvider';
-import { useEffect, useState } from 'react';
 
 export function SearchPage() {
   const navigate = useNavigate();
@@ -16,7 +16,9 @@ export function SearchPage() {
 
   useEffect(() => {
     setIsOpen(true);
-  }, []);
+    // Reload lại khi search query thay đổi
+    console.log('🔄 [SearchPage] Search query thay đổi:', searchQuery);
+  }, [searchQuery]);
 
   const handleClose = () => {
     setIsOpen(false);

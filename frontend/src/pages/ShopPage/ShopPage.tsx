@@ -60,8 +60,8 @@ export function ShopPage() {
     try {
       setLoadingProducts(true);
       // Load tất cả products và filter theo ownerId
-      const allProducts = await productApi.getAll({ limit: 1000 });
-      const filtered = allProducts.filter(p => 
+      const result = await productApi.getAll({ limit: 1000 });
+      const filtered = result.products.filter(p => 
         (p.ownerId === id || p.sellerId === id)
       );
       setShopProducts(filtered);

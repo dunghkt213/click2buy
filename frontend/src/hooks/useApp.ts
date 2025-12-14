@@ -3,22 +3,22 @@
  * Centralizes state management and handlers
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { useAuth, AuthSuccessPayload } from './useAuth';
-import { useCartApi } from './useCartApi';
-import { useNotifications } from './useNotifications';
-import { useFilters } from './useFilters';
-import { useSidebars } from './useSidebars';
-import { useModals } from './useModals';
-import { useFlyingIcons } from './useFlyingIcons';
-import { usePageNavigation } from './usePageNavigation';
-import { useStore } from './useStore';
-import { useOrders } from './useOrders';
-import { useCheckout } from './useCheckout';
-import { useSupport } from './useSupport';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { initialFAQs, initialPromotions, initialSupportTickets } from '../constants/mockData';
-import { Order, Product, Promotion, StoreInfo, User, FAQItem } from '../types/interface';
+import { FAQItem, Order, Product, Promotion, StoreInfo, User } from '../types/interface';
+import { AuthSuccessPayload, useAuth } from './useAuth';
+import { useCartApi } from './useCartApi';
+import { useCheckout } from './useCheckout';
+import { useFilters } from './useFilters';
+import { useFlyingIcons } from './useFlyingIcons';
+import { useModals } from './useModals';
+import { useNotifications } from './useNotifications';
+import { useOrders } from './useOrders';
+import { usePageNavigation } from './usePageNavigation';
+import { useSidebars } from './useSidebars';
+import { useStore } from './useStore';
+import { useSupport } from './useSupport';
 
 export function useApp() {
   // Auth

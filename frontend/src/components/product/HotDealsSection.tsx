@@ -43,19 +43,26 @@ export function HotDealsSection({
   const loadHotDeals = async () => {
     try {
       setLoading(true);
-      // Load products với filter isSale hoặc isBestSeller
-      const products = await productApi.getAll({
-        limit: 40,
-        // Có thể filter theo category hoặc các tiêu chí khác
+      
+      // Load nhiều sản phẩm hơn để đảm bảo có đủ sau khi filter
+      // Vì filter client-side (chỉ lấy sản phẩm có isSale), nên cần load nhiều hơn
+      // Ước tính: nếu 40 sản phẩm chỉ có 34 thỏa điều kiện (~85%), cần load ~47 sản phẩm
+      // Để an toàn, load 100 sản phẩm để đảm bảo có đủ 40 sản phẩm thỏa điều kiện
+      const result = await productApi.getAll({
+        limit: 100, // Tăng limit để có đủ sản phẩm sau khi filter
       });
+      
       // Filter và sort các sản phẩm có sale theo discount giảm dần
-      const dealsWithDiscount = products
+      const dealsWithDiscount = result.products
         .filter(p => p.isSale && p.originalPrice && p.originalPrice > p.price)
         .map(p => ({
           ...p,
           discount: calculateDiscount(p.originalPrice!, p.price)
         }))
-        .sort((a, b) => (b.discount || 0) - (a.discount || 0)); // Sort theo discount giảm dần
+        .sort((a, b) => (b.discount || 0) - (a.discount || 0)) // Sort theo discount giảm dần
+        .slice(0, 40); // Chỉ lấy 40 sản phẩm đầu tiên sau khi sort
+      
+      console.log(`🔥 [HotDealsSection] Loaded ${result.products.length} products, filtered to ${dealsWithDiscount.length} hot deals`);
       
       setAllHotDeals(dealsWithDiscount);
     } catch (error: any) {
