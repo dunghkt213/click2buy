@@ -278,6 +278,220 @@ Chỉ trả lời một từ duy nhất:
   }
 
   /**
+   * So sánh độ tương đồng giữa sản phẩm mới và NHIỀU sản phẩm cũ bằng 1 AI request duy nhất
+   * @param newProductText - Text sản phẩm mới đã chuẩn hóa
+   * @param oldProducts - Danh sách sản phẩm cũ { productId, text }
+   * @returns { maxSimilarity: number, productId?: string } hoặc null nếu lỗi
+   */
+  async compareSimilarityBatch(
+    newProductText: string,
+    oldProducts: { productId: string; text: string }[]
+  ): Promise<{ maxSimilarity: number; productId?: string } | null> {
+    // Fail-safe: Nếu không có API key, trả về null (cho phép)
+    if (!this.configService.get<string>('GEMINI_API_KEY')) {
+      this.logger.warn('[AI Batch Similarity] Bỏ qua do thiếu GEMINI_API_KEY');
+      return null;
+    }
+
+    // Nếu không có sản phẩm cũ hoặc text mới quá ngắn
+    if (!oldProducts || oldProducts.length === 0 || newProductText.length < 30) {
+      this.logger.debug('[AI Batch Similarity] Không có dữ liệu để so sánh');
+      return null;
+    }
+
+    try {
+      // Tạo danh sách sản phẩm cũ cho prompt
+      const oldProductsList = oldProducts
+        .map((p, index) => `${index + 1}. ID: ${p.productId}\nNội dung: ${p.text}`)
+        .join('\n\n');
+
+      const prompt = `Bạn là hệ thống phát hiện nội dung trùng lặp cho sàn thương mại điện tử.
+Nhiệm vụ: So sánh SẢN PHẨM MỚI với TẤT CẢ các sản phẩm cũ dưới đây và tìm độ tương đồng CAO NHẤT.
+
+SẢN PHẨM MỚI:
+"""
+${newProductText}
+"""
+
+DANH SÁCH SẢN PHẨM CŨ:
+${oldProductsList}
+
+Tiêu chí đánh giá độ tương đồng:
+- 0-30: Hoàn toàn khác nhau (sản phẩm khác loại, mô tả khác biệt)
+- 31-50: Có điểm tương đồng nhỏ (cùng danh mục nhưng khác sản phẩm)
+- 51-70: Tương đồng trung bình (cùng loại sản phẩm, mô tả có phần giống)
+- 71-85: Tương đồng cao (mô tả gần giống, có thể copy và sửa nhẹ)
+- 86-100: Gần như trùng lặp hoàn toàn (copy nguyên văn hoặc paraphrase)
+
+CHỈ TRẢ VỀ JSON THEO FORMAT SAU (không giải thích, không text thừa):
+{
+  "maxSimilarity": <số nguyên 0-100>,
+  "productId": "<ID của sản phẩm cũ tương đồng nhất, hoặc null nếu maxSimilarity < 80>"
+}
+
+Ví dụ:
+{"maxSimilarity": 87, "productId": "64fa123..."}
+hoặc
+{"maxSimilarity": 45, "productId": null}`;
+
+      this.logger.log(`[AI Batch Similarity] Gửi 1 request so sánh với ${oldProducts.length} sản phẩm cũ`);
+
+      const result = await this.model.generateContent(prompt);
+      const response = result.response.text().trim();
+
+      this.logger.debug(`[AI Batch Similarity] Raw response: ${response}`);
+
+      // Parse JSON response
+      const parsed = this.parseJsonResponse(response);
+      if (!parsed) {
+        this.logger.warn('[AI Batch Similarity] Không parse được JSON response');
+        return null;
+      }
+
+      const { maxSimilarity, productId } = parsed;
+
+      // Validate maxSimilarity
+      if (typeof maxSimilarity !== 'number' || maxSimilarity < 0 || maxSimilarity > 100) {
+        this.logger.warn(`[AI Batch Similarity] maxSimilarity không hợp lệ: ${maxSimilarity}`);
+        return null;
+      }
+
+      this.logger.log(`[AI Batch Similarity] Kết quả: maxSimilarity=${maxSimilarity}%, productId=${productId}`);
+
+      return {
+        maxSimilarity,
+        productId: productId || undefined,
+      };
+    } catch (error) {
+      // Fail-safe: Nếu AI lỗi/timeout, trả về null (cho phép)
+      this.logger.warn(`[AI Batch Similarity] Lỗi: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Parse JSON response từ AI một cách an toàn
+   */
+  private parseJsonResponse(response: string): { maxSimilarity: number; productId: string | null } | null {
+    try {
+      // Tìm JSON object trong response
+      const jsonMatch = response.match(/\{[^}]*\}/);
+      if (!jsonMatch) {
+        return null;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        maxSimilarity: parsed.maxSimilarity,
+        productId: parsed.productId,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * So sánh độ tương đồng giữa 2 đoạn text bằng AI (DEPRECATED - dùng compareSimilarityBatch thay thế)
+   * @param textA - Đoạn text thứ nhất
+   * @param textB - Đoạn text thứ hai
+   * @returns Số nguyên 0-100 (% tương đồng), null nếu lỗi
+   */
+  async compareSimilarity(textA: string, textB: string): Promise<number | null> {
+    // Fail-safe: Nếu không có API key, trả về null (cho phép)
+    if (!this.configService.get<string>('GEMINI_API_KEY')) {
+      this.logger.warn('[AI Similarity] Bỏ qua do thiếu GEMINI_API_KEY');
+      return null;
+    }
+
+    // Nếu text rỗng hoặc quá ngắn, trả về null
+    if (!textA || !textB || textA.trim().length < 30 || textB.trim().length < 30) {
+      this.logger.debug('[AI Similarity] Text quá ngắn, bỏ qua kiểm tra');
+      return null;
+    }
+
+    try {
+      const prompt = `Bạn là hệ thống phát hiện nội dung trùng lặp cho sàn thương mại điện tử.
+Nhiệm vụ: So sánh độ tương đồng về NỘI DUNG và Ý NGHĨA giữa 2 mô tả sản phẩm dưới đây.
+
+MÔ TẢ SẢN PHẨM A:
+"""
+${textA}
+"""
+
+MÔ TẢ SẢN PHẨM B:
+"""
+${textB}
+"""
+
+Tiêu chí đánh giá:
+- 0-30: Hoàn toàn khác nhau (sản phẩm khác loại, mô tả khác biệt)
+- 31-50: Có điểm tương đồng nhỏ (cùng danh mục nhưng khác sản phẩm)
+- 51-70: Tương đồng trung bình (cùng loại sản phẩm, mô tả có phần giống)
+- 71-85: Tương đồng cao (mô tả gần giống, có thể copy và sửa nhẹ)
+- 86-100: Gần như trùng lặp hoàn toàn (copy nguyên văn hoặc paraphrase)
+
+CHỈ TRẢ VỀ MỘT SỐ NGUYÊN TỪ 0 ĐẾN 100.
+Không thêm ký hiệu %, không giải thích, không thêm chữ.
+Ví dụ: 75`;
+
+      const result = await this.model.generateContent(prompt);
+      const response = result.response.text().trim();
+
+      // Parse số từ response
+      const match = response.match(/\b([0-9]{1,3})\b/);
+      if (!match) {
+        this.logger.warn(`[AI Similarity] Không parse được số từ response: "${response}"`);
+        return null;
+      }
+
+      const similarity = parseInt(match[1], 10);
+      if (similarity < 0 || similarity > 100) {
+        this.logger.warn(`[AI Similarity] Số ngoài phạm vi 0-100: ${similarity}`);
+        return null;
+      }
+
+      this.logger.debug(`[AI Similarity] Độ tương đồng: ${similarity}%`);
+      return similarity;
+    } catch (error) {
+      // Fail-safe: Nếu AI lỗi/timeout, trả về null (cho phép)
+      this.logger.warn(`[AI Similarity] Lỗi: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Chuẩn hóa text để so sánh
+   */
+  normalizeTextForComparison(product: any): string {
+    const parts: string[] = [];
+
+    if (product.name) parts.push(product.name);
+    if (product.description) parts.push(product.description);
+    if (product.category) parts.push(product.category);
+    if (product.brand) parts.push(product.brand);
+    
+    if (product.specifications) {
+      try {
+        const specs = typeof product.specifications === 'string' 
+          ? product.specifications 
+          : JSON.stringify(product.specifications);
+        parts.push(specs);
+      } catch {}
+    }
+    
+    if (Array.isArray(product.tags)) {
+      parts.push(product.tags.join(' '));
+    }
+
+    // Chuẩn hóa: trim, lowercase, collapse whitespace
+    return parts
+      .join(' ')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ');
+  }
+
+  /**
    * Xây dựng prompt dựa trên loại nội dung
    */
   private buildPrompt(content: string, type: ContentType): string {
