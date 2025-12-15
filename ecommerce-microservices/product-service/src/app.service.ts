@@ -328,4 +328,23 @@ export class AppService {
       return { success: false, message: error.message };
     }
   }
+
+  /** Lấy sản phẩm của seller (dùng cho kiểm tra trùng nội dung) */
+  async findBySeller(sellerId: string, limit: number = 20) {
+    try {
+      const products = await this.productModel
+        .find({ 
+          ownerId: sellerId,
+          status: { $ne: ProductStatus.DELETED }
+        })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .select('_id name description brand tags specifications categoryIds')
+        .lean();
+
+      return { success: true, data: products };
+    } catch (error) {
+      return { success: false, message: error.message, data: [] };
+    }
+  }
 }

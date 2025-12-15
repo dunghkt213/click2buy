@@ -83,4 +83,9 @@ export class AppController {
   updateReviewSummary(@Payload() { productId, reviewSummary }: { productId: string; reviewSummary: string }) {
     return this.appService.updateReviewSummary(productId, reviewSummary);
   }
+
+  @MessagePattern('product.findBySeller')
+  findBySeller(@Payload() { sellerId, limit }: { sellerId: string; limit?: number }) {
+    return this.appService.findBySeller(sellerId, limit);
+  }
 }

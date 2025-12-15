@@ -17,6 +17,7 @@ import { RequestLoggerMiddleware } from './common/middlewares/logger.middleware'
 import { OrderGateway } from './gateways/order.gateway';
 import { PaymentGateway } from './gateways/payment.gateway';
 import { AiReviewGuard } from './guards/ai-review.guard';
+import { AiImageGuard } from './guards/ai-image.guard';
 import { ChatGateway } from './gateways/chat.gateway';
 import { PaymentWsGateway } from './gateways/payment-ws.gateway';
 
@@ -71,6 +72,7 @@ import { PaymentWsGateway } from './gateways/payment-ws.gateway';
 
   providers: [
     AiReviewGuard,
+    AiImageGuard,
     ChatGateway,
     PaymentWsGateway,
   ],
