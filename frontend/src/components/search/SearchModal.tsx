@@ -100,16 +100,34 @@ export function SearchModal({
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const products = await productApi.search({
+      console.log('🔍 [SearchModal] Bắt đầu tìm kiếm với keyword:', searchQuery);
+      console.log('🔍 [SearchModal] Filters:', filters);
+      
+      const searchParams = {
         keyword: searchQuery || undefined,
         category: filters.category !== 'all' ? filters.category : undefined,
         minPrice: filters.priceRange[0] > 0 ? filters.priceRange[0] : undefined,
         maxPrice: filters.priceRange[1] < 50000000 ? filters.priceRange[1] : undefined,
         rating: filters.rating > 0 ? filters.rating : undefined,
-      });
+      };
+      
+      console.log('🔍 [SearchModal] Gọi API search với params:', searchParams);
+      
+      const products = await productApi.search(searchParams);
+      
+      console.log('✅ [SearchModal] API search trả về:', products);
+      console.log('✅ [SearchModal] Số lượng sản phẩm:', products?.length || 0);
+      
       setAllProducts(products);
+      
+      if (products && products.length > 0) {
+        console.log('✅ [SearchModal] Đã tải thành công', products.length, 'sản phẩm');
+      } else {
+        console.log('⚠️ [SearchModal] Không tìm thấy sản phẩm nào');
+      }
     } catch (error: any) {
-      console.error('Failed to load products:', error);
+      console.error('❌ [SearchModal] Lỗi khi tìm kiếm:', error);
+      console.error('❌ [SearchModal] Error details:', error.message, error.stack);
       toast.error('Không thể tải sản phẩm');
       setAllProducts([]);
     } finally {
@@ -249,9 +267,12 @@ export function SearchModal({
     setInputValue(value);
   };
 
-  // Handle search input submit
+  // Handle search input submit - reload trang search với query mới
   const handleSearchInputSubmit = () => {
-    setSearchQuery(inputValue);
+    if (inputValue.trim()) {
+      // Reload trang search với query mới
+      window.location.href = `/search?q=${encodeURIComponent(inputValue.trim())}`;
+    }
   };
 
   if (!isOpen) return null;
@@ -339,7 +360,7 @@ export function SearchModal({
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {filteredProducts.map((product) => (
                     <ProductCard
                       key={product.id}

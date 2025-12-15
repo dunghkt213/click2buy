@@ -1,12 +1,20 @@
-import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { Controller, Inject } from '@nestjs/common';
+import { ClientKafka, MessagePattern, Payload } from '@nestjs/microservices';
 import { AppService } from './app.service';
 import { CurrentUser } from './auth/current-user.decorator';
 import { UseGuards } from '@nestjs/common';
 import { JwtKafkaAuthGuard } from './auth/jwt-kafka.guard';
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly appService: AppService,
+  @Inject('KAFKA_SERVICE') private readonly kafka: ClientKafka,
+  ) {}
+
+  async onModuleInit() {
+    this.kafka.subscribeToResponseOf('product.batch');
+
+    await this.kafka.connect();
+  }
 
   @MessagePattern('product.create')
   @UseGuards(JwtKafkaAuthGuard)
@@ -30,6 +38,21 @@ export class AppController {
     return this.appService.findOne(id);
   }
 
+  // SELLER PROTECTED
+  @MessagePattern('product.seller.findAll')
+  @UseGuards(JwtKafkaAuthGuard)
+  findAllOfSeller(@Payload() { q }: any, @CurrentUser() user: any) {
+    const sellerId = user?.sub || user?.id;
+    return this.appService.findAllOfSeller(q, sellerId);
+  }
+
+  @MessagePattern('product.seller.findOne')
+  @UseGuards(JwtKafkaAuthGuard)
+  findOneOfSeller(@Payload() { id }: any, @CurrentUser() user: any) {
+    const sellerId = user?.sub || user?.id;
+    return this.appService.findOneOfSeller(id, sellerId);
+  }
+
   @MessagePattern('product.update')
   @UseGuards(JwtKafkaAuthGuard)
   update(@Payload() { id, dto }: any, @CurrentUser() user: any) {
@@ -47,6 +70,13 @@ export class AppController {
   @MessagePattern('product.search')
   search(@Payload() { q }: any) {
     return this.appService.search(q);
+  }
+
+
+  @MessagePattern('product.batch')
+  async getBatch(@Payload() data: { ids: string[] }) {
+    console.log('Received batch request for IDs:', data.ids);
+    return this.appService.findBatch(data.ids);
   }
 
   @MessagePattern('product.updateReviewSummary')

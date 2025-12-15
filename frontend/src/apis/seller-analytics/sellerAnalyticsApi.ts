@@ -1,50 +1,16 @@
 // src/services/sellerService.ts
 import { RevenueDataItem, TopProductItem } from '../../types/dto/seller-analytics.dto'; // Import type vừa tạo
+import { authStorage } from '../auth';
 
 const API_URL = 'http://localhost:3000'; // Đổi port nếu cần
 
 const getAuthHeaders = () => {
-  // 👇 SỬA LẠI: Lấy đúng key "click2buy:accessToken"
-  // LƯU Ý: Nếu token được lưu dưới dạng JSON String (ví dụ: "eyJhbGciOiJIUzI1NiI...") thì không cần parse.
-  // Nếu nó nằm trong 1 object bự hơn, bạn cần parse JSON.
-  
-  // Chúng ta sẽ thử lấy thẳng chuỗi token ra.
-  const rawToken = localStorage.getItem('click2buy:accessToken');
-
-  // Thường thì Local Storage sẽ lưu JSON String. Cần parse nó.
-  let token = null;
-
-  if (rawToken) {
-    try {
-      // Ví dụ: nó lưu là '{"token":"eyJhbGciOiJIUzI1NiI...","user":{...}}'
-      const parsed = JSON.parse(rawToken);
-      
-      // Nếu token nằm ngay ở root object sau khi parse (Rất phổ biến trong Redux-persist)
-      // Tìm field có chứa token. Thường là 'token' hoặc 'accessToken'.
-      token = parsed.accessToken || parsed.token;
-      
-      // Nếu nó chỉ là một chuỗi token trần (không phải JSON string), thì dùng rawToken
-      if (!token && typeof parsed === 'string') {
-          token = parsed;
-      }
-
-    } catch (e) {
-      // Trường hợp rawToken chỉ là chuỗi token trần (không phải JSON string)
-      token = rawToken; 
-    }
-  }
-  
-  // --- LOG ĐỂ KIỂM TRA ---
-  if (token) {
-      console.log("✅ Đã lấy Token thành công:", token.substring(0, 10) + "...");
-  } else {
-      console.error("❌ Lỗi: Không thể trích xuất Token từ LocalStorage Key 'click2buy:accessToken'.");
-  }
-
+  // Lấy token từ authStorage (sử dụng đúng key 'click2buy:accessToken')
+  const token = authStorage.getToken();
 
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}` 
+    ...(token && { 'Authorization': `Bearer ${token}` })
   };
 };
 

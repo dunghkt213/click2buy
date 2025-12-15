@@ -1,19 +1,21 @@
-import { Body, Controller, Post, Headers, Inject } from '@nestjs/common';
+import { Body, Controller, Post, Headers, Inject, Get, Param } from '@nestjs/common';
 import { ClientKafka, MessagePattern } from '@nestjs/microservices';
-import { SseService } from './sse/sse.service';
+import { PaymentWsGateway } from './payment-ws.gateway';
 
 @Controller('payment')
 export class PaymentGateway {
   constructor(
     @Inject('KAFKA_SERVICE')
     private readonly kafka: ClientKafka,
-    private readonly sseService: SseService
-  ) {}
+    private readonly paymentWs: PaymentWsGateway,
+  ) { }
 
   async onModuleInit() {
     this.kafka.subscribeToResponseOf('payment.success');
     this.kafka.subscribeToResponseOf('payment.qr.created');
     this.kafka.subscribeToResponseOf('payment.qr.expired');
+    this.kafka.subscribeToResponseOf('payment.get.by.order');
+    this.kafka.subscribeToResponseOf('order.payment.banking.requested');
     await this.kafka.connect();
   }
 
@@ -38,9 +40,9 @@ export class PaymentGateway {
   handleQrCreated(payload: any) {
     console.log('📡 EVENT payment.qr.created RECEIVED', payload);
 
-    this.sseService.pushToUser(payload.userId, {
+    this.paymentWs.sendToUser(payload.userId, {
       type: 'QR_CREATED',
-      data: payload.payments,
+      data: payload,
     });
   }
 
@@ -49,30 +51,45 @@ export class PaymentGateway {
   handlePaymentSuccess(payload: any) {
     console.log('📡 EVENT payment.success RECEIVED', payload);
 
-    this.sseService.pushToUser(payload.userId, {
+    this.paymentWs.sendToUser(payload.userId, {
       type: 'PAYMENT_SUCCESS',
       data: payload,
     });
   }
 
   @Post('/create-banking')
-  async requestBanking(@Body() body: any, @Headers('authorization') auth?: string) {
-    this.kafka.emit('order.payment.banking.requested', {
-      ...body,
-      auth,
-    });
+  async requestBanking(
+    @Body() body: { orderCode: string },
+    @Headers('authorization') auth: string,
+  ) {
+    console.log('📥 HTTP /payment/create-banking RECEIVED', body);
   
-    return { message: 'Banking payment requested, waiting for QR' };
+    return this.kafka.send(
+      'order.payment.banking.requested',
+      {
+        orderCode: body.orderCode,
+        auth,
+      },
+    );
   }
-
+  
   @MessagePattern('payment.qr.expired')
   sendExpireToUser(msg) {
-  this.sseService.pushToUser(msg.userId, {
-    type: 'QR_EXPIRED',
-    orderId: msg.orderId
-  });
-}
+    this.paymentWs.sendToUser(msg.userId, {
+      type: 'QR_EXPIRED',
+      orderId: msg.orderId
+    });
+  }
 
-
+  @Get('/by-order/:orderCode')
+  getPaymentByOrder(
+    @Param('orderCode') orderCode: string,
+    @Headers('authorization') auth: string,
+  ) {
+    return this.kafka.send(
+      'payment.get.by.order',
+      { orderCode, auth }
+    );
+  }
 
 }

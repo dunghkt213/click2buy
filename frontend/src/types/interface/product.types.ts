@@ -15,6 +15,7 @@ export interface Product {
   description: string;
   brand: string;
   inStock: boolean;
+  stock?: number; // Số lượng còn lại trong kho
   isNew?: boolean;
   isSale?: boolean;
   isBestSeller?: boolean;

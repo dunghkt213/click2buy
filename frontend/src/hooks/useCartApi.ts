@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { cartApi } from '../apis/cart';
 import { productApi } from '../apis/product';
@@ -11,13 +11,17 @@ export const useCartApi = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load cart từ API khi component mount
-  useEffect(() => {
-    loadCart();
-  }, []);
+  // Ref để track loading state mà không trigger re-render
+  const isLoadingRef = useRef(false);
 
-  const loadCart = async () => {
+  const loadCart = useCallback(async () => {
+    // Tránh gọi nhiều lần đồng thời
+    if (isLoadingRef.current) {
+      console.log('⏸️ [useCartApi] loadCart đang chạy, bỏ qua request mới');
+      return;
+    }
     try {
+      isLoadingRef.current = true;
       setLoading(true);
       const response = await cartApi.getAll();
       
@@ -100,15 +104,36 @@ export const useCartApi = () => {
       }
       
       console.log('Transformed cart items:', items);
-      setCartItems(items);
+      
+      // Chỉ update state nếu items thực sự thay đổi (tránh re-render không cần thiết)
+      setCartItems(prevItems => {
+        // So sánh nhanh: nếu số lượng và IDs giống nhau thì không update
+        if (prevItems.length === items.length && 
+            prevItems.every((item, idx) => {
+              const newItem = items[idx];
+              return newItem && item.id === newItem.id && item.quantity === newItem.quantity;
+            })) {
+          console.log('⏸️ [useCartApi] Cart items không thay đổi, bỏ qua update');
+          return prevItems;
+        }
+        console.log('✅ [useCartApi] Cart items đã thay đổi, cập nhật state');
+        return items;
+      });
     } catch (error) {
       console.error('Failed to load cart:', error);
       // Không hiển thị error nếu user chưa đăng nhập
       setCartItems([]);
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
-  };
+  }, []); // Không có dependencies - function ổn định
+
+  // Load cart từ API khi component mount
+  useEffect(() => {
+    loadCart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Chỉ chạy một lần khi mount
 
   const addToCart = useCallback(async (product: Product, sellerId?: string) => {
     if (!sellerId) {
@@ -137,7 +162,7 @@ export const useCartApi = () => {
       console.error('useCartApi.addToCart - Error:', error);
       toast.error(error.message || 'Không thể thêm vào giỏ hàng');
     }
-  }, []);
+  }, [loadCart]);
 
   const removeFromCart = useCallback(async (productId: string, sellerId?: string) => {
     // Tìm sellerId từ cartItems nếu không được cung cấp
@@ -165,7 +190,7 @@ export const useCartApi = () => {
     } catch (error: any) {
       toast.error(error.message || 'Không thể xóa khỏi giỏ hàng');
     }
-  }, [cartItems]);
+  }, [cartItems, loadCart]);
 
   const updateQuantity = useCallback(async (
     productId: string, 
@@ -202,7 +227,7 @@ export const useCartApi = () => {
     } catch (error: any) {
       toast.error(error.message || 'Không thể cập nhật số lượng');
     }
-  }, [cartItems, removeFromCart]);
+  }, [cartItems, removeFromCart, loadCart]);
 
   const toggleSelectItem = useCallback((productId: string) => {
     setCartItems(prev =>

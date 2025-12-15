@@ -1,117 +1,53 @@
-/**
- * useCheckout - Custom hook for checkout functionality
- */
-
-import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { mapOrderResponse, orderService } from '../apis/order';
-import { CartItem } from '../types/interface';
-
-interface UseCheckoutProps {
-  getSelectedItems: () => CartItem[];
-  removeFromCart: (productId: string) => Promise<void>;
-  refreshCart: () => Promise<void>;
-  onOrderCreated?: (order: any) => void;
-}
+import { orderService } from '../apis/order';
+import { useCallback } from 'react';
+import { CreateOrderDto } from '@/types/dto/order.dto';
 
 export function useCheckout({
-  getSelectedItems,
-  removeFromCart,
-  refreshCart,
   onOrderCreated,
-}: UseCheckoutProps) {
-  const handleCheckout = useCallback(async (checkoutData: any) => {
-    console.log('🛒 useCheckout called with checkoutData:', checkoutData);
+}: {
+  onOrderCreated?: (order: any) => void;
+}) {
+  const handleCheckout = useCallback(
+    async (checkoutData: any) => {
+      console.log('🛒 useCheckout called with checkoutData:', checkoutData);
 
-    try {
-      // Generate unique order code to prevent duplicate orders
-      const orderCode = `ORD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      try {
+        // ✅ Chỉ type-safe ở boundary FE → BE
+        const orderDto: CreateOrderDto = {
+          orderCode: checkoutData.orderCode,
+          paymentMethod: checkoutData.paymentMethod,
 
-      // Group items by seller
-      const sellerGroups = checkoutData.items.reduce((groups: any, item: any) => {
-        const sellerId = item.sellerId || 'default-seller';
-        const cartId = item.cartId;
+          carts: checkoutData.carts.map((cart: any) => ({
+            sellerId: cart.sellerId,
 
-        if (!cartId) {
-          console.warn(`Item ${item.id} missing cartId for seller ${sellerId}`);
-          return groups; // Skip items without cartId
-        }
+            products: cart.products.map((p: any) => ({
+              productId: p.productId,
+              quantity: p.quantity,
+            })),
 
-        if (!groups[sellerId]) {
-          groups[sellerId] = {
-            cartId: cartId,
-            sellerId,
-            products: []
-          };
-        }
+            voucherCode: cart.voucherCode,
+            shippingFee: cart.shippingFee,
+            paymentDiscount: cart.paymentDiscount,
+          })),
+        };
 
-        // Verify cartId is consistent for same seller
-        if (groups[sellerId].cartId !== cartId) {
-          console.warn(`Inconsistent cartId for seller ${sellerId}: ${groups[sellerId].cartId} vs ${cartId}`);
-        }
+        console.log('🛒 Final order payload:', orderDto);
 
-        groups[sellerId].products.push({
-          productId: item.id,
-          quantity: item.quantity
-        });
-        return groups;
-      }, {});
+        const newOrder = await orderService.create(orderDto);
 
-      // Transform to carts array
-      const carts = Object.values(sellerGroups);
+        console.log('🛒 Order created successfully:', newOrder);
+        onOrderCreated?.(newOrder);
 
-      const paymentMethod = checkoutData.paymentMethod.type === 'cod' ? 'COD' :
-                           checkoutData.paymentMethod.type.toUpperCase();
-
-      console.log('🛒 Payment method:', paymentMethod, 'from:', checkoutData.paymentMethod.type);
-
-      const orderDto = {
-        orderCode,
-        paymentMethod: paymentMethod,
-        carts,
-        shippingAddress: {
-          name: checkoutData.shippingAddress.name,
-          phone: checkoutData.shippingAddress.phone,
-          address: checkoutData.shippingAddress.address,
-          ward: checkoutData.shippingAddress.ward,
-          district: checkoutData.shippingAddress.district,
-          city: checkoutData.shippingAddress.city,
-        },
-        shippingMethod: checkoutData.shippingMethod?.name || 'standard',
-        note: checkoutData.note,
-      };
-
-      console.log('🛒 Final order payload:', orderDto);
-
-      const newOrder = await orderService.create(orderDto);
-      const mappedOrder = mapOrderResponse(newOrder);
-
-      toast.success('Đặt hàng thành công! Cảm ơn bạn đã mua sắm tại ShopMart.');
-
-      // Xóa các items đã checkout khỏi giỏ hàng
-      const selectedItems = getSelectedItems();
-      for (const item of selectedItems) {
-        await removeFromCart(item.id);
+        return newOrder;
+      } catch (e) {
+        console.error('Checkout failed:', e);
+        toast.error('Checkout thất bại!');
+        throw e;
       }
+    },
+    [onOrderCreated],
+  );
 
-      // Refresh cart để cập nhật UI
-      await refreshCart();
-
-      // Callback để update orders
-      if (onOrderCreated) {
-        onOrderCreated(mappedOrder);
-      }
-
-      return mappedOrder;
-    } catch (error: any) {
-      console.error('Checkout failed:', error);
-      toast.error(error.message || 'Đặt hàng thất bại. Vui lòng thử lại.');
-      throw error;
-    }
-  }, [getSelectedItems, removeFromCart, refreshCart, onOrderCreated]);
-
-  return {
-    handleCheckout,
-  };
+  return { handleCheckout };
 }
-

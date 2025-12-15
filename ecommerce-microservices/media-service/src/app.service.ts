@@ -27,8 +27,8 @@ export class AppService {
 
         for (const img of imagesBase64) {
             const buffer = this.base64ToBuffer(img);
-            const url = await this.drive.uploadBuffer(buffer, 'image/jpeg');
-            urls.push(url);
+            const { thumbnailUrl } = await this.drive.uploadBuffer(buffer, 'image/jpeg');
+            urls.push(thumbnailUrl);
         }
 
         return {

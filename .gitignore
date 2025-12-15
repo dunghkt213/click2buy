@@ -26,3 +26,4 @@ package-lock.json
 # Ignore Vite cache
 .vite-cache/
 frontend/.vite-cache/
+.vite/

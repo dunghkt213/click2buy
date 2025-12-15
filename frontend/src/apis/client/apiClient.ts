@@ -1,4 +1,5 @@
-import { authApi, authStorage } from '../auth/authApi';
+import { authApi } from '../auth/authApi';
+import { authStorage } from '../auth';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';

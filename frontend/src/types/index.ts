@@ -12,6 +12,7 @@ export interface Product {
   description: string;
   brand: string;
   inStock: boolean;
+  stock?: number; // THÊM: Số lượng còn lại trong kho
   isNew?: boolean;
   isSale?: boolean;
   isBestSeller?: boolean; // THÊM: Sản phẩm bán chạy
@@ -231,15 +232,28 @@ export interface ShippingMethod {
   isRecommended?: boolean;
 }
 
+export interface ShopCheckoutData {
+  sellerId: string;
+  sellerName?: string;
+  items: CartItem[];
+  subtotal: number;
+  shippingMethod: ShippingMethod;
+  shippingFee: number;
+  voucher?: string;
+  voucherDiscount: number;
+  total: number;
+}
+
 export interface CheckoutData {
   shippingAddress: Address;
   paymentMethod: PaymentMethod;
-  shippingMethod: ShippingMethod;
-  items: CartItem[];
-  subtotal: number;
-  shippingFee: number;
-  discount: number;
-  voucher?: string;
-  total: number;
+  shops: ShopCheckoutData[];
+  systemVoucher?: string;
+  systemVoucherDiscount: number;
+  totalItems: number;
+  totalSubtotal: number;
+  totalShippingFee: number;
+  totalDiscount: number;
+  finalTotal: number;
   note?: string;
 }
