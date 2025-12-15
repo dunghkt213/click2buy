@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export type ContentType = 'REVIEW' | 'CHAT';
+export type ImageType = 'PRODUCT_IMAGE' | 'REVIEW_IMAGE';
 
 @Injectable()
 export class AiService {
@@ -110,6 +111,170 @@ Chỉ trả về bản tóm tắt, không giải thích thêm.`;
       this.logger.warn(`[AI Summary] Lỗi khi tạo tóm tắt: ${error.message}`);
       return null;
     }
+  }
+
+  /**
+   * Kiểm duyệt ảnh bằng AI (Gemini multimodal)
+   * @param image - URL ảnh hoặc Base64 string
+   * @param type - Loại ảnh: 'PRODUCT_IMAGE' hoặc 'REVIEW_IMAGE'
+   * @returns true nếu ảnh an toàn, false nếu vi phạm
+   */
+  async validateImage(image: string, type: ImageType): Promise<boolean> {
+    // Fail-safe: Nếu không có API key, cho qua
+    if (!this.configService.get<string>('GEMINI_API_KEY')) {
+      this.logger.warn('[AI Image] Bỏ qua kiểm duyệt do thiếu GEMINI_API_KEY');
+      return true;
+    }
+
+    // Nếu không có ảnh, cho qua
+    if (!image || typeof image !== 'string' || image.trim().length === 0) {
+      return true;
+    }
+
+    try {
+      const prompt = this.buildImagePrompt(type);
+      const imagePart = await this.prepareImagePart(image);
+
+      if (!imagePart) {
+        this.logger.warn('[AI Image] Không thể xử lý ảnh, cho qua');
+        return true;
+      }
+
+      const result = await this.model.generateContent([prompt, imagePart]);
+      const response = result.response.text().trim().toUpperCase();
+
+      this.logger.debug(`[AI Image] Response for ${type}: ${response}`);
+
+      if (response.includes('VIOLATION')) {
+        this.logger.warn(`[AI Image] Ảnh vi phạm được phát hiện (${type})`);
+        return false;
+      }
+
+      this.logger.log(`[AI Image] Ảnh hợp lệ (${type})`);
+      return true;
+    } catch (error) {
+      // Fail-safe: Nếu AI lỗi/timeout, cho qua để không chặn user oan
+      this.logger.warn(`[AI Image] Lỗi kiểm duyệt ảnh: ${error.message}`);
+      return true;
+    }
+  }
+
+  /**
+   * Kiểm duyệt nhiều ảnh cùng lúc
+   * @param images - Mảng URL ảnh hoặc Base64 strings
+   * @param type - Loại ảnh
+   * @returns { valid: boolean, violatedIndex?: number } - valid=false nếu có ảnh vi phạm
+   */
+  async validateImages(images: string[], type: ImageType): Promise<{ valid: boolean; violatedIndex?: number }> {
+    if (!images || images.length === 0) {
+      return { valid: true };
+    }
+
+    for (let i = 0; i < images.length; i++) {
+      const isValid = await this.validateImage(images[i], type);
+      if (!isValid) {
+        return { valid: false, violatedIndex: i };
+      }
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Chuẩn bị image part cho Gemini multimodal
+   */
+  private async prepareImagePart(image: string): Promise<any | null> {
+    try {
+      // Nếu là Base64
+      if (image.startsWith('data:image/')) {
+        const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (matches) {
+          return {
+            inlineData: {
+              mimeType: `image/${matches[1]}`,
+              data: matches[2],
+            },
+          };
+        }
+      }
+
+      // Nếu là Base64 không có prefix
+      if (this.isBase64(image)) {
+        return {
+          inlineData: {
+            mimeType: 'image/jpeg', // Default mime type
+            data: image,
+          },
+        };
+      }
+
+      // Nếu là URL, fetch và convert sang base64
+      if (image.startsWith('http://') || image.startsWith('https://')) {
+        const response = await fetch(image);
+        if (!response.ok) {
+          this.logger.warn(`[AI Image] Không thể fetch ảnh từ URL: ${image}`);
+          return null;
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+
+        return {
+          inlineData: {
+            mimeType: contentType,
+            data: base64,
+          },
+        };
+      }
+
+      this.logger.warn(`[AI Image] Định dạng ảnh không hỗ trợ: ${image.substring(0, 50)}...`);
+      return null;
+    } catch (error) {
+      this.logger.warn(`[AI Image] Lỗi chuẩn bị ảnh: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Kiểm tra string có phải Base64 không
+   */
+  private isBase64(str: string): boolean {
+    try {
+      return Buffer.from(str, 'base64').toString('base64') === str;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Xây dựng prompt kiểm duyệt ảnh
+   */
+  private buildImagePrompt(type: ImageType): string {
+    const context = type === 'PRODUCT_IMAGE' 
+      ? 'ảnh sản phẩm do người bán đăng tải'
+      : 'ảnh đánh giá sản phẩm do người mua đăng tải';
+
+    return `Bạn là hệ thống kiểm duyệt hình ảnh cho sàn thương mại điện tử.
+Nhiệm vụ: Phân tích ${context} và xác định xem nó có vi phạm chính sách không.
+
+Tiêu chí VI PHẠM (chặn ngay):
+1. KHIÊU DÂM: Ảnh khỏa thân, bán khỏa thân, nội dung người lớn, gợi dục
+2. BẠO LỰC: Máu me, thương tích, hành vi bạo lực, tra tấn
+3. MA TÚY: Chất cấm, thuốc phiện, cần sa, kim tiêm sử dụng ma túy
+4. VŨ KHÍ: Súng, dao, vũ khí nguy hiểm (trừ dao nhà bếp, dụng cụ hợp pháp)
+5. NỘI DUNG ĐỘC HẠI: Biểu tượng thù địch, phân biệt chủng tộc, khủng bố
+6. TRÁI PHÁP LUẬT: Hàng giả, hàng cấm, nội dung vi phạm pháp luật Việt Nam
+
+KHÔNG VI PHẠM (cho phép):
+- Ảnh sản phẩm bình thường (quần áo, điện tử, thực phẩm, đồ gia dụng...)
+- Ảnh người mặc quần áo bình thường
+- Ảnh đồ dùng hợp pháp (dao nhà bếp, dụng cụ thể thao...)
+- Ảnh thực phẩm, đồ uống hợp pháp
+
+Chỉ trả lời một từ duy nhất:
+- "SAFE" nếu ảnh an toàn và hợp lệ
+- "VIOLATION" nếu ảnh vi phạm bất kỳ tiêu chí nào ở trên`;
   }
 
   /**

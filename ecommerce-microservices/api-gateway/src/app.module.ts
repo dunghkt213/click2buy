@@ -21,6 +21,7 @@ import { PaymentGateway } from './gateways/payment.gateway';
 import { SseService } from './gateways/sse/sse.service';
 import { SseController } from './gateways/sse/sse.controller';
 import { AiReviewGuard } from './guards/ai-review.guard';
+import { AiImageGuard } from './guards/ai-image.guard';
 import { ChatGateway } from './gateways/chat.gateway';
 
 @Module({
@@ -75,6 +76,7 @@ import { ChatGateway } from './gateways/chat.gateway';
 
   providers: [
     AiReviewGuard,
+    AiImageGuard,
     ChatGateway,
     SseService, // 👈 vẫn giữ nguyên
   ],

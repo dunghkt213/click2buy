@@ -1,6 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Headers } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Headers, UseGuards } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import {Inject} from '@nestjs/common/decorators/core/inject.decorator';
+import { Inject } from '@nestjs/common/decorators/core/inject.decorator';
+import { AiImageGuard } from '../guards/ai-image.guard';
+import { AiImageType } from '../decorators/ai-image-type.decorator';
+
 @Controller('products')
 export class ProductGateway {
   constructor(@Inject('KAFKA_SERVICE') private readonly kafka: ClientKafka) {}
@@ -16,6 +19,8 @@ export class ProductGateway {
   }
 
   @Post()
+  @UseGuards(AiImageGuard)
+  @AiImageType('PRODUCT_IMAGE')
   create(@Body() dto: any, @Headers('authorization') auth?: string) {
     return this.kafka.send('product.create', { dto, auth });
   }
@@ -31,6 +36,8 @@ export class ProductGateway {
   }
 
   @Patch(':id')
+  @UseGuards(AiImageGuard)
+  @AiImageType('PRODUCT_IMAGE')
   update(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
     return this.kafka.send('product.update', { id, dto, auth });
   }

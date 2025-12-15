@@ -2,6 +2,8 @@ import { Body, Controller, Delete, Get, Headers, Logger, Param, Patch, Post, Que
 import { ClientKafka } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common/decorators/core/inject.decorator';
 import { AiReviewGuard } from '../guards/ai-review.guard';
+import { AiImageGuard } from '../guards/ai-image.guard';
+import { AiImageType } from '../decorators/ai-image-type.decorator';
 import { AiService } from '../modules/ai-guard/ai.service';
 import { firstValueFrom } from 'rxjs';
 
@@ -25,7 +27,8 @@ export class ReviewGateway {
     }
 
     @Post()
-    @UseGuards(AiReviewGuard)
+    @UseGuards(AiReviewGuard, AiImageGuard)
+    @AiImageType('REVIEW_IMAGE')
     async create(@Body() dto: any, @Headers('authorization') auth?: string) { 
         const result = await firstValueFrom(this.kafka.send('review.create', { dto, auth }));
         
@@ -102,7 +105,8 @@ export class ReviewGateway {
     }
 
     @Patch(':id')
-    @UseGuards(AiReviewGuard)
+    @UseGuards(AiReviewGuard, AiImageGuard)
+    @AiImageType('REVIEW_IMAGE')
     update(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
         return this.kafka.send('review.update', { id, dto, auth });
     }
