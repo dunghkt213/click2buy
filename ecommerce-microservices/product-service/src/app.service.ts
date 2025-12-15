@@ -101,9 +101,9 @@ export class AppService {
 
     if (q.hotDeal === 'true') {
       filter.$expr = {
-        $gte: [
-          { $multiply: ['$price', 1.0] },
-          { $multiply: ['$originalPrice', 0.4] }
+        $lte: [
+          '$salePrice',
+          { $multiply: ['$price', 0.5] }
         ]
       };
     }
