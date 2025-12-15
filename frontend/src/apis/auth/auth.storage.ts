@@ -11,13 +11,17 @@ export const authStorage = {
   save(user: User, token: string) {
     if (typeof window === 'undefined') return;
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    // Save token to localStorage
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
     // Save token to cookie for SSE access
     document.cookie = `${AUTH_TOKEN_KEY}=${token}; path=/; max-age=86400; samesite=strict`;
   },
 
   clear() {
     if (typeof window === 'undefined') return;
+    // Clear user và token từ localStorage
     localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
     // Clear token cookie
     document.cookie = `${AUTH_TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
   },

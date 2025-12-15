@@ -33,6 +33,7 @@ import { useAppContext } from '../../providers/AppProvider';
 import { toast } from 'sonner';
 import { useSSE, PaymentQR } from '../../hooks/useSSE';
 import { QRPaymentModal } from '../../components/payment/QRPaymentModal';
+import { usePaymentSocket } from '@/hooks/usePaymentSocket';
 
 const defaultAddresses: Address[] = [
   {
@@ -59,7 +60,7 @@ const defaultAddresses: Address[] = [
 
 const paymentMethods: PaymentMethod[] = [
   {
-    id: 'bank',
+    id: 'BANKING',
     type: 'BANKING',
     name: 'Chuyển khoản ngân hàng',
     description: 'Chuyển khoản qua ứng dụng ngân hàng',
@@ -97,7 +98,7 @@ const paymentMethods: PaymentMethod[] = [
     icon: '💳'
   },
   {
-    id: 'cod',
+    id: 'COD',
     type: 'cod',
     name: 'Thanh toán khi nhận hàng',
     description: 'Thanh toán bằng tiền mặt khi nhận hàng',
@@ -171,8 +172,7 @@ export function CheckoutPage() {
   }, []);
 
   // SSE for payment updates
-  const { isConnected } = useSSE({
-    userId: app.user?.id,
+  const { isConnected } = usePaymentSocket({
     isLoggedIn: app.isLoggedIn,
     onQRCreated: (payments: PaymentQR[]) => {
       console.log('QR Created:', payments);
@@ -211,37 +211,69 @@ export function CheckoutPage() {
     }
 
     setIsProcessing(true);
-    
-    try {
-      const checkoutData = {
-        shippingAddress: selectedAddress,
-        paymentMethod: selectedPayment,
-        shippingMethod: selectedShipping,
-        items,
-        subtotal: totalPrice,
-        shippingFee,
-        discount: totalDiscount,
-        voucher: voucher || undefined,
-        total: finalTotal,
-        note: note || undefined
-      };
-      
-      const orderResult = await app.handleCheckout(checkoutData);
 
-      // Redirect to payment process page
-      navigate('/payment/process', {
-        state: {
-          orderCode: orderResult?.orderCode || `ORD_${Date.now()}`,
-          totalAmount: finalTotal,
-          paymentMethod: selectedPayment.type
+    try {
+      const cartsMap: Record<string, any> = {};
+
+      items.forEach((item: any) => {
+        if (!item.sellerId) throw new Error("Thiếu sellerId trong item FE");
+        if (!item.id) throw new Error("Thiếu productId trong item FE (id)");
+
+        if (!cartsMap[item.sellerId]) {
+          cartsMap[item.sellerId] = {
+            sellerId: item.sellerId,
+            products: []
+          };
         }
+
+        cartsMap[item.sellerId].products.push({
+          productId: item.id,
+          quantity: item.quantity
+        });
       });
+
+      const checkoutPayload = {
+        orderCode: Date.now().toString(),
+        paymentMethod: selectedPayment.id, // bank, cod...
+        carts: Object.values(cartsMap),
+
+        // giữ lại nhưng BE không dùng
+        shippingAddress: selectedAddress,
+        shippingMethod: selectedShipping.name,
+        note,
+        voucher,
+        discount: totalDiscount,
+        shippingFee,
+        total: finalTotal,
+      };
+
+      const orderResult = await app.handleCheckout(checkoutPayload);
+
+      // Logic xử lý theo payment method
+      if (selectedPayment.id === 'cod') {
+        // COD: redirect thẳng đến orders
+        toast.success('Đặt hàng thành công! Đơn hàng sẽ được giao trong 3-5 ngày.');
+        navigate('/orders');
+      } else {
+        // Banking/ZaloPay/MoMo/ShopeePay: redirect đến payment process để hiển thị QR
+        navigate('/payment/process', {
+          state: {
+            orderCode: orderResult?.orderCode || `ORD_${Date.now()}`,
+            totalAmount: finalTotal,
+            paymentMethod: selectedPayment.type
+          }
+        });
+      }
     } catch (error: any) {
       console.error('Checkout error:', error);
       toast.error('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
       setIsProcessing(false);
     }
+
+    setIsProcessing(false);
   };
+  
+  
 
   const applyVoucher = () => {
     if (voucher === 'SAVE10') {
@@ -495,36 +527,38 @@ export function CheckoutPage() {
             <Card className="p-6">
               <h3 className="font-semibold mb-4">Đơn hàng ({items.length} sản phẩm)</h3>
               
-              <ScrollArea className="max-h-64">
-                <div className="space-y-4">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex gap-3">
-                      <div className="relative w-12 h-12 bg-muted/20 rounded-lg overflow-hidden flex-shrink-0">
-                        <ImageWithFallback
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
-                          {item.quantity}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium line-clamp-2 mb-1">{item.name}</h4>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1">
-                            <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                            <span className="text-xs text-muted-foreground">{item.rating}</span>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <ScrollArea className="h-[320px] w-full">
+                  <div className="space-y-4 pr-4 py-2">
+                    {items.map((item) => (
+                      <div key={item.id} className="flex gap-3">
+                        <div className="relative w-12 h-12 bg-muted/20 rounded-lg overflow-hidden flex-shrink-0">
+                          <ImageWithFallback
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                            {item.quantity}
                           </div>
-                          <span className="text-sm font-medium">
-                            {formatPrice(item.price * item.quantity)}
-                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium line-clamp-2 mb-1">{item.name}</h4>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                              <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                              <span className="text-xs text-muted-foreground">{item.rating}</span>
+                            </div>
+                            <span className="text-sm font-medium">
+                              {formatPrice(item.price * item.quantity)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
             </Card>
 
             {/* Price Summary */}

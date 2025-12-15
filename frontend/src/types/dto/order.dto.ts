@@ -19,6 +19,7 @@ export interface CreateOrderDto {
   }>;
   shippingAddress: ShippingAddressDto;
   shippingMethod?: string;
+
   note?: string;
 }
 

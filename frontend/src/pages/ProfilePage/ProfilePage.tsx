@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 // Sửa đường dẫn import cho đúng với cấu trúc dự án của bạn (../../)
 import { useAppContext } from "../../providers/AppProvider";
 import { Button } from "../../components/ui/button";
@@ -31,6 +31,9 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle2,
+  Settings,
+  Moon,
+  Sun,
 } from "lucide-react";
 import {
   Dialog,
@@ -43,6 +46,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Header } from "../../components/layout/Header";
 import { Footer } from "../../components/layout/Footer";
+import { useTheme } from "../../hooks/useTheme";
+import { Switch } from "../../components/ui/switch";
 const maskPhoneNumber = (phone: string) => {
   if (!phone || phone.length < 3) return phone;
   // Giữ lại phần đầu, thay 3 số cuối bằng ***
@@ -50,10 +55,15 @@ const maskPhoneNumber = (phone: string) => {
 };
 export function ProfilePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isLoggedIn, handleLogout } = useAppContext(); // Lấy data từ Context
+  const { theme, toggleTheme, isDark } = useTheme(); // Theme hook
 
   // --- STATE QUẢN LÝ GIAO DIỆN ---
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get('tab');
+    return tab === 'settings' ? 'settings' : 'profile';
+  });
 
   // Profile tab state
   const [name, setName] = useState("");
@@ -88,6 +98,14 @@ export function ProfilePage() {
       navigate("/login");
     }
   }, [user, isLoggedIn, navigate]);
+
+  // Sync activeTab với URL params khi component mount hoặc URL thay đổi
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['profile', 'bank', 'password', 'settings', 'delete'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // --- CÁC HÀM XỬ LÝ (LOGIC GIẢ LẬP) ---
 
@@ -189,10 +207,8 @@ export function ProfilePage() {
       */}
       <Header
         cartItemsCount={0}
-        wishlistItemsCount={0}
         unreadNotifications={0}
         onCartClick={() => navigate("/cart")}
-        onWishlistClick={() => {}}
         onNotificationsClick={() => {}}
         onFilterClick={() => {}}
         onPromotionClick={() => {}}
@@ -231,7 +247,7 @@ export function ProfilePage() {
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-5 mb-6">
               <TabsTrigger value="profile" className="gap-2">
                 <UserCircle className="w-4 h-4" />
                 <span className="hidden sm:inline">Hồ sơ</span>
@@ -243,6 +259,10 @@ export function ProfilePage() {
               <TabsTrigger value="password" className="gap-2">
                 <Lock className="w-4 h-4" />
                 <span className="hidden sm:inline">Đổi mật khẩu</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-2">
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">Cài đặt</span>
               </TabsTrigger>
               <TabsTrigger value="delete" className="gap-2">
                 <Trash2 className="w-4 h-4" />
@@ -416,6 +436,59 @@ export function ProfilePage() {
                   <Button onClick={handlePasswordChange} className="w-full">
                     Đổi mật khẩu
                   </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cài đặt</CardTitle>
+                  <CardDescription>
+                    Quản lý cài đặt giao diện và ứng dụng
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Theme Settings */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          {isDark ? (
+                            <Moon className="w-5 h-5" />
+                          ) : (
+                            <Sun className="w-5 h-5" />
+                          )}
+                          <Label htmlFor="theme-toggle" className="text-base font-semibold">
+                            Giao diện
+                          </Label>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Chuyển đổi giữa nền sáng và nền tối
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-muted-foreground">
+                          {isDark ? 'Nền tối' : 'Nền sáng'}
+                        </span>
+                        <Switch
+                          id="theme-toggle"
+                          checked={isDark}
+                          onCheckedChange={toggleTheme}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-medium">Thông tin</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Tùy chọn giao diện sẽ được lưu tự động và áp dụng cho toàn bộ ứng dụng.
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

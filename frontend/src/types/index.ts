@@ -12,6 +12,7 @@ export interface Product {
   description: string;
   brand: string;
   inStock: boolean;
+  stock?: number; // THÊM: Số lượng còn lại trong kho
   isNew?: boolean;
   isSale?: boolean;
   isBestSeller?: boolean; // THÊM: Sản phẩm bán chạy

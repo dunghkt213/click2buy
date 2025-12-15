@@ -6,12 +6,12 @@ import {
   LogOut,
   MapPin,
   Package,
-  Settings,
   Shield,
   Star,
   User as UserIcon,
   Users
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { User } from 'types';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
@@ -48,6 +48,12 @@ export function AccountDropdown({
   onNotificationsClick,
   unreadNotifications
 }: AccountDropdownProps) {
+  const navigate = useNavigate();
+
+  const handleSettingsClick = () => {
+    navigate('/profile?tab=settings');
+  };
+
   const getMembershipBadgeColor = (level: string) => {
     switch (level) {
       case 'Bronze':
@@ -193,10 +199,10 @@ export function AccountDropdown({
             Bảo mật tài khoản
           </DropdownMenuItem>
           
-          <DropdownMenuItem>
+          {/* <DropdownMenuItem onClick={handleSettingsClick}>
             <Settings className="w-4 h-4 mr-3" />
             Cài đặt
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
           
           <DropdownMenuItem>
             <HelpCircle className="w-4 h-4 mr-3" />

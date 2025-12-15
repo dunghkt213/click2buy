@@ -28,6 +28,7 @@ export function mapProductResponse(data: BackendProductDto): Product {
     description: data.description || '',
     brand: data.brand || '',
     inStock: data.inStock ?? (data.isActive !== false),
+    stock: typeof data.stock === 'number' ? data.stock : undefined, // Số lượng còn lại trong kho
     isNew: data.isNew,
     isSale: data.isSale || (data.salePrice && data.salePrice < data.price),
     isBestSeller: data.isBestSeller,

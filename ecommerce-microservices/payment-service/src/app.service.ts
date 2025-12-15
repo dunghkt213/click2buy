@@ -109,9 +109,8 @@ export class PaymentService {
         key: process.env.PAYOS_CHECKSUM_KEY,
       });
       
-
+      const expiredAt = Math.floor(Date.now() / 1000) + 15 * 60;
       const raw = `amount=${amount}&cancelUrl=${cancelUrl ?? ''}&description=${description}&orderCode=${orderCode}&returnUrl=${returnUrl ?? ''}`;
-
 
       console.log("🔍 SIGN RAW:", raw);
 
@@ -126,8 +125,10 @@ export class PaymentService {
         description,
         cancelUrl,
         returnUrl,
+        expiredAt,
         signature,
       };
+      console.log("👉 PayOS payload:", payload);
 
 
       const { data } = await this.http.axiosRef.post(

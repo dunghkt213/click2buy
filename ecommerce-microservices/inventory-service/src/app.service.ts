@@ -225,6 +225,12 @@ async commitStock(data: {
     };
   }
 
+  async getStockByProductIds(productIds: string[]) {
+    return this.inventoryModel
+      .find({ productId: { $in: productIds } })
+      .lean();
+  }
+
   // ============================================
   // Seller chỉnh sửa stock trong product
   // product-service gửi Kafka inventory.updateStock.request

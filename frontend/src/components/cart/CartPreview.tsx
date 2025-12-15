@@ -1,5 +1,4 @@
 import React from 'react';
-import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import { ShoppingCart, ArrowRight } from 'lucide-react';
@@ -20,17 +19,17 @@ export function CartPreview({ items, totalPrice, onViewCart }: CartPreviewProps)
 
   if (items.length === 0) {
     return (
-      <Card className="w-80 p-4">
+      <div className="p-4">
         <div className="text-center py-8">
           <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
           <p className="text-muted-foreground">Giỏ hàng trống</p>
         </div>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="w-96 shadow-xl border-border">
+    <div className="w-full max-w-full">
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Sản phẩm mới thêm</h3>
@@ -53,11 +52,11 @@ export function CartPreview({ items, totalPrice, onViewCart }: CartPreviewProps)
               </div>
 
               {/* Thông tin */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium line-clamp-1">{item.name}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-sm text-muted-foreground">x{item.quantity}</span>
-                  <span className="text-sm font-semibold text-primary">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-sm font-medium line-clamp-1 break-words">{item.name}</p>
+                <div className="flex items-center justify-between mt-1 gap-2">
+                  <span className="text-sm text-muted-foreground shrink-0">x{item.quantity}</span>
+                  <span className="text-sm font-semibold text-primary shrink-0 whitespace-nowrap">
                     {formatPrice(item.price * item.quantity)}
                   </span>
                 </div>
@@ -77,9 +76,9 @@ export function CartPreview({ items, totalPrice, onViewCart }: CartPreviewProps)
         <Separator className="my-3" />
 
         {/* Tổng tiền */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-muted-foreground">Tổng tạm tính:</span>
-          <span className="font-semibold">{formatPrice(totalPrice)}</span>
+        <div className="flex items-center justify-between mb-3 gap-2">
+          <span className="text-sm text-muted-foreground shrink-0">Tổng tạm tính:</span>
+          <span className="font-semibold shrink-0 whitespace-nowrap">{formatPrice(totalPrice)}</span>
         </div>
 
         {/* Button xem giỏ hàng */}
@@ -91,6 +90,6 @@ export function CartPreview({ items, totalPrice, onViewCart }: CartPreviewProps)
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }

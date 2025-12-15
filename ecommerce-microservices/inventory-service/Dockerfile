@@ -1,3 +1,4 @@
+
 # --- BUILD STAGE ---
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -19,3 +20,4 @@ RUN npm install --only=production   # <-- chỉ cài deps thật sự cần khi 
 COPY --from=builder /app/dist ./dist
 
 CMD ["node", "dist/main.js"]
+

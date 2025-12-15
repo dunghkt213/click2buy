@@ -24,6 +24,8 @@ import { formatPrice } from '../utils/utils';
 import { useSSE } from '../hooks/useSSE';
 import { useAppContext } from '../providers/AppProvider';
 import { toast } from 'sonner';
+import { usePaymentSocket } from '@/hooks/usePaymentSocket';
+import QRCode, { QRCodeCanvas } from 'qrcode.react';
 
 interface PaymentProcessState {
   orderCode: string;
@@ -51,6 +53,13 @@ export function PaymentProcessPage() {
 
   // Redirect if no order data
   useEffect(() => {
+    console.log('🔄 Reset payment state for new order');
+
+    setPayments([]);
+    setCurrentStep('connecting');
+    setTimeLeft(900);
+    setIsExpired(false);
+    
     if (!state?.orderCode) {
       toast.error('Không tìm thấy thông tin đơn hàng');
       navigate('/cart');
@@ -58,35 +67,49 @@ export function PaymentProcessPage() {
     }
   }, [state, navigate]);
 
-  // SSE for real-time payment updates
-  const { isConnected } = useSSE({
-    userId: app.user?.id,
+  const { isConnected } = usePaymentSocket({
     isLoggedIn: app.isLoggedIn,
-    onQRCreated: (newPayments: PaymentQR[]) => {
-      console.log('💳 PaymentProcessPage: QR Created event received:', newPayments);
-      toast.success('Mã QR thanh toán đã được tạo!');
-      setPayments(newPayments);
-      setCurrentStep('qr');
-      if (newPayments.length > 0) {
-        setTimeLeft(newPayments[0].expireIn || 900);
-        setIsExpired(false);
+
+    onQRCreated: (newPayments) => {
+      console.log('🧪 onQRCreated CALLED');
+      console.log('🧪 newPayments:', newPayments);
+      console.log('🧪 isArray:', Array.isArray(newPayments));
+      console.log('🧪 length:', newPayments?.length);
+      console.log('🧪 firstPayment:', newPayments?.[0]);
+      const payments = newPayments?.payments;
+
+      if (!Array.isArray(payments) || payments.length === 0) {
+        console.error('❌ Invalid payments payload', newPayments);
+        return;
       }
+
+      const matched = payments.find(
+        p => p.orderId === state.orderCode
+      );
+    
+      if (!matched) {
+        console.warn('⚠️ QR không thuộc đơn hiện tại – bỏ qua');
+        return;
+      }
+
+      setPayments(payments);
+      setTimeLeft(payments[0].expireIn || 900);
+      setIsExpired(false);
+      setCurrentStep('qr');
     },
-    onPaymentSuccess: (data: any) => {
-      console.log('💳 PaymentProcessPage: Payment Success event received');
+
+    onPaymentSuccess: () => {
       setCurrentStep('success');
       toast.success('Thanh toán thành công!');
-
-      setTimeout(() => {
-        navigate('/orders');
-      }, 3000);
+      setTimeout(() => navigate('/orders'), 3000);
     },
-    onQRExpired: (data: any) => {
-      console.log('💳 PaymentProcessPage: QR Expired event received');
+
+    onQRExpired: () => {
       setIsExpired(true);
-      toast.error('Mã QR đã hết hạn. Vui lòng thử lại.');
+      toast.error('Mã QR đã hết hạn');
     },
   });
+
 
   // Update step when SSE connects
   useEffect(() => {
@@ -190,6 +213,17 @@ export function PaymentProcessPage() {
 
       case 'qr':
         const firstPayment = payments[0];
+        if (!firstPayment) {
+          return (
+            <div className="text-center space-y-6">
+              <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
+              <p className="text-muted-foreground">
+                Đang tải mã QR thanh toán...
+              </p>
+            </div>
+          );
+        }
+
         return (
           <div className="text-center space-y-6">
             <div>
@@ -201,13 +235,12 @@ export function PaymentProcessPage() {
 
             {/* Timer */}
             <div className="flex justify-center">
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${
-                timeLeft < 60
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${timeLeft < 60
                   ? 'bg-red-50 text-red-700 border border-red-200'
                   : timeLeft < 300
-                  ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
-                  : 'bg-green-50 text-green-700 border border-green-200'
-              }`}>
+                    ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                    : 'bg-green-50 text-green-700 border border-green-200'
+                }`}>
                 <Clock className="w-4 h-4" />
                 <span className="font-mono font-semibold">
                   {isExpired ? '00:00' : formatTime(timeLeft)}
@@ -238,16 +271,17 @@ export function PaymentProcessPage() {
               <>
                 <div className="flex justify-center">
                   <div className="p-6 bg-white rounded-lg border-2 border-gray-200">
-                    <ImageWithFallback
-                      src={firstPayment.qrCode}
-                      alt="QR Code"
-                      className="w-64 h-64"
-                      fallback={
-                        <div className="w-64 h-64 flex items-center justify-center bg-gray-50 rounded">
-                          <p className="text-sm text-gray-600">Không thể tải QR</p>
-                        </div>
-                      }
-                    />
+                    <div className="flex justify-center">
+                      <div className="p-6 bg-white rounded-lg border-2 border-gray-200">
+                        <QRCodeCanvas
+                          value={firstPayment.qrCode}
+                          size={256}
+                          level="M"
+                          includeMargin
+                        />
+                      </div>
+                    </div>
+
                   </div>
                 </div>
 
@@ -363,9 +397,8 @@ export function PaymentProcessPage() {
             </div>
 
             {/* Connection Status */}
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
-              isConnected ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
-            }`}>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${isConnected ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
+              }`}>
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`} />
               {isConnected ? 'Đã kết nối' : 'Đang kết nối...'}
             </div>

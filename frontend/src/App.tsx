@@ -4,21 +4,25 @@ import { Toaster } from "sonner"; // Thư viện thông báo
 import { AppProvider } from "./providers/AppProvider"; // Context toàn cục
 
 // Layouts
+import { PaymentProcessPage } from "@/pages/PaymentProcessPage";
 import { MainLayout } from "./layouts/MainLayout";
 
+
 // Pages (Đảm bảo đường dẫn import đúng với cấu trúc dự án của bạn)
+import { ChatFloatingButton } from './components/chat/ChatFloatingButton';
+import { AddProductPage } from "./pages/AddProductPage/AddProductPage";
 import LoginPage from "./pages/AuthPage/LoginPage/LoginPage";
 import RegisterPage from "./pages/AuthPage/RegisterPage/RegisterPage";
+import { CartPage } from "./pages/CartPage/CartPage";
+import { CheckoutPage } from "./pages/CheckoutPage/CheckoutPage";
+import { EditProductPage } from "./pages/EditProductPage/EditProductPage";
 import { FeedPage } from "./pages/FeedPage/FeedPage";
+import { MyStorePage } from "./pages/MyStorePage/MyStorePage";
+import { OrdersPage } from "./pages/OrdersPage/OrdersPage";
+import { ProductDetailPage } from "./pages/ProductDetailPage/ProductDetailPage";
 import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
 import { SearchPage } from "./pages/SearchPage/SearchPage";
-import { MyStorePage } from "./pages/MyStorePage/MyStorePage";
-import { CartPage } from "./pages/CartPage/CartPage";
-import { OrdersPage } from "./pages/OrdersPage/OrdersPage";
 import { ShopPage } from "./pages/ShopPage/ShopPage";
-import { ProductDetailPage } from "./pages/ProductDetailPage/ProductDetailPage";
-import { CheckoutPage } from "./pages/CheckoutPage/CheckoutPage";
-import { ChatFloatingButton } from './components/chat/ChatFloatingButton';
 
 // Component cuộn lên đầu trang khi chuyển route
 function ScrollToTop() {
@@ -64,6 +68,8 @@ export default function App() {
 
         {/* Trang quản lý cửa hàng (của mình) */}
         <Route path="/my-store" element={<MainLayout><MyStorePage /></MainLayout>} />
+        <Route path="/my-store/add-product" element={<MainLayout><AddProductPage /></MainLayout>} />
+        <Route path="/my-store/edit-product/:id" element={<MainLayout><EditProductPage /></MainLayout>} />
 
         {/* --- NHÓM AUTH (Không có Header/Footer) --- */}
         <Route path="/login" element={<LoginPage />} />
