@@ -96,6 +96,9 @@ export class Product {
   @Prop({ default: 0 })
   discount?: number;
 
+  @Prop({ type: String, default: null })
+  reviewSummary?: string;
+
   @Prop({ type: WarehouseAddress })
   warehouseAddress?: WarehouseAddress;
 

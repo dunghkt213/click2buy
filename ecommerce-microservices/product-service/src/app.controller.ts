@@ -79,4 +79,8 @@ export class AppController {
     return this.appService.findBatch(data.ids);
   }
 
+  @MessagePattern('product.updateReviewSummary')
+  updateReviewSummary(@Payload() { productId, reviewSummary }: { productId: string; reviewSummary: string }) {
+    return this.appService.updateReviewSummary(productId, reviewSummary);
+  }
 }

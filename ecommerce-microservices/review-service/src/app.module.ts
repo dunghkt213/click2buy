@@ -5,7 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Review, ReviewSchema } from 'schemas/review-schema';
+import { Review, ReviewSchema } from './schemas/review-schema';
 import { AuthModule } from './auth/auth.module';
 
 @Module({
