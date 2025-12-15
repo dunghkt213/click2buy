@@ -1,4 +1,4 @@
-import { Controller, UseGuards, BadRequestException} from '@nestjs/common';
+import { Controller, UseGuards, BadRequestException } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { InjectModel } from '@nestjs/mongoose';
 import { AppService } from './app.service';
@@ -12,90 +12,95 @@ import { CurrentUser } from './auth/current-user.decorator';
 export class AppController {
   constructor(
     private readonly appService: AppService,
-  ) {}
+  ) { console.log('AppController initialized'); }
 
 
-@MessagePattern('order.create')
-@UseGuards(JwtKafkaAuthGuard)
-async createOrders(@Payload() data: any, @CurrentUser() user: any) {
-  const userId = user?.sub || user?.id;
-  const { carts, paymentMethod, orderCode } = data;
-  console.log('controller order.create', carts)
-  if (!carts || !Array.isArray(carts)) {
-    throw new BadRequestException('Invalid payload: carts[] required');
+  @MessagePattern('order.create')
+  @UseGuards(JwtKafkaAuthGuard)
+  async createOrders(@Payload() data: CreateOrderDto, @CurrentUser() user: any) {
+    const userId = user?.sub || user?.id;
+    console.log('controller order.create', data)
+    if (!userId) {
+      throw new BadRequestException('Invalid user');
+    }
+
+    try {
+      data.userId = userId;
+      console.log('controller order.create DTO:', data);
+      return this.appService.createOrders(data);
+    } catch (err) {
+      throw new BadRequestException(err.message || 'Service error');
+    }
+
   }
 
-  if (!paymentMethod) {
-    throw new BadRequestException('paymentMethod required');
+  @MessagePattern('order.getAllOrderForSaller')
+  @UseGuards(JwtKafkaAuthGuard)
+  async getAllOrderForSaller(@CurrentUser() user: any) {
+    const ownerId = user?.sub || user?.id;
+    return this.appService.getAllOrderForSaller(ownerId)
+  }
+  @MessagePattern('order.getAllOrderForUser')
+  @UseGuards(JwtKafkaAuthGuard)
+  async getAllOrderForUser(@CurrentUser() user: any) {
+    const userId = user?.sub || user?.id;
+    return this.appService.getAllOrderForUser(userId)
   }
 
-  try{
-    return this.appService.createOrders({
-    userId,
-    orderCode,
-    paymentMethod,
-    carts,
-  });
-  } catch(err){
-    throw new BadRequestException(err.message || 'Service error');
+  @MessagePattern('order.timeout')
+  timeout(@Payload() data: any) {
+    console.log('Order timeout received in order-service:', data);
+    return true
   }
-} 
 
-@MessagePattern('order.getAllOrderForSaller')
-@UseGuards(JwtKafkaAuthGuard)
-async getAllOrderForSaller(@CurrentUser() user: any) {
-  const ownerId = user?.sub || user?.id;
-  return this.appService.getAllOrderForSaller(ownerId)
-} 
-@MessagePattern('order.getAllOrderForUser')
-@UseGuards(JwtKafkaAuthGuard)
-async getAllOrderForUser(@CurrentUser() user: any) {
-  const userId = user?.sub || user?.id;
-  return this.appService.getAllOrderForUser(userId)
-} 
+  @MessagePattern('payment.success')
+  async updateOrderStatus(@Payload() data: any) {
+    return this.appService.updateOrderStatus_paymentSuccess(data)
+  }
 
-@MessagePattern('order.timeout')
-timeout(@Payload() data: any) {
-  console.log('Order timeout received in order-service:', data);
-  return true
-}
+  @MessagePattern('order.payment.banking.requested')
+  @UseGuards(JwtKafkaAuthGuard)
+  async handlePaymentBankingRequested(
+    @Payload() data: any,
+    @CurrentUser() user: any,
+  ) {
+    console.log('✅ RECEIVED order.payment.banking.requested', data);
 
-@MessagePattern('payment.success')
-async updateOrderStatus(@Payload() data:any) {
-  return this.appService.updateOrderStatus_paymentSuccess(data)
-} 
-// order.app.controller.ts
-@MessagePattern('order.payment.banking.requested')
-@UseGuards(JwtKafkaAuthGuard)
-async handlePaymentBankingRequested(@Payload() data: any, @CurrentUser() user: any) {
-  console.log('Received banking payment request for orders:', data);
-  const userId = user?.sub || user?.id;
-  const {  orderIds } = data;
-  return this.appService.requestBankingForOrders({ userId, orderIds });
-}
+    const userId = user?.sub || user?.id;
+    const { orderCode } = data;
+
+    if (!orderCode) {
+      throw new BadRequestException('orderCode is required');
+    }
+
+    return this.appService.requestBankingForOrders({
+      userId,
+      orderCode,
+    });
+  }
 
 
-@MessagePattern('order.confirm')
-@UseGuards(JwtKafkaAuthGuard)
-async confirmOrder(@Payload() data: { orderId: string }, @CurrentUser() user: any) {
-  const sellerId = user?.sub || user?.id;
-  return this.appService.confirmOrder(data.orderId, sellerId);
-}
+  @MessagePattern('order.confirm')
+  @UseGuards(JwtKafkaAuthGuard)
+  async confirmOrder(@Payload() data: { orderId: string }, @CurrentUser() user: any) {
+    const sellerId = user?.sub || user?.id;
+    return this.appService.confirmOrder(data.orderId, sellerId);
+  }
 
-@MessagePattern('order.reject')
-@UseGuards(JwtKafkaAuthGuard)
-async rejectOrder(
-  @Payload() data: { orderId: string; reason?: string },
-  @CurrentUser() user: any,
-) {
-  const sellerId = user?.sub || user?.id;
-  return this.appService.rejectOrder(data.orderId, sellerId, data.reason);
-}
+  @MessagePattern('order.reject')
+  @UseGuards(JwtKafkaAuthGuard)
+  async rejectOrder(
+    @Payload() data: { orderId: string; reason?: string },
+    @CurrentUser() user: any,
+  ) {
+    const sellerId = user?.sub || user?.id;
+    return this.appService.rejectOrder(data.orderId, sellerId, data.reason);
+  }
 
-@MessagePattern('order.complete')
-@UseGuards(JwtKafkaAuthGuard)
-async completeOrder(@Payload() data: { orderId: string }, @CurrentUser() user: any) {
-  const sellerId = user?.sub || user?.id;
-  return this.appService.completeOrder(data.orderId, sellerId);
-}
+  @MessagePattern('order.complete')
+  @UseGuards(JwtKafkaAuthGuard)
+  async completeOrder(@Payload() data: { orderId: string }, @CurrentUser() user: any) {
+    const sellerId = user?.sub || user?.id;
+    return this.appService.completeOrder(data.orderId, sellerId);
+  }
 }

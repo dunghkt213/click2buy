@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Headers, Inject } from '@nestjs/common';
+import { Body, Controller, Post, Headers, Inject, Get, Param } from '@nestjs/common';
 import { ClientKafka, MessagePattern } from '@nestjs/microservices';
 import { PaymentWsGateway } from './payment-ws.gateway';
 
@@ -8,12 +8,14 @@ export class PaymentGateway {
     @Inject('KAFKA_SERVICE')
     private readonly kafka: ClientKafka,
     private readonly paymentWs: PaymentWsGateway,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     this.kafka.subscribeToResponseOf('payment.success');
     this.kafka.subscribeToResponseOf('payment.qr.created');
     this.kafka.subscribeToResponseOf('payment.qr.expired');
+    this.kafka.subscribeToResponseOf('payment.get.by.order');
+    this.kafka.subscribeToResponseOf('order.payment.banking.requested');
     await this.kafka.connect();
   }
 
@@ -56,23 +58,38 @@ export class PaymentGateway {
   }
 
   @Post('/create-banking')
-  async requestBanking(@Body() body: any, @Headers('authorization') auth?: string) {
-    this.kafka.emit('order.payment.banking.requested', {
-      ...body,
-      auth,
-    });
+  async requestBanking(
+    @Body() body: { orderCode: string },
+    @Headers('authorization') auth: string,
+  ) {
+    console.log('📥 HTTP /payment/create-banking RECEIVED', body);
   
-    return { message: 'Banking payment requested, waiting for QR' };
+    return this.kafka.send(
+      'order.payment.banking.requested',
+      {
+        orderCode: body.orderCode,
+        auth,
+      },
+    );
   }
-
+  
   @MessagePattern('payment.qr.expired')
   sendExpireToUser(msg) {
-  this.paymentWs.sendToUser(msg.userId, {
-    type: 'QR_EXPIRED',
-    orderId: msg.orderId
-  });
-}
+    this.paymentWs.sendToUser(msg.userId, {
+      type: 'QR_EXPIRED',
+      orderId: msg.orderId
+    });
+  }
 
-
+  @Get('/by-order/:orderCode')
+  getPaymentByOrder(
+    @Param('orderCode') orderCode: string,
+    @Headers('authorization') auth: string,
+  ) {
+    return this.kafka.send(
+      'payment.get.by.order',
+      { orderCode, auth }
+    );
+  }
 
 }

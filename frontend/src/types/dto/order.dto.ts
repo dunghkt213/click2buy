@@ -9,19 +9,22 @@
 export interface CreateOrderDto {
   orderCode: string;
   paymentMethod: string;
+
   carts: Array<{
-    cartId: string;
     sellerId: string;
+
     products: Array<{
       productId: string;
       quantity: number;
     }>;
-  }>;
-  shippingAddress: ShippingAddressDto;
-  shippingMethod?: string;
 
-  note?: string;
+    // ===== OPTIONAL – SHOP LEVEL =====
+    voucherCode?: string;       // voucher của shop
+    shippingFee?: number;       // phí ship của shop
+    paymentDiscount?: number;   // giảm theo payment của shop
+  }>;
 }
+
 
 export interface ShippingAddressDto {
   name: string;

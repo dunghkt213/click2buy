@@ -79,16 +79,29 @@ export interface ShippingMethod {
   isRecommended?: boolean;
 }
 
+export interface ShopCheckoutData {
+  sellerId: string;
+  sellerName?: string;
+  items: any[]; // CartItem[]
+  subtotal: number; // Tổng tiền sản phẩm của shop này
+  shippingMethod: ShippingMethod;
+  shippingFee: number; // Phí ship của shop này
+  voucher?: string; // Voucher của shop này
+  voucherDiscount: number; // Giảm giá từ voucher shop
+  total: number; // Tổng tiền sau ship và voucher của shop này
+}
+
 export interface CheckoutData {
   shippingAddress: Address;
   paymentMethod: PaymentMethod;
-  shippingMethod: ShippingMethod;
-  items: any[]; // CartItem[]
-  subtotal: number;
-  shippingFee: number;
-  discount: number;
-  voucher?: string;
-  total: number;
+  shops: ShopCheckoutData[]; // Array của từng shop
+  systemVoucher?: string; // Voucher hệ thống chung
+  systemVoucherDiscount: number; // Giảm giá từ voucher hệ thống
+  totalItems: number;
+  totalSubtotal: number; // Tổng tất cả subtotal của shops
+  totalShippingFee: number; // Tổng tất cả shippingFee của shops
+  totalDiscount: number; // Tổng tất cả discount (shop vouchers + system voucher + payment discount)
+  finalTotal: number;
   note?: string;
 }
 
