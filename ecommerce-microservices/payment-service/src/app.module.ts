@@ -11,9 +11,13 @@ import { ClientKafka, ClientsModule, Transport } from '@nestjs/microservices';
 import { HttpModule } from '@nestjs/axios';
 import { redisProviders } from './redis.provider';
 import { PaymentExpireListener } from './payment-expire.listener';
+import { JwtModule } from '@nestjs/jwt';
+import { JwtKafkaAuthGuard } from './auth/jwt-kafka.guard';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
+    AuthModule,
     HttpModule,
     // 1️⃣ Load biến môi trường toàn cục (.env)
     ConfigModule.forRoot({ isGlobal: true }),
@@ -56,7 +60,7 @@ import { PaymentExpireListener } from './payment-expire.listener';
   ],
 
   controllers: [PaymentController],
-  providers: [...redisProviders, PaymentService,  PaymentExpireListener,],
+  providers: [...redisProviders, PaymentService,  PaymentExpireListener, JwtKafkaAuthGuard,],
 })
 export class PaymentModule implements OnModuleInit {
   constructor(@InjectConnection() private readonly connection: Connection,  @Inject('KAFKA_PRODUCER')

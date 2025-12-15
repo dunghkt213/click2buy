@@ -4,6 +4,13 @@ import { Document } from 'mongoose';
 
 export type PaymentDocument = Payment & Document;
 
+export enum PaymentStatus {
+  PENDING = 'PENDING',   // Đã tạo QR, chờ thanh toán
+  PAID = 'PAID',         // Thanh toán thành công
+  EXPIRED = 'EXPIRED',   // QR hết hạn
+  FAILED = 'FAILED',     // Thanh toán lỗi / bị huỷ
+}
+
 @Schema({ timestamps: true })
 export class Payment {
 
@@ -11,7 +18,10 @@ export class Payment {
   userId: string;
 
   @Prop({ required: true })
-  orderId: string;
+  orderIds: string[];
+
+  @Prop({ required: true, index: true })
+  orderCode: string;
 
   @Prop({ required: true, enum: ['COD', 'BANKING'] })
   paymentMethod: string;
@@ -22,8 +32,12 @@ export class Payment {
   @Prop({ required: true })
   paidAmount: number;
 
-  @Prop({ default: 'PENDING', enum:['PENDING', 'EXPIRED', 'FAIL', 'SUCCESS'] })
-  status: string;
+  @Prop({
+    type: String,
+    enum: Object.values(PaymentStatus),
+    default: PaymentStatus.PENDING,
+  })
+  status: PaymentStatus;
 
   @Prop()
   checkoutUrl: string;   // 👈 BẮT BUỘC THÊM
@@ -31,8 +45,8 @@ export class Payment {
   @Prop()
   qrCode: string;        // 👈 BẮT BUỘC THÊM
 
-  @Prop()
-  expireAt: number;      // optional
+  @Prop({ type: Date })
+  expireAt: Date;     // optional
   
   @Prop()
   paymentLinkId: string; // optional

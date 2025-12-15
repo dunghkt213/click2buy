@@ -27,13 +27,13 @@ import {
   CheckCircle,
   Star
 } from 'lucide-react';
-import { CartItem, Address, PaymentMethod, ShippingMethod } from '../../types';
+import { CartItem, Address, PaymentMethod, ShippingMethod, ShopCheckoutData } from '../../types';
 import { formatPrice } from '../../utils/utils';
 import { useAppContext } from '../../providers/AppProvider';
 import { toast } from 'sonner';
-import { useSSE, PaymentQR } from '../../hooks/useSSE';
-import { QRPaymentModal } from '../../components/payment/QRPaymentModal';
-import { usePaymentSocket } from '@/hooks/usePaymentSocket';
+// import { useSSE, PaymentQR } from '../../hooks/useSSE'; // Temporarily disabled
+// import { QRPaymentModal } from '../../components/payment/QRPaymentModal';
+// import { usePaymentSocket } from '@/hooks/usePaymentSocket';
 
 const defaultAddresses: Address[] = [
   {
@@ -137,7 +137,7 @@ export function CheckoutPage() {
   const app = useAppContext();
 
   // Lấy items từ location.state (khi mua ngay) hoặc từ cart items đã chọn
-  const [items, setItems] = useState<CartItem[]>(() => {
+  const [items] = useState<CartItem[]>(() => {
     // Nếu có items từ location.state (mua ngay)
     if (location.state?.items && Array.isArray(location.state.items)) {
       return location.state.items;
@@ -151,14 +151,66 @@ export function CheckoutPage() {
 
   const [selectedAddress, setSelectedAddress] = useState<Address>(defaultAddresses[0]);
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>(paymentMethods[0]);
-  const [selectedShipping, setSelectedShipping] = useState<ShippingMethod>(shippingMethods[0]);
-  const [voucher, setVoucher] = useState('');
+  const [shops, setShops] = useState<ShopCheckoutData[]>([]);
+  const [systemVoucher, setSystemVoucher] = useState('');
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // QR Payment Modal states
-  const [qrPayments, setQrPayments] = useState<PaymentQR[]>([]);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  // QR Payment Modal states (temporarily disabled)
+  // const [qrPayments, setQrPayments] = useState<PaymentQR[]>([]);
+  // const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+  // Group items by sellerId và tạo shop data
+  useEffect(() => {
+    if (!items || items.length === 0) {
+      setShops([]);
+      return;
+    }
+
+    const shopsMap = new Map<string, ShopCheckoutData>();
+
+    items.forEach((item: CartItem) => {
+      if (!item.sellerId) {
+        console.warn("Item thiếu sellerId:", item);
+        return;
+      }
+
+      const sellerId = item.sellerId;
+      const subtotal = item.price * item.quantity;
+
+      if (!shopsMap.has(sellerId)) {
+        shopsMap.set(sellerId, {
+          sellerId,
+          sellerName: `Shop ${sellerId.slice(-4)}`,
+          items: [],
+          subtotal: 0,
+          shippingMethod: shippingMethods[0], // Default shipping method
+          shippingFee: 0, // Will be calculated later
+          voucher: '',
+          voucherDiscount: 0,
+          total: 0
+        });
+      }
+
+      const shop = shopsMap.get(sellerId)!;
+      shop.items.push(item);
+      shop.subtotal += subtotal;
+    });
+
+    // Calculate shipping fee for each shop
+    const shopsArray = Array.from(shopsMap.values()).map(shop => {
+      const shippingFee = shop.subtotal >= 1000000 ? 0 : shop.shippingMethod.price;
+      const total = shop.subtotal + shippingFee - shop.voucherDiscount;
+
+      return {
+        ...shop,
+        shippingFee,
+        total
+      };
+    });
+
+    setShops(shopsArray);
+  }, [items]);
 
   // Scroll to top khi mount
   useEffect(() => {
@@ -171,38 +223,90 @@ export function CheckoutPage() {
     }
   }, []);
 
-  // SSE for payment updates
-  const { isConnected } = usePaymentSocket({
-    isLoggedIn: app.isLoggedIn,
-    onQRCreated: (payments: PaymentQR[]) => {
-      console.log('QR Created:', payments);
-      setQrPayments(payments);
-      setIsQrModalOpen(true);
-      setIsProcessing(false); // Stop loading when QR is ready
-    },
-    onPaymentSuccess: (data: any) => {
-      console.log('Payment Success:', data);
-      setIsQrModalOpen(false);
-      toast.success('Thanh toán thành công! Đang chuyển hướng...');
-      // Navigate to orders page after a short delay
-      setTimeout(() => {
-        navigate('/orders');
-      }, 2000);
-    },
-    onQRExpired: (data: any) => {
-      console.log('QR Expired:', data);
-      setIsQrModalOpen(false);
-      toast.error('Mã QR đã hết hạn. Vui lòng thử lại.');
-    },
-  });
+  // SSE for payment updates - Temporarily disabled
+  // const { isConnected } = usePaymentSocket({
+  //   isLoggedIn: app.isLoggedIn,
+  //   onQRCreated: (payments: PaymentQR[]) => {
+  //     console.log('QR Created:', payments);
+  //     setQrPayments(payments);
+  //     setIsQrModalOpen(true);
+  //     setIsProcessing(false); // Stop loading when QR is ready
+  //   },
+  //   onPaymentSuccess: (data: any) => {
+  //     console.log('Payment Success:', data);
+  //     setIsQrModalOpen(false);
+  //     toast.success('Thanh toán thành công! Đang chuyển hướng...');
+  //     // Navigate to orders page after a short delay
+  //     setTimeout(() => {
+  //       navigate('/orders');
+  //     }, 2000);
+  //   },
+  //   onQRExpired: (data: any) => {
+  //     console.log('QR Expired:', data);
+  //     setIsQrModalOpen(false);
+  //     toast.error('Mã QR đã hết hạn. Vui lòng thử lại.');
+  //   },
+  // });
 
-  const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const shippingFee = totalPrice >= 1000000 ? 0 : selectedShipping.price;
-  const paymentDiscount = selectedPayment.discount ? (totalPrice * selectedPayment.discount / 100) : 0;
-  const voucherDiscount = voucher === 'SAVE10' ? Math.min(totalPrice * 0.1, 100000) : 0;
-  const totalDiscount = paymentDiscount + voucherDiscount;
-  const finalTotal = totalPrice + shippingFee - totalDiscount;
+  // Handlers for shop-specific data
+  const updateShopShipping = (sellerId: string, shippingMethod: ShippingMethod) => {
+    setShops(prev => prev.map(shop => {
+      if (shop.sellerId === sellerId) {
+        const shippingFee = shop.subtotal >= 1000000 ? 0 : shippingMethod.price;
+        const total = shop.subtotal + shippingFee - shop.voucherDiscount;
+        return {
+          ...shop,
+          shippingMethod,
+          shippingFee,
+          total
+        };
+      }
+      return shop;
+    }));
+  };
+
+  const updateShopVoucher = (sellerId: string, voucher: string) => {
+    setShops(prev => prev.map(shop => {
+      if (shop.sellerId === sellerId) {
+        const voucherDiscount = voucher === 'SAVE10' ? Math.min(shop.subtotal * 0.1, 50000) : 0;
+        const total = shop.subtotal + shop.shippingFee - voucherDiscount;
+        return {
+          ...shop,
+          voucher,
+          voucherDiscount,
+          total
+        };
+      }
+      return shop;
+    }));
+  };
+
+  const applyShopVoucher = (sellerId: string) => {
+    const shop = shops.find(s => s.sellerId === sellerId);
+    if (shop?.voucher === 'SAVE10') {
+      toast.success(`Mã giảm giá của shop ${shop.sellerName} đã được áp dụng!`);
+    } else {
+      toast.error('Mã giảm giá không hợp lệ');
+    }
+  };
+
+  const applySystemVoucher = () => {
+    if (systemVoucher === 'SYSTEM10') {
+      toast.success('Mã giảm giá hệ thống đã được áp dụng!');
+    } else {
+      toast.error('Mã giảm giá hệ thống không hợp lệ');
+    }
+  };
+
+  // Calculate totals
+  const totalItems = shops.reduce((sum: number, shop) => sum + shop.items.reduce((shopSum, item) => shopSum + item.quantity, 0), 0);
+  const totalSubtotal = shops.reduce((sum, shop) => sum + shop.subtotal, 0);
+  const totalShippingFee = shops.reduce((sum, shop) => sum + shop.shippingFee, 0);
+  const totalShopVoucherDiscount = shops.reduce((sum, shop) => sum + shop.voucherDiscount, 0);
+  const paymentDiscount = selectedPayment.discount ? (totalSubtotal * selectedPayment.discount / 100) : 0;
+  const systemVoucherDiscount = systemVoucher === 'SYSTEM10' ? Math.min(totalSubtotal * 0.1, 100000) : 0;
+  const totalDiscount = paymentDiscount + totalShopVoucherDiscount + systemVoucherDiscount;
+  const finalTotal = totalSubtotal + totalShippingFee - totalDiscount;
 
   const handleCheckout = async () => {
     if (!app.isLoggedIn) {
@@ -213,41 +317,31 @@ export function CheckoutPage() {
     setIsProcessing(true);
 
     try {
-      const cartsMap: Record<string, any> = {};
-
-      items.forEach((item: any) => {
-        if (!item.sellerId) throw new Error("Thiếu sellerId trong item FE");
-        if (!item.id) throw new Error("Thiếu productId trong item FE (id)");
-
-        if (!cartsMap[item.sellerId]) {
-          cartsMap[item.sellerId] = {
-            sellerId: item.sellerId,
-            products: []
-          };
-        }
-
-        cartsMap[item.sellerId].products.push({
+      // Tạo carts payload từ shops data
+      const carts = shops.map(shop => ({
+        sellerId: shop.sellerId,
+        products: shop.items.map(item => ({
           productId: item.id,
           quantity: item.quantity
-        });
-      });
+        })),
+        voucherCode: shop.voucher || undefined,
+        shippingFee: shop.shippingFee,
+        paymentDiscount: selectedPayment.discount ? (shop.subtotal * selectedPayment.discount / 100) : 0
+      }));
 
       const checkoutPayload = {
         orderCode: Date.now().toString(),
-        paymentMethod: selectedPayment.id, // bank, cod...
-        carts: Object.values(cartsMap),
-
-        // giữ lại nhưng BE không dùng
-        shippingAddress: selectedAddress,
-        shippingMethod: selectedShipping.name,
-        note,
-        voucher,
-        discount: totalDiscount,
-        shippingFee,
-        total: finalTotal,
+        paymentMethod: selectedPayment.id,
+        carts,
+        // Thông tin shipping address sẽ được BE lấy từ user profile
       };
 
+      console.log('🛒 Checkout payload với shops:', checkoutPayload);
+
+      console.log('🛒 Checkout payload với shops:', checkoutPayload);
+
       const orderResult = await app.handleCheckout(checkoutPayload);
+      console.log('🧪 orderResult RAW:', orderResult);
 
       // Logic xử lý theo payment method
       if (selectedPayment.id === 'cod') {
@@ -255,10 +349,14 @@ export function CheckoutPage() {
         toast.success('Đặt hàng thành công! Đơn hàng sẽ được giao trong 3-5 ngày.');
         navigate('/orders');
       } else {
+        if (!orderResult?.orderCode) {
+          toast.error('Không lấy được mã đơn hàng');
+          return;
+        }        
         // Banking/ZaloPay/MoMo/ShopeePay: redirect đến payment process để hiển thị QR
-        navigate('/payment/process', {
+        navigate(`/payment/process/${orderResult.orderCode}`, {
           state: {
-            orderCode: orderResult?.orderCode || `ORD_${Date.now()}`,
+            orderCode: orderResult?.orderCode,
             totalAmount: finalTotal,
             paymentMethod: selectedPayment.type
           }
@@ -275,13 +373,7 @@ export function CheckoutPage() {
   
   
 
-  const applyVoucher = () => {
-    if (voucher === 'SAVE10') {
-      toast.success('Mã giảm giá đã được áp dụng!');
-    } else {
-      toast.error('Mã giảm giá không hợp lệ');
-    }
-  };
+  // applyVoucher function removed - now handled per shop
 
   if (!items || items.length === 0) {
     return null; // Sẽ redirect về cart
@@ -306,7 +398,7 @@ export function CheckoutPage() {
               <div>
                 <h1 className="text-2xl font-semibold">Thanh toán đơn hàng</h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {items.length} sản phẩm • {totalItems} món hàng
+                  {shops.length} shop • {totalItems} món hàng
                 </p>
               </div>
             </div>
@@ -334,7 +426,7 @@ export function CheckoutPage() {
                   Thay đổi
                 </Button>
               </div>
-              
+
               <div className="space-y-3">
                 {defaultAddresses.map((address) => (
                   <div
@@ -377,9 +469,9 @@ export function CheckoutPage() {
                 <CreditCard className="w-5 h-5 text-primary" />
                 <h3 className="font-semibold">Phương thức thanh toán</h3>
               </div>
-              
-              <RadioGroup 
-                value={selectedPayment.id} 
+
+              <RadioGroup
+                value={selectedPayment.id}
                 onValueChange={(value) => {
                   const method = paymentMethods.find(m => m.id === value);
                   if (method) setSelectedPayment(method);
@@ -420,84 +512,195 @@ export function CheckoutPage() {
               </RadioGroup>
             </Card>
 
-            {/* Shipping Method */}
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Truck className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold">Phương thức vận chuyển</h3>
-              </div>
-              
-              <RadioGroup 
-                value={selectedShipping.id} 
-                onValueChange={(value) => {
-                  const method = shippingMethods.find(m => m.id === value);
-                  if (method) setSelectedShipping(method);
-                }}
-                className="space-y-3"
-              >
-                {shippingMethods.map((method) => (
-                  <div
-                    key={method.id}
-                    className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer transition-all ${
-                      selectedShipping.id === method.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <RadioGroupItem value={method.id} />
-                    <div className="flex items-center justify-between flex-1">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium">{method.name}</span>
-                          {method.isRecommended && (
-                            <Badge variant="secondary" className="text-xs bg-green-50 text-green-700">
-                              Khuyên dùng
-                            </Badge>
-                          )}
+            {/* Shops Sections */}
+            {shops.map((shop) => (
+              <Card key={shop.sellerId} className="p-6">
+                <div className="space-y-6">
+                  {/* Shop Header */}
+                  <div className="flex items-center justify-between pb-4 border-b">
+                    <div>
+                      <h3 className="font-semibold text-lg">{shop.sellerName}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {shop.items.length} sản phẩm • {shop.items.reduce((sum, item) => sum + item.quantity, 0)} món hàng
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      Shop riêng
+                    </Badge>
+                  </div>
+
+                  {/* Shop Items */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Sản phẩm</h4>
+                    <div className="space-y-3">
+                      {shop.items.map((item: CartItem) => (
+                        <div key={item.id} className="flex gap-3 p-3 bg-muted/20 rounded-lg">
+                          <div className="relative w-12 h-12 bg-muted/20 rounded-lg overflow-hidden flex-shrink-0">
+                            <ImageWithFallback
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                              {item.quantity}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className="text-sm font-medium line-clamp-2 mb-1">{item.name}</h5>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1">
+                                <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                                <span className="text-xs text-muted-foreground">{item.rating}</span>
+                              </div>
+                              <span className="text-sm font-medium">
+                                {formatPrice(item.price * item.quantity)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">{method.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">
-                          {totalPrice >= 1000000 ? (
-                            <span className="text-green-600">Miễn phí</span>
-                          ) : (
-                            formatPrice(method.price)
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{method.estimatedTime}</div>
-                      </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </RadioGroup>
-            </Card>
 
-            {/* Voucher */}
+                  {/* Shop Shipping Method */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Truck className="w-4 h-4" />
+                      Phương thức vận chuyển
+                    </h4>
+                    <RadioGroup
+                      value={shop.shippingMethod.id}
+                      onValueChange={(value) => {
+                        const method = shippingMethods.find(m => m.id === value);
+                        if (method) updateShopShipping(shop.sellerId, method);
+                      }}
+                      className="space-y-2"
+                    >
+                      {shippingMethods.map((method) => (
+                        <div
+                          key={method.id}
+                          className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-all ${
+                            shop.shippingMethod.id === method.id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <RadioGroupItem value={method.id} />
+                          <div className="flex items-center justify-between flex-1">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-sm">{method.name}</span>
+                                {method.isRecommended && (
+                                  <Badge variant="secondary" className="text-xs bg-green-50 text-green-700">
+                                    Khuyên dùng
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{method.description}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium text-sm">
+                                {shop.subtotal >= 1000000 ? (
+                                  <span className="text-green-600">Miễn phí</span>
+                                ) : (
+                                  formatPrice(method.price)
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">{method.estimatedTime}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+
+                  {/* Shop Voucher */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Tag className="w-4 h-4" />
+                      Mã giảm giá shop
+                    </h4>
+                    <div className="flex gap-3">
+                      <Input
+                        placeholder="Nhập mã giảm giá shop (VD: SAVE10)"
+                        value={shop.voucher}
+                        onChange={(e) => updateShopVoucher(shop.sellerId, e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => applyShopVoucher(shop.sellerId)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Áp dụng
+                      </Button>
+                    </div>
+
+                    {shop.voucher === 'SAVE10' && shop.voucherDiscount > 0 && (
+                      <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="text-sm font-medium">
+                            Mã giảm giá đã được áp dụng! Giảm {formatPrice(shop.voucherDiscount)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Shop Summary */}
+                  <div className="bg-muted/20 rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Tạm tính ({shop.items.length} sản phẩm)</span>
+                      <span>{formatPrice(shop.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Phí vận chuyển</span>
+                      <span className={shop.shippingFee === 0 ? "text-green-600 font-medium" : ""}>
+                        {shop.shippingFee === 0 ? "Miễn phí" : formatPrice(shop.shippingFee)}
+                      </span>
+                    </div>
+                    {shop.voucherDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Mã giảm giá shop</span>
+                        <span>-{formatPrice(shop.voucherDiscount)}</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between font-semibold">
+                      <span>Tổng cộng shop</span>
+                      <span className="text-primary">{formatPrice(shop.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+
+            {/* System Voucher */}
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Tag className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold">Mã giảm giá</h3>
+                <h3 className="font-semibold">Mã giảm giá hệ thống</h3>
               </div>
-              
+
               <div className="flex gap-3">
                 <Input
-                  placeholder="Nhập mã giảm giá (VD: SAVE10)"
-                  value={voucher}
-                  onChange={(e) => setVoucher(e.target.value)}
+                  placeholder="Nhập mã giảm giá hệ thống (VD: SYSTEM10)"
+                  value={systemVoucher}
+                  onChange={(e) => setSystemVoucher(e.target.value)}
                   className="flex-1"
                 />
-                <Button onClick={applyVoucher} variant="outline">
+                <Button onClick={applySystemVoucher} variant="outline">
                   Áp dụng
                 </Button>
               </div>
-              
-              {voucher === 'SAVE10' && (
+
+              {systemVoucher === 'SYSTEM10' && systemVoucherDiscount > 0 && (
                 <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
                   <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
                     <CheckCircle className="w-4 h-4" />
                     <span className="text-sm font-medium">
-                      Mã giảm giá đã được áp dụng! Giảm {formatPrice(voucherDiscount)}
+                      Mã giảm giá hệ thống đã được áp dụng! Giảm {formatPrice(systemVoucherDiscount)}
                     </span>
                   </div>
                 </div>
@@ -525,35 +728,47 @@ export function CheckoutPage() {
           <div className="xl:w-96 w-full xl:flex-shrink-0 space-y-6">
             {/* Order Items */}
             <Card className="p-6">
-              <h3 className="font-semibold mb-4">Đơn hàng ({items.length} sản phẩm)</h3>
-              
+              <h3 className="font-semibold mb-4">Đơn hàng ({totalItems} sản phẩm)</h3>
+
               <div className="border border-border rounded-lg overflow-hidden">
                 <ScrollArea className="h-[320px] w-full">
                   <div className="space-y-4 pr-4 py-2">
-                    {items.map((item) => (
-                      <div key={item.id} className="flex gap-3">
-                        <div className="relative w-12 h-12 bg-muted/20 rounded-lg overflow-hidden flex-shrink-0">
-                          <ImageWithFallback
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
-                            {item.quantity}
-                          </div>
+                    {shops.map((shop) => (
+                      <div key={shop.sellerId} className="space-y-3">
+                        {/* Shop Header */}
+                        <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                          <Badge variant="outline" className="text-xs">
+                            {shop.sellerName}
+                          </Badge>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium line-clamp-2 mb-1">{item.name}</h4>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1">
-                              <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                              <span className="text-xs text-muted-foreground">{item.rating}</span>
+
+                        {/* Shop Items */}
+                        {shop.items.map((item: CartItem) => (
+                          <div key={item.id} className="flex gap-3">
+                            <div className="relative w-12 h-12 bg-muted/20 rounded-lg overflow-hidden flex-shrink-0">
+                              <ImageWithFallback
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                                {item.quantity}
+                              </div>
                             </div>
-                            <span className="text-sm font-medium">
-                              {formatPrice(item.price * item.quantity)}
-                            </span>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-medium line-clamp-2 mb-1">{item.name}</h4>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                                  <span className="text-xs text-muted-foreground">{item.rating}</span>
+                                </div>
+                                <span className="text-sm font-medium">
+                                  {formatPrice(item.price * item.quantity)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
                     ))}
                   </div>
@@ -564,36 +779,43 @@ export function CheckoutPage() {
             {/* Price Summary */}
             <Card className="p-6">
               <h3 className="font-semibold mb-4">Chi tiết thanh toán</h3>
-              
+
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span>Tạm tính ({totalItems} sản phẩm)</span>
-                  <span>{formatPrice(totalPrice)}</span>
+                  <span>{formatPrice(totalSubtotal)}</span>
                 </div>
-                
+
                 <div className="flex justify-between text-sm">
-                  <span>Phí vận chuyển</span>
-                  <span className={shippingFee === 0 ? "text-green-600 font-medium" : ""}>
-                    {shippingFee === 0 ? "Miễn phí" : formatPrice(shippingFee)}
+                  <span>Phí vận chuyển tổng</span>
+                  <span className={totalShippingFee === 0 ? "text-green-600 font-medium" : ""}>
+                    {totalShippingFee === 0 ? "Miễn phí" : formatPrice(totalShippingFee)}
                   </span>
                 </div>
-                
+
                 {paymentDiscount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>Giảm giá thanh toán</span>
                     <span>-{formatPrice(paymentDiscount)}</span>
                   </div>
                 )}
-                
-                {voucherDiscount > 0 && (
+
+                {totalShopVoucherDiscount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>Mã giảm giá</span>
-                    <span>-{formatPrice(voucherDiscount)}</span>
+                    <span>Mã giảm giá shops</span>
+                    <span>-{formatPrice(totalShopVoucherDiscount)}</span>
                   </div>
                 )}
-                
+
+                {systemVoucherDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Mã giảm giá hệ thống</span>
+                    <span>-{formatPrice(systemVoucherDiscount)}</span>
+                  </div>
+                )}
+
                 <Separator />
-                
+
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Tổng cộng</span>
                   <span className="text-primary">{formatPrice(finalTotal)}</span>
@@ -633,8 +855,8 @@ export function CheckoutPage() {
         </div>
       </div>
 
-      {/* QR Payment Modal */}
-      <QRPaymentModal
+      {/* QR Payment Modal - Temporarily disabled */}
+      {/* <QRPaymentModal
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         payments={qrPayments}
@@ -643,7 +865,7 @@ export function CheckoutPage() {
           setIsQrModalOpen(false);
           navigate('/orders');
         }}
-      />
+      /> */}
     </div>
   );
 }

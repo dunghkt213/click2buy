@@ -98,14 +98,10 @@ export function useApp() {
 
   // Checkout
   const checkout = useCheckout({
-    getSelectedItems,
-    removeFromCart,
-    refreshCart,
     onOrderCreated: (order: any) => {
       orders.setOrders(prev => [order, ...prev]);
       modals.closeCheckout();
-      // Không tự động redirect nữa, để CheckoutPage tự quyết định
-      // dựa trên payment method (COD vs Banking)
+      refreshCart();
     },
   });
 

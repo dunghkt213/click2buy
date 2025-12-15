@@ -1,7 +1,7 @@
 // src/payment.service.ts
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Payment, PaymentDocument } from './schemas/payment.schema';
+import { Payment, PaymentDocument, PaymentStatus } from './schemas/payment.schema';
 import { Model } from 'mongoose';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
@@ -18,37 +18,38 @@ export class PaymentService {
     @Inject('KAFKA_PRODUCER')
     private readonly kafka: ClientKafka,
     private readonly http: HttpService,
-    @Inject('REDIS_CLIENT')  
+    @Inject('REDIS_CLIENT')
     private readonly redis: Redis,
   ) { }
 
   async create(data: any) {
-    const { orderIds, paymentMethod, total, userId } = data;
+    const { orderIds, orderCode, paymentMethod, total, userId } = data;
 
     console.log('order.created payload:', data);
 
     if (paymentMethod === 'COD') {
       // giữ nguyên logic cũ
-      return this.createCODPayments(orderIds, userId, total);
+      return this.createCODPayments(orderIds, orderCode, userId, total);
     }
 
     if (paymentMethod === 'BANKING') {
-      return this.createBankingPayments(orderIds, userId, total);
+      return this.createBankingPayments(orderIds, orderCode, userId, total);
     }
   }
 
 
-  private async createCODPayments(orderIds, userId, total) {
+  private async createCODPayments(orderIds, orderCode, userId, total) {
     const createdPayments = [];
 
     for (const orderId of orderIds) {
       const paymentData = {
         userId,
-        orderId,
+        orderIds: [orderId],
+        orderCode,
         paymentMethod: 'COD',
         total,
         paidAmount: 0,
-        status: 'SUCCESS',
+        status: PaymentStatus.PAID,
       };
 
       const created = await this.paymentModel.create(paymentData);
@@ -67,96 +68,117 @@ export class PaymentService {
     };
   }
 
-  public async createBankingPayments(orderIds, userId, total) {
-    const createdPayments = [];
+  public async createBankingPayments(orderIds, orderCode, userId, total) {
+    const existing = await this.paymentModel.findOne({
+      orderCode,
+      status: { $in: [PaymentStatus.PENDING, PaymentStatus.PAID] },
+    });
 
-    for (const orderId of orderIds) {
-      const existing = await this.paymentModel.findOne({
-        orderId,
-        status: 'PENDING',
-      });
+    // ✅ Nếu đã PAID thì trả luôn (khỏi tạo QR lại)
+    if (existing && existing.status === PaymentStatus.PAID) {
+      return {
+        success: true,
+        payments: existing,
+      };
+    }
 
-      if (existing) {
-        console.log("⚠️ Duplicate pay request -> reusing old QR instead of creating new");
-  
-        // phát QR cũ lại cho FE
+    // ✅ Nếu có PENDING và chưa hết hạn -> emit lại QR để FE render ngay (kể cả reload)
+    if (existing && existing.status === PaymentStatus.PENDING && existing.expireAt) {
+      const expireIn = Math.max(
+        0,
+        Math.floor((existing.expireAt.getTime() - Date.now()) / 1000),
+      );
+
+      if (expireIn > 0) {
         this.kafka.emit('payment.qr.created', {
           userId,
-          payments: [{
-            orderId,
-            checkoutUrl: existing.checkoutUrl,
-            qrCode: existing.qrCode,
-            expireIn: 900,
-          }],
+          orderCode,
+          qrCode: existing.qrCode,
+          checkoutUrl: existing.checkoutUrl,
+          expireIn,
+          expiredAt: existing.expireAt, // ✅ thêm cho FE nếu cần
         });
-  
-        createdPayments.push(existing);
-        continue; // 🚨 không chạy xuống PayOS nữa
+
+        return {
+          success: true,
+          payments: existing,
+        };
       }
 
+      // ✅ PENDING nhưng đã hết hạn
+      await existing.updateOne({ status: PaymentStatus.EXPIRED });
+    }
 
-      const amount = Math.trunc(total);
-      const orderCode = Date.now();
+    // Tạo qr mới
+    const amount = Math.trunc(total);
+    const description = `Order Code: #${orderCode}`;
+    const cancelUrl = process.env.PAYOS_CANCEL_URL;
+    const returnUrl = process.env.PAYOS_RETURN_URL;
+    const payosOrderCode = Math.floor(Number(orderCode) / 1000);
 
-      const shortOrderId = orderId.substring(0, 6);
-      const description = `TT DH #${shortOrderId}`;
-      const cancelUrl = process.env.PAYOS_CANCEL_URL;
-      const returnUrl = process.env.PAYOS_RETURN_URL;
+    const expiredAt = Math.floor(Date.now() / 1000) + 15 * 60;
+    const raw = `amount=${amount}&cancelUrl=${cancelUrl ?? ''}&description=${description}&orderCode=${payosOrderCode}&returnUrl=${returnUrl ?? ''}`;
 
-      console.log("🔍 ENV:", {
-        cancelUrl,
-        returnUrl,
-        key: process.env.PAYOS_CHECKSUM_KEY,
-      });
-      
-      const expiredAt = Math.floor(Date.now() / 1000) + 15 * 60;
-      const raw = `amount=${amount}&cancelUrl=${cancelUrl ?? ''}&description=${description}&orderCode=${orderCode}&returnUrl=${returnUrl ?? ''}`;
+    console.log("🔍 SIGN RAW:", raw);
 
-      console.log("🔍 SIGN RAW:", raw);
+    const signature = crypto
+      .createHmac('sha256', process.env.PAYOS_CHECKSUM_KEY)
+      .update(raw)
+      .digest('hex');
 
-      const signature = crypto
-        .createHmac('sha256', process.env.PAYOS_CHECKSUM_KEY)
-        .update(raw)
-        .digest('hex');
-
-      const payload = {
-        orderCode,
-        amount,
-        description,
-        cancelUrl,
-        returnUrl,
-        expiredAt,
-        signature,
-      };
-      console.log("👉 PayOS payload:", payload);
+    const payload = {
+      orderCode: payosOrderCode,
+      amount,
+      description,
+      cancelUrl,
+      returnUrl,
+      expiredAt,
+      signature,
+    };
+    console.log("👉 PayOS payload:", payload);
 
 
-      const { data } = await this.http.axiosRef.post(
-        'https://api-merchant.payos.vn/v2/payment-requests',
-        payload,
-        {
-          headers: {
-            'x-client-id': process.env.PAYOS_CLIENT_ID,
-            'x-api-key': process.env.PAYOS_API_KEY,
-            // nếu có partner-code thì thêm:
-            // 'x-partner-code': process.env.PAYOS_PARTNER_CODE,
-          },
+    const { data } = await this.http.axiosRef.post(
+      'https://api-merchant.payos.vn/v2/payment-requests',
+      payload,
+      {
+        headers: {
+          'x-client-id': process.env.PAYOS_CLIENT_ID,
+          'x-api-key': process.env.PAYOS_API_KEY,
+          // nếu có partner-code thì thêm:
+          // 'x-partner-code': process.env.PAYOS_PARTNER_CODE,
         },
-      );
-      
-      console.log('👉 PayOS response:', data);
-      if (data.code !== '00' || !data.data) {
-        throw new Error(
-          `PayOS rejected: code=${data.code}, desc=${data.desc}`
-        );
-      }
+      },
+    );
+
+    if (data.code !== '00' || !data.data) {
+      // ✅ tạo 1 record FAILED đúng nghĩa (đừng updateOne theo orderCode nếu chưa có record)
+      const failed = await this.paymentModel.create({
+        orderIds,
+        userId,
+        orderCode,
+        paymentMethod: 'BANKING',
+        total,
+        paidAmount: 0,
+        status: PaymentStatus.FAILED,
+        failReason: data.desc,
+      });
+
+      this.kafka.emit('payment.failed', { userId, orderCode, reason: data.desc });
+      return {
+        success: false,
+        code: data.code,
+        message: data.desc,
+        payments: failed,
+      };
+    }
 
       // data dạng:
       // { code, desc, data: { checkoutUrl, qrCode, ... }, signature }
       const d = data.data;
 
       const created = await this.paymentModel.create({
-        orderId,
+        orderIds,
         userId,
         orderCode,                  // 🔴 nên thêm field này vào schema Payment
         paymentMethod: 'BANKING',
@@ -166,9 +188,9 @@ export class PaymentService {
         qrCode: d.qrCode,
         checkoutUrl: d.checkoutUrl,
         paymentLinkId: d.paymentLinkId,
-        expireAt: Date.now() + 15 * 60 * 1000,
+        expireAt: new Date(Date.now() + 15 * 60 * 1000),
       });
-      
+
       await this.redis.set(
         `payment:expire:${created._id}`,
         created._id.toString(),
@@ -176,97 +198,115 @@ export class PaymentService {
         900
       );
 
-      createdPayments.push(created);
-    }
-    console.log("✅ Created BANKING payments:", createdPayments);
-
-    this.kafka.emit('payment.qr.created', {
-      userId,
-      payments: createdPayments.map((p) => ({
-        orderId: p.orderId,
-        checkoutUrl: p.checkoutUrl,
-        qrCode: p.qrCode,
+      this.kafka.emit('payment.qr.created', {
+        userId,
+        orderCode,
+        qrCode: created.qrCode,
+        checkoutUrl: created.checkoutUrl,
         expireIn: 900,
-      })),
-    });
+      });
 
-    return {
-      success: true,
-      payments: createdPayments,
-    };
-  }
+      return {
+        success: true,
+        payments: created,
+      };
+    }
 
   async handlePayOSCallback(payload: any) {
-    console.log("🔔 PayOS Callback received:", payload);
-  
-    // unwrap nested structure
-    const payos = payload.body;
-    const data = payos.data;
-    const signature = payos.signature;
-  
-    if (!data) {
-      console.log("❌ Missing data field in callback");
-      return { error: true };
-    }
-  
-    // prepare signature verify
-    const raw = JSON.stringify(data);
-    const verify = crypto
-      .createHmac("sha256", process.env.PAYOS_API_KEY)
-      .update(raw)
-      .digest("hex");
+      console.log("🔔 PayOS Callback received:", payload);
 
-    const payment = await this.paymentModel.findOne({ paymentLinkId: data.paymentLinkId });
-    if (!payment) {
-      console.log("❌ No payment match with paymentLinkId");
-      return { error: true };}
-  
-    if (data.code !== '00') {
-      await payment.updateOne({ status: 'FAILED' });
-      return { failed: true };
-    }
-  
-    // idempotent
-    if (payment.status === 'SUCCESS') return { ok: true };
-  
-    await payment.updateOne({
-      status: 'SUCCESS',
-      paidAmount: data.amount,
-    });
-  
-    // emit success
-    this.kafka.emit('payment.success', {
-      userId: payment.userId,
-      orderId: payment.orderId,
-      paymentMethod: 'BANKING',
-      total: payment.total,
-      paidAmount: data.amount,
-      status: 'SUCCESS',
-      paymentId: payment._id.toString(),
-    });
-  
-    console.log("🎉 Payment stored & emitted:", payment._id.toString());
-  
-    return { received: true };
-  }
-  
-  
+      // unwrap nested structure
+      const payos = payload.body;
+      const data = payos.data;
+      const signature = payos.signature;
 
+      if (!data) {
+        console.log("❌ Missing data field in callback");
+        return { error: true };
+      }
+
+      const payment = await this.paymentModel.findOne({ paymentLinkId: data.paymentLinkId });
+      if (!payment) {
+        console.log("❌ No payment match with paymentLinkId");
+        return { error: true };
+      }
+
+      if (data.code !== '00') {
+        await payment.updateOne({ status: 'FAILED' });
+        return { failed: true };
+      }
+
+      // idempotent
+      if (payment.status === PaymentStatus.PAID) return { ok: true };
+
+      await payment.updateOne({
+        status: PaymentStatus.PAID,
+        paidAmount: data.amount,
+      });
+
+      // emit success
+      this.kafka.emit('payment.success', {
+        userId: payment.userId,
+        orderIds: payment.orderIds,
+        paymentMethod: 'BANKING',
+        total: payment.total,
+        paidAmount: data.amount,
+        status: PaymentStatus.PAID,
+        paymentId: payment._id.toString(),
+      });
+
+      console.log("🎉 Payment stored & emitted:", payment._id.toString());
+
+      return { received: true };
+    }
+
+  async getByOrderCode(orderCode: string, userId: string) {
+      const payment = await this.paymentModel.findOne({
+        orderCode,
+        userId,
+        status: { $in: [PaymentStatus.PENDING, PaymentStatus.PAID, PaymentStatus.EXPIRED, PaymentStatus.FAILED] },
+      });
+
+      if (!payment) return { exists: false };
+
+      // QR hết hạn
+      if (
+        payment.status === PaymentStatus.PENDING &&
+        payment.expireAt &&
+        payment.expireAt.getTime() < Date.now()
+      ) {
+        await payment.updateOne({ status: PaymentStatus.EXPIRED });
+        payment.status = PaymentStatus.EXPIRED;
+      }
+
+      return {
+        exists: true,
+        status: payment.status,          // ✅ thêm status cho FE
+        orderCode: payment.orderCode,
+        qrCode: payment.qrCode ?? null,  // ✅ paid/expired có thể null
+        checkoutUrl: payment.checkoutUrl ?? null,
+        expiredAt: payment.expireAt ?? null,
+        expireIn:
+          payment.expireAt
+            ? Math.max(0, Math.floor((payment.expireAt.getTime() - Date.now()) / 1000))
+            : 0,
+      };
+    }
 
   async update(id: string, data: UpdatePaymentDto) {
-    return this.paymentModel.findByIdAndUpdate(id, data, { new: true });
-  }
+      return this.paymentModel.findByIdAndUpdate(id, data, { new: true });
+    }
 
   async findAll(query: any) {
-    const { page = 0, size = 10, ...filters } = query;
-    const items = await this.paymentModel
-      .find(filters)
-      .skip(page * size)
-      .limit(size);
+      const { page = 0, size = 10, ...filters } = query;
+      const items = await this.paymentModel
+        .find(filters)
+        .skip(page * size)
+        .limit(size);
 
-    const total = await this.paymentModel.countDocuments(filters);
-    return { items, total };
+      const total = await this.paymentModel.countDocuments(filters);
+      return { items, total };
+    }
+
   }
-  
-}
 

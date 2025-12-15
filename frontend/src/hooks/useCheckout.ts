@@ -1,39 +1,53 @@
 import { toast } from 'sonner';
 import { orderService } from '../apis/order';
-import { useCallback } from 'react';  // ⚠ import lại ở đây
+import { useCallback } from 'react';
+import { CreateOrderDto } from '@/types/dto/order.dto';
 
-export function useCheckout({ onOrderCreated }: any) {
-  const handleCheckout = useCallback(async (checkoutData: any) => {
-    console.log('🛒 useCheckout called with checkoutData:', checkoutData);
+export function useCheckout({
+  onOrderCreated,
+}: {
+  onOrderCreated?: (order: any) => void;
+}) {
+  const handleCheckout = useCallback(
+    async (checkoutData: any) => {
+      console.log('🛒 useCheckout called with checkoutData:', checkoutData);
 
-    try {
-      const orderDto = {
-        orderCode: checkoutData.orderCode,
-        paymentMethod: checkoutData.paymentMethod,
-        carts: checkoutData.carts, // ✅ DÙNG TRỰC TIẾP
-        shippingAddress: checkoutData.shippingAddress,
-        shippingMethod: checkoutData.shippingMethod,
-        note: checkoutData.note,
-        discount: checkoutData.discount,
-        shippingFee: checkoutData.shippingFee,
-        total: checkoutData.total,
-      };
+      try {
+        // ✅ Chỉ type-safe ở boundary FE → BE
+        const orderDto: CreateOrderDto = {
+          orderCode: checkoutData.orderCode,
+          paymentMethod: checkoutData.paymentMethod,
 
-      console.log('🛒 Final order payload:', orderDto);
+          carts: checkoutData.carts.map((cart: any) => ({
+            sellerId: cart.sellerId,
 
-      const newOrder = await orderService.create(orderDto);
+            products: cart.products.map((p: any) => ({
+              productId: p.productId,
+              quantity: p.quantity,
+            })),
 
-      console.log('🛒 Order created successfully:', newOrder);
-      onOrderCreated?.(newOrder); // Chỉ update state, không redirect
+            voucherCode: cart.voucherCode,
+            shippingFee: cart.shippingFee,
+            paymentDiscount: cart.paymentDiscount,
+          })),
+        };
 
-      return newOrder;
-    } catch (e) {
-      console.error('Checkout failed:', e);
-      toast.error('Checkout thất bại!');
-      throw e;
-    }
-  }, []);
+        console.log('🛒 Final order payload:', orderDto);
+
+        const newOrder = await orderService.create(orderDto);
+
+        console.log('🛒 Order created successfully:', newOrder);
+        onOrderCreated?.(newOrder);
+
+        return newOrder;
+      } catch (e) {
+        console.error('Checkout failed:', e);
+        toast.error('Checkout thất bại!');
+        throw e;
+      }
+    },
+    [onOrderCreated],
+  );
 
   return { handleCheckout };
 }
-
