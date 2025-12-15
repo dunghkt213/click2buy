@@ -149,10 +149,10 @@ export const productService = {
     
     try {
       // Load tất cả products và filter theo ownerId
-      const allProducts = await productApi.getAll({ limit: 1000 });
+      const result = await productApi.getAll({ limit: 1000 });
       
       // Filter products theo ownerId (seller ID)
-      const sellerProducts = allProducts.filter(p => 
+      const sellerProducts = result.products.filter(p => 
         (p.ownerId === sellerId || p.sellerId === sellerId)
       );
 

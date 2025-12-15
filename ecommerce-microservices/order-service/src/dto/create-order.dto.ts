@@ -1,39 +1,54 @@
-import { IsArray, IsNotEmpty, IsNumber, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsNumber, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class OrderItemDto {
+class OrderProductDto {
   @IsString()
+  @IsNotEmpty()
   productId: string;
 
   @IsNumber()
   quantity: number;
+}
 
+class CartDto {
+  @IsString()
+  @IsNotEmpty()
+  sellerId: string;
+
+  // ===== SHOP LEVEL =====
+  @IsOptional()
+  @IsString()
+  voucherCode?: string;      // voucher của shop
+
+  @IsOptional()
   @IsNumber()
-  price: number;
+  shippingFee?: number;      // phí ship của shop
+
+  @IsOptional()
+  @IsNumber()
+  paymentDiscount?: number;  // discount theo payment của shop
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderProductDto)
+  products: OrderProductDto[];
 }
 
 export class CreateOrderDto {
   @IsString()
   @IsNotEmpty()
   userId: string;
-  
+
   @IsString()
   @IsNotEmpty()
   orderCode: string;
 
   @IsString()
   @IsNotEmpty()
-  ownerId: string;
+  paymentMethod: string;
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => OrderItemDto)
-  items: OrderItemDto[];
-
-  @IsNumber()
-  total: number;
-
-  @IsString()
-  @IsNotEmpty()
-  paymentMethod: string;
+  @Type(() => CartDto)
+  carts: CartDto[];
 }

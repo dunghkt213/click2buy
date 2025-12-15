@@ -26,13 +26,40 @@ export class CartGateway {
     this.kafka.subscribeToResponseOf('cart.remove');
     this.kafka.subscribeToResponseOf('cart.productQuantity');
     this.kafka.subscribeToResponseOf('cart.createOrder')
+
+    this.kafka.subscribeToResponseOf('product.batch')
     await this.kafka.connect();
   }
   
   /** Lấy tất cả giỏ hàng theo seller */
   @Get()
-  getCarts(@Headers('authorization') auth?: string) {
-    return this.kafka.send('cart.getAll', { auth });
+  async getCarts(@Headers('authorization') auth?: string) {
+    const carts = await this.kafka
+    .send('cart.getAll', { auth })
+    .toPromise();
+
+    if (!carts) return [];
+    console.log('Carts:', carts);
+
+    const productIds = carts.flatMap(c => c.items.map(i => i.productId));
+    const uniqueIds = [...new Set(productIds)];
+    const products = await this.kafka.send('product.batch', { ids: uniqueIds }).toPromise();
+
+    const map = {};
+    products.forEach(p => map[p._id] = p);
+
+    // 4. Enrich từng cart item
+    const enriched = carts.map(c => ({
+      ...c,
+      items: c.items.map(item => ({
+        ...item,
+        product: map[item.productId] || null,  // thêm thông tin product
+      }))
+    }));
+
+    console.log('Enriched Carts:', enriched);
+
+    return enriched;
   }
 
   /** Thêm sản phẩm vào cart */

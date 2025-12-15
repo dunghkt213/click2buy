@@ -2,21 +2,20 @@
  * Header.tsx - Component Header của ứng dụng
  * Đã sửa lỗi đường dẫn import và TypeScript
  */
+import {
+  Bell,
+  Menu,
+  Search,
+  ShoppingCart,
+  Store
+} from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  ShoppingCart, 
-  Heart, 
-  Menu, 
-  Bell, 
-  Store 
-} from 'lucide-react';
 
 // --- UI COMPONENTS ---
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Badge } from '../ui/badge';
 import {
   Popover,
   PopoverContent,
@@ -25,11 +24,11 @@ import {
 
 // --- FEATURE COMPONENTS ---
 // Import từ ../shared và ../cart dựa trên cấu trúc thư mục của bạn
-import { AccountDropdown } from '../shared/AccountDropdown'; 
-import { CartPreview } from '../cart/CartPreview'; 
+import { CartPreview } from '../cart/CartPreview';
+import { AccountDropdown } from '../shared/AccountDropdown';
 
 // --- TYPES ---
-import { User, CartItem } from '../../types';
+import { CartItem, User } from '../../types';
 
 interface HeaderProps {
   // Các props bắt buộc
@@ -109,8 +108,8 @@ export function Header({
       if (onSearchClick) {
         onSearchClick();
       } else {
-        // Mặc định điều hướng nếu không có hàm xử lý riêng
-        navigate(`/search?q=${encodeURIComponent(externalSearchQuery)}`);
+        // Mặc định điều hướng và reload trang search
+        window.location.href = `/search?q=${encodeURIComponent(externalSearchQuery)}`;
       }
     }
   };
@@ -131,7 +130,7 @@ export function Header({
   };
 
   return (
-    <header className="fixed top-0 w-full bg-card/95 backdrop-blur-md border-b border-border z-50">
+    <header className="fixed top-0 left-0 right-0 w-full bg-card/95 backdrop-blur-md border-b border-border z-50 will-change-transform transform-gpu">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           
@@ -174,7 +173,7 @@ export function Header({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="hidden md:flex relative"
+              className="hidden md:flex relative min-w-[2.5rem]"
               onClick={() => {
                 if (!isLoggedIn) {
                   onLogin();
@@ -192,92 +191,71 @@ export function Header({
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="hidden md:flex relative"
+                className="hidden md:flex relative min-w-[2.5rem]"
                 onClick={onNotificationsClick}
               >
                 <Bell className="w-4 h-4" />
                 {unreadNotifications > 0 && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
+                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs pointer-events-none"
                   >
                     {unreadNotifications > 99 ? '99+' : unreadNotifications}
                   </Badge>
                 )}
               </Button>
             )}
-            
-            {/* Wishlist */}
-            {isLoggedIn && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="hidden md:flex relative"
-                onClick={onWishlistClick}
-                ref={wishlistIconRef}
-              >
-                <Heart className="w-4 h-4" />
-                {wishlistItemsCount > 0 && (
-                  <Badge 
-                    variant="secondary" 
-                    className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-primary/10 text-primary"
-                  >
-                    {wishlistItemsCount > 99 ? '99+' : wishlistItemsCount}
-                  </Badge>
-                )}
-              </Button>
-            )}
 
             {/* Cart with Preview */}
-            <div 
-              className="relative"
-              onMouseEnter={() => {
-                if (cartItemsCount > 0) setIsCartPreviewOpen(true);
-              }}
-              onMouseLeave={() => setIsCartPreviewOpen(false)}
+            <Popover 
+              open={isCartPreviewOpen} 
+              onOpenChange={setIsCartPreviewOpen}
+              modal={false}
             >
-              <Popover open={isCartPreviewOpen} onOpenChange={setIsCartPreviewOpen}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="relative"
-                    onClick={(e: { preventDefault: () => void; }) => {
-                       e.preventDefault();
-                       setIsCartPreviewOpen(false);
-                       onCartClick();
-                    }}
-                    ref={cartIconRef}
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    {cartItemsCount > 0 && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs"
-                      >
-                        {cartItemsCount > 99 ? '99+' : cartItemsCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                
-                <PopoverContent 
-                  className="w-80 p-0" 
-                  align="end"
-                  onMouseEnter={() => setIsCartPreviewOpen(true)}
-                  onMouseLeave={() => setIsCartPreviewOpen(false)}
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="relative min-w-[2.5rem]"
+                  onMouseEnter={() => {
+                    if (cartItemsCount > 0) setIsCartPreviewOpen(true);
+                  }}
+                  onClick={(e: { preventDefault: () => void; }) => {
+                     e.preventDefault();
+                     setIsCartPreviewOpen(false);
+                     onCartClick();
+                  }}
+                  ref={cartIconRef}
                 >
-                  <CartPreview 
-                    items={cartItems || []} 
-                    totalPrice={totalPrice || 0}
-                    onViewCart={() => {
-                      setIsCartPreviewOpen(false);
-                      onCartClick();
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+                  <ShoppingCart className="w-4 h-4" />
+                  {cartItemsCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs pointer-events-none"
+                    >
+                      {cartItemsCount > 99 ? '99+' : cartItemsCount}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              
+              <PopoverContent 
+                className="w-80 max-w-[320px] p-0 z-50 shadow-lg overflow-hidden" 
+                align="end"
+                sideOffset={4}
+                onMouseEnter={() => setIsCartPreviewOpen(true)}
+                onMouseLeave={() => setIsCartPreviewOpen(false)}
+              >
+                <CartPreview 
+                  items={cartItems || []} 
+                  totalPrice={totalPrice || 0}
+                  onViewCart={() => {
+                    setIsCartPreviewOpen(false);
+                    onCartClick();
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
 
             {/* Account Dropdown */}
             <AccountDropdown

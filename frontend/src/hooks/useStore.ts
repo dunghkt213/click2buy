@@ -28,40 +28,22 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
     }
   }, [userRole]);
 
-  // Helper function để load seller products (giống hệt ShopPage)
+  // Helper function để load seller products từ API /products/seller (có stock từ inventory-service)
   const loadSellerProductsByUserId = useCallback(async (sellerId: string): Promise<StoreProduct[]> => {
     try {
       console.log('🛒 [My Store] Bắt đầu load seller products cho userId:', sellerId);
       
-      // Load tất cả products và filter theo ownerId (giống ShopPage)
-      const allProducts = await productApi.getAll({ limit: 1000 });
-      console.log('📦 [My Store] Tổng số products từ API:', allProducts.length);
+      // Sử dụng API /products/seller để lấy products với stock từ inventory-service
+      const storeProducts = await productApi.getAllBySeller({
+        limit: 1000,
+      });
       
-      // Filter products theo ownerId = userId của người đăng nhập (giống ShopPage)
-      const filtered = allProducts.filter(p => 
-        (p.ownerId === sellerId || p.sellerId === sellerId)
-      );
+      console.log('📦 [My Store] Nhận được', storeProducts.length, 'sản phẩm từ API /products/seller');
       
-      console.log('✅ [My Store] Tìm thấy', filtered.length, 'sản phẩm của seller');
-      
-      // Convert từ Product sang StoreProduct (giống ShopPage nhưng convert sang StoreProduct)
-      const storeProducts: StoreProduct[] = filtered.map((product: Product) => ({
-        id: product.id,
-        name: product.name,
-        description: product.description || '',
-        price: product.price,
-        originalPrice: product.originalPrice,
-        stock: 0, // Product không có stock, sẽ cần lấy từ inventory service
-        sold: product.soldCount || 0,
-        image: product.image,
-        images: product.images || (product.image ? [product.image] : []),
-        category: product.category || '',
-        status: product.inStock ? 'active' : 'inactive',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        rating: product.rating || 0,
-        reviews: product.reviews || 0,
-      }));
+      // Log stock của từng sản phẩm để debug
+      storeProducts.forEach((product, index) => {
+        console.log(`  📦 [My Store] Product ${index + 1} "${product.name}": stock = ${product.stock} (type: ${typeof product.stock})`);
+      });
       
       return storeProducts;
     } catch (error: any) {
@@ -120,6 +102,7 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
     variants: Record<string, any>;
     warehouseAddress: {
       line1: string;
+      line2?: string;
       city: string;
       province: string;
       country: string;
@@ -133,6 +116,9 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
         line1: productFormData.warehouseAddress.line1,
         city: productFormData.warehouseAddress.city,
       };
+      if (productFormData.warehouseAddress.line2) {
+        warehouseAddress.line2 = productFormData.warehouseAddress.line2;
+      }
       if (productFormData.warehouseAddress.province) {
         warehouseAddress.province = productFormData.warehouseAddress.province;
       }
@@ -143,8 +129,8 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
         warehouseAddress.postalCode = productFormData.warehouseAddress.postalCode;
       }
 
-      // Gọi API POST product
-      const createdProduct = await productService.create({
+      // Chuẩn bị data để gọi API
+      const apiData = {
         name: productFormData.name,
         description: productFormData.description || undefined,
         price: productFormData.price,
@@ -158,7 +144,14 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
         attributes: Object.keys(productFormData.attributes).length > 0 ? productFormData.attributes : undefined,
         variants: Object.keys(productFormData.variants).length > 0 ? productFormData.variants : undefined,
         warehouseAddress: warehouseAddress.line1 && warehouseAddress.city ? warehouseAddress : undefined,
-      });
+      };
+
+      console.log('🚀 [useStore] Calling productService.create with data:', apiData);
+
+      // Gọi API POST product
+      const createdProduct = await productService.create(apiData);
+
+      console.log('✅ [useStore] Product created successfully:', createdProduct);
 
       toast.success('Sản phẩm đã được thêm thành công!');
       

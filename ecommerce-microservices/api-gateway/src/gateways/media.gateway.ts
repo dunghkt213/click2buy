@@ -15,6 +15,7 @@ export class MediaGateway {
     @Post('upload')
     @UseInterceptors(FileInterceptor('file'))
     uploadMedia(@UploadedFile() file: any, @Headers('authorization') auth?: string) {
+        console.log('Sending upload request to media service via Kafka');
         return this.kafka.send('media.upload.request', {
             buffer: file.buffer.toString('base64'),  // <-- encode
             mimetype: file.mimetype,

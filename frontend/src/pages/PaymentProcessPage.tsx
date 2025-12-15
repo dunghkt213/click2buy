@@ -3,8 +3,8 @@
  * Hiển thị loading → QR code → Payment confirmation
  */
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
@@ -24,6 +24,9 @@ import { formatPrice } from '../utils/utils';
 import { useSSE } from '../hooks/useSSE';
 import { useAppContext } from '../providers/AppProvider';
 import { toast } from 'sonner';
+import { usePaymentSocket } from '@/hooks/usePaymentSocket';
+import QRCode, { QRCodeCanvas } from 'qrcode.react';
+import { paymentApi } from '@/apis/payment/payment';
 
 interface PaymentProcessState {
   orderCode: string;
@@ -32,7 +35,7 @@ interface PaymentProcessState {
 }
 
 interface PaymentQR {
-  orderId: string;
+  orderCode: string,
   checkoutUrl: string;
   qrCode: string;
   expireIn: number;
@@ -48,45 +51,61 @@ export function PaymentProcessPage() {
   const [payments, setPayments] = useState<PaymentQR[]>([]);
   const [timeLeft, setTimeLeft] = useState(900);
   const [isExpired, setIsExpired] = useState(false);
+  const { orderCode } = useParams<{ orderCode: string }>();
+  const orderCodeRef = useRef<string | null>(orderCode ?? null);
+  const [expiredAt, setExpiredAt] = useState<Date | null>(null);
+  console.log('🚀 PaymentProcessPage render', {
+    orderCode,
+    now: new Date().toISOString(),
+  });
 
   // Redirect if no order data
   useEffect(() => {
-    if (!state?.orderCode) {
-      toast.error('Không tìm thấy thông tin đơn hàng');
-      navigate('/cart');
-      return;
+    if (orderCode && !orderCodeRef.current) {
+      orderCodeRef.current = orderCode;
     }
-  }, [state, navigate]);
+  }, [orderCode]);
 
-  // SSE for real-time payment updates
-  const { isConnected } = useSSE({
-    userId: app.user?.id,
+
+  const { isConnected } = usePaymentSocket({
     isLoggedIn: app.isLoggedIn,
-    onQRCreated: (newPayments: PaymentQR[]) => {
-      console.log('💳 PaymentProcessPage: QR Created event received:', newPayments);
-      toast.success('Mã QR thanh toán đã được tạo!');
-      setPayments(newPayments);
-      setCurrentStep('qr');
-      if (newPayments.length > 0) {
-        setTimeLeft(newPayments[0].expireIn || 900);
-        setIsExpired(false);
+
+    onQRCreated: (data) => {
+      console.log('🧪 onQRCreated CALLED', data);
+
+      if (!data?.orderCode) return;
+
+      if (data.orderCode !== orderCodeRef.current) {
+        console.log('data.orderCode', data.orderCode);
+        console.log('orderCodeRef.current', orderCodeRef.current);
+        console.warn('⚠️ QR không thuộc đơn hiện tại – bỏ qua');
+        return;
       }
+
+      setPayments([{
+        orderCode: data.orderCode,
+        qrCode: data.qrCode,
+        checkoutUrl: data.checkoutUrl,
+        expireIn: 0,
+      }]);
+
+      setExpiredAt(new Date(data.expiredAt));
+      setIsExpired(false);
+      setCurrentStep('qr');
     },
-    onPaymentSuccess: (data: any) => {
-      console.log('💳 PaymentProcessPage: Payment Success event received');
+
+    onPaymentSuccess: () => {
       setCurrentStep('success');
       toast.success('Thanh toán thành công!');
-
-      setTimeout(() => {
-        navigate('/orders');
-      }, 3000);
+      setTimeout(() => navigate('/orders'), 3000);
     },
-    onQRExpired: (data: any) => {
-      console.log('💳 PaymentProcessPage: QR Expired event received');
+
+    onQRExpired: () => {
       setIsExpired(true);
-      toast.error('Mã QR đã hết hạn. Vui lòng thử lại.');
+      toast.error('Mã QR đã hết hạn');
     },
   });
+
 
   // Update step when SSE connects
   useEffect(() => {
@@ -98,21 +117,93 @@ export function PaymentProcessPage() {
 
   // Countdown timer for QR
   useEffect(() => {
-    if (currentStep !== 'qr' || isExpired) return;
+    if (!expiredAt || currentStep !== 'qr') return;
 
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          setIsExpired(true);
-          toast.error('Mã QR đã hết hạn. Vui lòng thử lại.');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const tick = () => {
+      const diff = Math.floor((expiredAt.getTime() - Date.now()) / 1000);
+
+      if (diff <= 0) {
+        setTimeLeft(0);
+        setIsExpired(true);
+        return;
+      }
+
+      setTimeLeft(diff);
+    };
+
+    tick(); // chạy ngay
+    const timer = setInterval(tick, 1000);
 
     return () => clearInterval(timer);
-  }, [currentStep, isExpired]);
+  }, [expiredAt, currentStep]);
+
+
+  useEffect(() => {
+    if (!orderCode) return;
+
+    orderCodeRef.current = orderCode;
+
+    const fetchPayment = async () => {
+      try {
+        console.log('🔁 CALL getPaymentByOrder', {
+          orderCode,
+          time: new Date().toISOString(),
+        });
+        const res = await paymentApi.getPaymentByOrder(orderCode);
+        const payment = res.data;
+
+        console.log('✅ API RESPONSE getPaymentByOrder', payment);
+        if (!payment.exists) {
+          // chưa từng tạo payment
+          setIsExpired(true);
+          setPayments([]);
+          setCurrentStep('qr');
+          return;
+        }
+        console.log('💳 Payment status:', payment.status);
+        
+        if (payment.status === 'EXPIRED') {
+          setIsExpired(true);
+          setPayments([]);
+          setCurrentStep('qr');
+          return;
+        }
+        
+        if (payment.status === 'SUCCESS') {
+          setCurrentStep('success');
+          return;
+        }
+        
+        if (payment.status === 'PENDING') {
+          if (!payment.qrCode || !payment.checkoutUrl) {
+            setCurrentStep('loading');
+            return;
+          }
+        
+          setPayments([{
+            orderCode: payment.orderCode!,
+            qrCode: payment.qrCode,
+            checkoutUrl: payment.checkoutUrl,
+            expireIn: payment.expireIn ?? 0,
+          }]);
+        
+          if (payment.expiredAt) {
+            setExpiredAt(new Date(payment.expiredAt));
+          }
+        
+          setTimeLeft(payment.expireIn ?? 0);
+          setIsExpired(false);
+          setCurrentStep('qr');
+        }
+
+      } catch (err) {
+        console.error('❌ getPaymentByOrder failed', err);
+        toast.error('Không lấy được trạng thái thanh toán');
+      }
+    };
+
+    fetchPayment();
+  }, [orderCode]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -132,8 +223,33 @@ export function PaymentProcessPage() {
   const handleBackToHome = () => {
     navigate('/');
   };
+  const handleRegenerateQR = async () => {
+    if (!orderCodeRef.current) return;
+
+    try {
+      toast.loading('Đang tạo mã QR mới...', { id: 'regen-qr' });
+
+      await paymentApi.createPayment({
+        orderCode: orderCodeRef.current,
+      });
+
+      toast.success('Đã yêu cầu tạo mã QR mới', { id: 'regen-qr' });
+    } catch (err) {
+      console.error('❌ regenerate QR failed', err);
+      toast.error('Không thể tạo mã QR mới');
+    } finally {
+      toast.dismiss('regen-qr');
+    }
+  };
 
   const getStepContent = () => {
+    if (!orderCodeRef.current) {
+      return (
+        <div className="text-center text-red-500">
+          Không tìm thấy mã đơn hàng
+        </div>
+      );
+    }
     switch (currentStep) {
       case 'connecting':
         return (
@@ -181,15 +297,59 @@ export function PaymentProcessPage() {
             </div>
 
             <div className="text-sm text-muted-foreground space-y-1">
-              <p>Mã đơn: {state.orderCode.substring(0, 8)}...</p>
-              <p>Phương thức: {state.paymentMethod === 'BANKING' ? 'Chuyển khoản' : 'COD'}</p>
-              <p>Số tiền: {formatPrice(state.totalAmount)}</p>
+              <p>Mã đơn: {state?.orderCode ?? '---'}</p>
+              {state && (
+                <>
+                  <p>Phương thức: {state.paymentMethod === 'BANKING' ? 'Chuyển khoản' : 'COD'}</p>
+                  <p>Số tiền: {formatPrice(state.totalAmount)}</p>
+                </>
+              )}
             </div>
           </div>
         );
 
       case 'qr':
+        if (isExpired) {
+          return (
+            <div className="text-center space-y-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertCircle className="w-5 h-5" />
+                  <span className="font-medium">Mã QR đã hết hạn</span>
+                </div>
+                <p className="text-red-600 text-sm mt-1">
+                  Vui lòng tạo mã QR mới để tiếp tục thanh toán.
+                </p>
+              </div>
+      
+              <Button
+                className="w-full bg-primary hover:bg-primary/90"
+                onClick={handleRegenerateQR}
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                Tạo mã QR mới
+              </Button>
+      
+              <p className="text-xs text-muted-foreground">
+                Mã QR mới sẽ có hiệu lực trong 15 phút
+              </p>
+            </div>
+          );
+        }
+
         const firstPayment = payments[0];
+
+        if (!firstPayment) {
+          return (
+            <div className="text-center space-y-6">
+              <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
+              <p className="text-muted-foreground">
+                Đang tải mã QR thanh toán...
+              </p>
+            </div>
+          );
+        }
+
         return (
           <div className="text-center space-y-6">
             <div>
@@ -201,13 +361,12 @@ export function PaymentProcessPage() {
 
             {/* Timer */}
             <div className="flex justify-center">
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${
-                timeLeft < 60
-                  ? 'bg-red-50 text-red-700 border border-red-200'
-                  : timeLeft < 300
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${timeLeft < 60
+                ? 'bg-red-50 text-red-700 border border-red-200'
+                : timeLeft < 300
                   ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
                   : 'bg-green-50 text-green-700 border border-green-200'
-              }`}>
+                }`}>
                 <Clock className="w-4 h-4" />
                 <span className="font-mono font-semibold">
                   {isExpired ? '00:00' : formatTime(timeLeft)}
@@ -220,15 +379,18 @@ export function PaymentProcessPage() {
                 ⚠️ Mã QR sắp hết hạn!
               </p>
             )}
-
             {isExpired && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-2 text-red-700">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="font-medium">Mã QR đã hết hạn</span>
-                </div>
-                <p className="text-red-600 text-sm mt-1">
-                  Vui lòng tạo đơn hàng mới để nhận mã QR mới.
+              <div className="space-y-3">
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90"
+                  onClick={handleRegenerateQR}
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Tạo mã QR mới
+                </Button>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  Mã QR mới sẽ có hiệu lực trong 15 phút
                 </p>
               </div>
             )}
@@ -238,16 +400,17 @@ export function PaymentProcessPage() {
               <>
                 <div className="flex justify-center">
                   <div className="p-6 bg-white rounded-lg border-2 border-gray-200">
-                    <ImageWithFallback
-                      src={firstPayment.qrCode}
-                      alt="QR Code"
-                      className="w-64 h-64"
-                      fallback={
-                        <div className="w-64 h-64 flex items-center justify-center bg-gray-50 rounded">
-                          <p className="text-sm text-gray-600">Không thể tải QR</p>
-                        </div>
-                      }
-                    />
+                    <div className="flex justify-center">
+                      <div className="p-6 bg-white rounded-lg border-2 border-gray-200">
+                        <QRCodeCanvas
+                          value={firstPayment.qrCode}
+                          size={256}
+                          level="M"
+                          includeMargin
+                        />
+                      </div>
+                    </div>
+
                   </div>
                 </div>
 
@@ -263,7 +426,7 @@ export function PaymentProcessPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Mã đơn:</span>
                     <span className="font-mono text-sm">
-                      {firstPayment.orderId.substring(0, 8)}...
+                      {firstPayment.orderCode.substring(0, 8)}...
                     </span>
                   </div>
                 </div>
@@ -354,18 +517,18 @@ export function PaymentProcessPage() {
               </Button>
               <div>
                 <h1 className="text-lg font-semibold">Xử lý thanh toán</h1>
-                {state?.orderCode && (
+                {orderCodeRef.current && (
                   <p className="text-sm text-muted-foreground">
-                    Đơn hàng: {state.orderCode.substring(0, 8)}...
+                    Đơn hàng: {orderCodeRef.current.slice(0, 8)}...
                   </p>
                 )}
+
               </div>
             </div>
 
             {/* Connection Status */}
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
-              isConnected ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
-            }`}>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${isConnected ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
+              }`}>
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`} />
               {isConnected ? 'Đã kết nối' : 'Đang kết nối...'}
             </div>
