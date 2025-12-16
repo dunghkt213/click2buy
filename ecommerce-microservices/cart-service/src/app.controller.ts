@@ -1,5 +1,5 @@
 import { Controller, UseGuards, BadRequestException} from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MessagePattern, Payload,  EventPattern } from '@nestjs/microservices';
 import { CartService } from './app.service';
 import { JwtKafkaAuthGuard } from './auth/jwt-kafka.guard';
 import { CurrentUser } from './auth/current-user.decorator';
@@ -65,6 +65,12 @@ export class CartController {
       productId,
       quantity
     );
+  }
+
+  @EventPattern('cart.clear.after.payment')
+  async handleOrderCreated(@Payload() data: any) {
+    await this.cartService.clearCartAfterPayment(data);
+    return { success: true };
   }
 
 }

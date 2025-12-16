@@ -189,6 +189,25 @@ export class AppService {
         },
       },
     );
+    
+    if (result.modifiedCount > 0) {
+      const orders = await this.orderModel.find({
+        _id: { $in: dto.orderIds },
+      });
+    
+      const items = orders.flatMap(order =>
+        order.items.map(i => ({
+          sellerId: order.ownerId,
+          productId: i.productId,
+        })),
+      );
+    
+      this.kafka.emit('cart.clear.after.payment', {
+        userId: dto.userId,
+        items,
+      });
+    }
+    
 
     return {
       success: true,

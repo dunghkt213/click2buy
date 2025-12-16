@@ -141,6 +141,47 @@ export class CartService {
 
     return cart.save();
   }
+
+  async clearCartAfterPayment(data: {
+    userId: string;
+    items: { sellerId: string; productId: string }[];
+  }) {
+    const { userId, items } = data;
+  
+    if (!userId || !items || items.length === 0) {
+      return;
+    }
+  
+    // Group productIds theo sellerId
+    const map = new Map<string, string[]>();
+  
+    for (const item of items) {
+      if (!map.has(item.sellerId)) {
+        map.set(item.sellerId, []);
+      }
+      map.get(item.sellerId)!.push(item.productId);
+    }
+  
+    // Xử lý từng seller cart
+    for (const [sellerId, productIds] of map.entries()) {
+      const cart = await this.cartModel.findOne({ userId, sellerId });
+  
+      if (!cart) continue;
+  
+      // Remove purchased products
+      cart.items = cart.items.filter(
+        item => !productIds.includes(item.productId),
+      );
+  
+      // Nếu cart trống → xóa cart
+      if (cart.items.length === 0) {
+        await cart.deleteOne();
+      } else {
+        await cart.save();
+      }
+    }
+  }
+  
   
 }
 
