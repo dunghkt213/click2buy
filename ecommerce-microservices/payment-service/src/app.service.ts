@@ -37,7 +37,6 @@ export class PaymentService {
     }
   }
 
-
   private async createCODPayments(orderIds, orderCode, userId, total) {
     const createdPayments = [];
 
@@ -69,44 +68,13 @@ export class PaymentService {
   }
 
   public async createBankingPayments(orderIds, orderCode, userId, total) {
-    const existing = await this.paymentModel.findOne({
-      orderCode,
-      status: { $in: [PaymentStatus.PENDING, PaymentStatus.PAID] },
-    });
+    const existing = await this.paymentModel.findOne({orderCode});
 
-    // ✅ Nếu đã PAID thì trả luôn (khỏi tạo QR lại)
-    if (existing && existing.status === PaymentStatus.PAID) {
+    if (existing) {
       return {
         success: true,
         payments: existing,
       };
-    }
-
-    // ✅ Nếu có PENDING và chưa hết hạn -> emit lại QR để FE render ngay (kể cả reload)
-    if (existing && existing.status === PaymentStatus.PENDING && existing.expireAt) {
-      const expireIn = Math.max(
-        0,
-        Math.floor((existing.expireAt.getTime() - Date.now()) / 1000),
-      );
-
-      if (expireIn > 0) {
-        this.kafka.emit('payment.qr.created', {
-          userId,
-          orderCode,
-          qrCode: existing.qrCode,
-          checkoutUrl: existing.checkoutUrl,
-          expireIn,
-          expiredAt: existing.expireAt, // ✅ thêm cho FE nếu cần
-        });
-
-        return {
-          success: true,
-          payments: existing,
-        };
-      }
-
-      // ✅ PENDING nhưng đã hết hạn
-      await existing.updateOne({ status: PaymentStatus.EXPIRED });
     }
 
     // Tạo qr mới
@@ -233,6 +201,9 @@ export class PaymentService {
 
       if (data.code !== '00') {
         await payment.updateOne({ status: 'FAILED' });
+
+        this.kafka.emit('payment.failed', { userId:payment.userId ,  orderCode: payment.orderCode, reason: data.desc });
+
         return { failed: true };
       }
 
@@ -263,21 +234,10 @@ export class PaymentService {
   async getByOrderCode(orderCode: string, userId: string) {
       const payment = await this.paymentModel.findOne({
         orderCode,
-        userId,
-        status: { $in: [PaymentStatus.PENDING, PaymentStatus.PAID, PaymentStatus.EXPIRED, PaymentStatus.FAILED] },
+        userId
       });
 
       if (!payment) return { exists: false };
-
-      // QR hết hạn
-      if (
-        payment.status === PaymentStatus.PENDING &&
-        payment.expireAt &&
-        payment.expireAt.getTime() < Date.now()
-      ) {
-        await payment.updateOne({ status: PaymentStatus.EXPIRED });
-        payment.status = PaymentStatus.EXPIRED;
-      }
 
       return {
         exists: true,
@@ -307,6 +267,26 @@ export class PaymentService {
       const total = await this.paymentModel.countDocuments(filters);
       return { items, total };
     }
+
+   async handlePaymentTimeout(paymentId: string) {
+      const payment = await this.paymentModel.findById(paymentId);
+      if (!payment) return;
+    
+      // nếu đã PAID thì bỏ qua
+      if (payment.status === PaymentStatus.PAID) return;
+    
+      // ❌ FAIL + cleanup
+      await payment.updateOne({ status: PaymentStatus.FAILED });
+    
+      this.kafka.emit('payment.failed', {
+        userId: payment.userId,
+        orderCode: payment.orderCode,
+        reason: 'PAYMENT_TIMEOUT',
+      });
+    
+      console.log(`⏰ Payment timeout → deleted: ${paymentId}`);
+    }
+    
 
   }
 

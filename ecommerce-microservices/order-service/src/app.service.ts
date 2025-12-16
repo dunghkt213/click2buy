@@ -197,6 +197,40 @@ export class AppService {
     };
   }
 
+  async updateOrderStatus_paymentFailed(dto: {
+    orderCode: string;
+    userId: string;
+    reason?: string;
+    paymentId?: string;
+    paymentMethod?: string;
+  }) {
+    const result = await this.orderModel.updateMany(
+      {
+        orderCode: dto.orderCode,
+        userId: dto.userId,
+        status: 'PENDING_PAYMENT', // 🔐 chống callback lặp
+      },
+      {
+        $set: {
+          status: 'PAYMENT_FAILED',
+          paymentId: dto.paymentId,
+          paymentMethod: dto.paymentMethod,
+        },
+      },
+    );
+  
+    this.logger.warn(
+      `💥 Payment failed for orderCode=${dto.orderCode}, updated=${result.modifiedCount}`,
+    );
+  
+    return {
+      success: true,
+      updatedCount: result.modifiedCount,
+      status: 'PAYMENT_FAILED',
+    };
+  }
+  
+
 
   async requestBankingForOrders(input: { userId: string; orderCode: string }) {
     const { userId, orderCode } = input;
