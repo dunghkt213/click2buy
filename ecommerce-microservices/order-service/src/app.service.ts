@@ -294,10 +294,6 @@ export class AppService {
       throw new NotFoundException(`Order not found: ${orderId}`);
     }
 
-    if (order.ownerId !== sellerId) {
-      throw new BadRequestException('You are not the owner of this order');
-    }
-
     if (order.status !== 'PENDING_ACCEPT') {
       throw new BadRequestException(`Cannot reject order with status: ${order.status}`);
     }
