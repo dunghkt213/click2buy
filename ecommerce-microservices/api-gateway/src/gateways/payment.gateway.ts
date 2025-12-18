@@ -15,7 +15,6 @@ export class PaymentGateway {
     this.kafka.subscribeToResponseOf('payment.qr.created');
     this.kafka.subscribeToResponseOf('payment.qr.expired');
     this.kafka.subscribeToResponseOf('payment.get.by.order');
-    this.kafka.subscribeToResponseOf('order.payment.banking.requested');
     await this.kafka.connect();
   }
 
@@ -55,22 +54,6 @@ export class PaymentGateway {
       type: 'PAYMENT_SUCCESS',
       data: payload,
     });
-  }
-
-  @Post('/create-banking')
-  async requestBanking(
-    @Body() body: { orderCode: string },
-    @Headers('authorization') auth: string,
-  ) {
-    console.log('📥 HTTP /payment/create-banking RECEIVED', body);
-  
-    return this.kafka.send(
-      'order.payment.banking.requested',
-      {
-        orderCode: body.orderCode,
-        auth,
-      },
-    );
   }
   
   @MessagePattern('payment.qr.expired')

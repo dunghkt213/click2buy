@@ -7,6 +7,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-status.dto';
 import Redis from 'ioredis/built/Redis';
 import { firstValueFrom, timeout } from 'rxjs';
+import { console } from 'inspector';
 @Injectable()
 export class AppService {
   private readonly logger = new Logger(AppService.name);
@@ -248,70 +249,23 @@ export class AppService {
       status: 'PAYMENT_FAILED',
     };
   }
-  
-
-
-  async requestBankingForOrders(input: { userId: string; orderCode: string }) {
-    const { userId, orderCode } = input;
-
-    this.validateOrderCode(orderCode);
-
-    const orders = await this.orderModel.find({
-      orderCode,
-      userId,                               // đảm bảo đúng chủ
-    });
-
-    if (!orders.length) {
-      console.log('Orders not found or not owned by user');
-      throw new NotFoundException('Orders not found or not owned by user');
-    }
-
-    const totalAllOrders = orders.reduce((sum, o) => sum + o.finalTotal, 0);
-
-    const allowed = [
-      'PENDING_PAYMENT',
-      'PAYMENT_FAILED',  // thanh toán fail được tạo lại
-    ];
-
-    // (optional) kiểm tra status phải là PENDING_PAYMENT
-    for (const o of orders) {
-      if (!allowed.includes(o.status)) {
-        throw new BadRequestException(
-          `Order ${o._id} cannot request banking payment in status: ${o.status}`,
-        );
-      }
-    }
-    console.log('🔥 EMIT order.payment.banking.requested PAYLOAD:', orderCode)
-    // 👉 CHÍNH ORDER-SERVICE là nơi bắn đi event sang payment
-    this.kafka.emit('payment.banking.requested', {
-      userId,
-      orderCode,
-      paymentMethod: 'BANKING',
-      total: totalAllOrders,   // total lấy từ DB, an toàn
-    });
-
-    return {
-      success: true,
-      message: 'Requested banking payment, waiting for QR',
-    };
-  }
 
   /**
    * Seller duyệt đơn hàng - KHÔNG cộng doanh thu ở bước này
    * Chỉ emit event để tracking số đơn được duyệt
    */
   async confirmOrder(orderId: string, sellerId: string) {
+    console.log('=>> service order.confirmOrder')
+    console.log(`➡️ confirmOrder called: orderId=${orderId}, sellerId=${sellerId}`);
     const order = await this.orderModel.findById(orderId);
 
     if (!order) {
+      console.log(`Order not found: ${orderId}`);
       throw new NotFoundException(`Order not found: ${orderId}`);
     }
 
-    if (order.ownerId !== sellerId) {
-      throw new BadRequestException('You are not the owner of this order');
-    }
-
     if (order.status !== 'PENDING_ACCEPT') {
+      console.log(`Cannot confirm order with status: ${order.status}`);
       throw new BadRequestException(`Cannot confirm order with status: ${order.status}`);
     }
 
@@ -338,10 +292,6 @@ export class AppService {
 
     if (!order) {
       throw new NotFoundException(`Order not found: ${orderId}`);
-    }
-
-    if (order.ownerId !== sellerId) {
-      throw new BadRequestException('You are not the owner of this order');
     }
 
     if (order.status !== 'PENDING_ACCEPT') {

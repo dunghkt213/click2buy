@@ -62,33 +62,39 @@ export class AppController {
     return this.appService.updateOrderStatus_paymentFailed(data);
   }
 
-
-  @MessagePattern('order.payment.banking.requested')
-  @UseGuards(JwtKafkaAuthGuard)
-  async handlePaymentBankingRequested(
-    @Payload() data: any,
-    @CurrentUser() user: any,
-  ) {
-    console.log('✅ RECEIVED order.payment.banking.requested', data);
-
-    const userId = user?.sub || user?.id;
-    const { orderCode } = data;
-
-    if (!orderCode) {
-      throw new BadRequestException('orderCode is required');
-    }
-
-    return this.appService.requestBankingForOrders({
-      userId,
-      orderCode,
-    });
-  }
-
   @MessagePattern('order.confirm')
   @UseGuards(JwtKafkaAuthGuard)
   async confirmOrder(@Payload() data: { orderId: string }, @CurrentUser() user: any) {
+    console.log('order.confirm payload:', data);
     const sellerId = user?.sub || user?.id;
-    return this.appService.confirmOrder(data.orderId, sellerId);
+    if (!sellerId) {
+      console.error('❌ [Controller] sellerId is missing');
+      throw new BadRequestException('Invalid seller');
+    }
+    try {
+      console.log('🔥 [Controller] BEFORE calling service.confirmOrder');
+  
+      const result = await this.appService.confirmOrder(
+        data.orderId,
+        sellerId,
+      );
+  
+      console.log('🔥 [Controller] AFTER calling service.confirmOrder', result);
+  
+      return result;
+    } catch (err) {
+      console.error(
+        '❌ [Controller] ERROR when calling service.confirmOrder',
+        {
+          message: err?.message,
+          stack: err?.stack,
+          name: err?.name,
+        },
+      );
+  
+      // ⚠️ QUAN TRỌNG: với Kafka RPC, nên throw lại nguyên lỗi
+      throw err;
+    }
   }
 
   @MessagePattern('order.reject')
