@@ -1,6 +1,6 @@
 import { Product, StoreProduct } from "../../types";
 import { request } from '../client/apiClient';
-import { mapProductResponse, mapBackendProductToStoreProduct } from './product.mapper';
+import { mapBackendProductToStoreProduct, mapProductResponse } from './product.mapper';
 
 // mapProductResponse and mapBackendProductToStoreProduct are imported from product.mapper.ts
 
@@ -8,15 +8,17 @@ import { mapProductResponse, mapBackendProductToStoreProduct } from './product.m
 // Lấy danh sách sản phẩm
 // -------------------------------
 async function getAll(query?: { 
-  category?: string; 
+  category?: string;
+  categoryId?: string; 
   minPrice?: number; 
   maxPrice?: number; 
   search?: string;
   page?: number;
   limit?: number;
-}): Promise<Product[]> {
+}): Promise<{ products: Product[]; pagination?: { page: number; limit: number; total: number; totalPages: number } }> {
   const params = new URLSearchParams();
   if (query?.category) params.append('category', query.category);
+  if (query?.categoryId) params.append('categoryId', query.categoryId);
   if (query?.minPrice) params.append('minPrice', query.minPrice.toString());
   if (query?.maxPrice) params.append('maxPrice', query.maxPrice.toString());
   if (query?.search) params.append('search', query.search);
@@ -29,14 +31,23 @@ async function getAll(query?: {
     requireAuth: false,
   });
   
-  // Backend có thể trả về { success: true, data: [...] } hoặc array trực tiếp
+  // Backend có thể trả về { success: true, data: [...], pagination: {...} } hoặc array trực tiếp
   const products = response?.data || response;
+  const pagination = response?.pagination;
   
   if (!products || !Array.isArray(products)) {
     throw new Error("Dữ liệu sản phẩm không hợp lệ");
   }
   
-  return products.map(mapProductResponse);
+  return {
+    products: products.map(mapProductResponse),
+    pagination: pagination ? {
+      page: pagination.page || 1,
+      limit: pagination.limit || 40,
+      total: pagination.total || products.length,
+      totalPages: pagination.totalPages || Math.ceil((pagination.total || products.length) / (pagination.limit || 40))
+    } : undefined
+  };
 }
 
 // -------------------------------
@@ -65,30 +76,42 @@ async function search(query: {
   sortBy?: 'price' | 'rating' | 'newest' | 'popular';
   sortOrder?: 'asc' | 'desc';
 }): Promise<Product[]> {
+  const requestBody = {
+    keyword: query.search || query.keyword,
+    category: query.category,
+    minPrice: query.minPrice,
+    maxPrice: query.maxPrice,
+    rating: query.rating,
+    brands: query.brands,
+    inStock: query.inStock,
+    sortBy: query.sortBy,
+    sortOrder: query.sortOrder,
+  };
+  
+  console.log('🔍 [productApi.search] Gọi POST /products/search với body:', requestBody);
+  
   const response = await request<any>('/products/search', {
     method: 'POST',
-    body: JSON.stringify({
-      keyword: query.search || query.keyword,
-      category: query.category,
-      minPrice: query.minPrice,
-      maxPrice: query.maxPrice,
-      rating: query.rating,
-      brands: query.brands,
-      inStock: query.inStock,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-    }),
+    body: JSON.stringify(requestBody),
     requireAuth: false,
   });
+  
+  console.log('📥 [productApi.search] Response từ API:', response);
   
   // Backend có thể trả về { success: true, data: [...] } hoặc array trực tiếp
   const products = response?.data || response;
   
+  console.log('📦 [productApi.search] Products sau khi extract:', products);
+  
   if (!products || !Array.isArray(products)) {
+    console.error('❌ [productApi.search] Dữ liệu không hợp lệ:', products);
     throw new Error("Dữ liệu tìm kiếm không hợp lệ");
   }
   
-  return products.map(mapProductResponse);
+  const mappedProducts = products.map(mapProductResponse);
+  console.log('✅ [productApi.search] Đã map', mappedProducts.length, 'sản phẩm');
+  
+  return mappedProducts;
 }
 
 // -------------------------------

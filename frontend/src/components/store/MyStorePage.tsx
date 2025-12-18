@@ -70,6 +70,14 @@ export function MyStorePage({
 }: MyStorePageProps) {
   const [selectedTab, setSelectedTab] = useState('products');
   
+  // Scroll lên đầu trang khi component mount để đảm bảo có thể scroll lên trên
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    // Force scroll bằng cách set scrollTop trực tiếp
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   // Log khi storeProducts thay đổi
   useEffect(() => {
     console.log('🏪 [MyStorePage] Nhận được storeProducts:', storeProducts);
@@ -246,19 +254,8 @@ export function MyStorePage({
   };
 
   return (
-    <div className="min-h-screen pt-16">
+    <div className="w-full min-h-screen pt-16 overflow-visible">
       <div className="container mx-auto px-4 py-8">
-      {/* Page Header */}
-      <motion.div
-        className="mb-8"
-        variants={sectionVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <h1 className="text-3xl font-bold mb-2">Cửa hàng của tôi</h1>
-        <p className="text-muted-foreground">Quản lý sản phẩm và đơn hàng của bạn</p>
-      </motion.div>
-
       {/* Main Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <motion.div

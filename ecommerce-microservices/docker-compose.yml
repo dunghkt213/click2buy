@@ -246,6 +246,18 @@ services:
 
      restart: unless-stopped
 
+  chat-service:
+    build: ./chat-service
+    container_name: click2buy_chat-service
+    env_file:
+      - ./chat-service/.env
+    depends_on:
+      - kafka
+      - mongo
+    restart: always
+    networks:
+      - click2buy_net
+
   inventory-service:
     build: ./inventory-service
     container_name: click2buy_inventory-service

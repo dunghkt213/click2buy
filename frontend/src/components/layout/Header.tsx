@@ -108,8 +108,8 @@ export function Header({
       if (onSearchClick) {
         onSearchClick();
       } else {
-        // Mặc định điều hướng nếu không có hàm xử lý riêng
-        navigate(`/search?q=${encodeURIComponent(externalSearchQuery)}`);
+        // Mặc định điều hướng và reload trang search
+        window.location.href = `/search?q=${encodeURIComponent(externalSearchQuery)}`;
       }
     }
   };
