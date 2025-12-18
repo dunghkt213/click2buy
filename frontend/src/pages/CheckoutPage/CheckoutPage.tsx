@@ -344,7 +344,7 @@ export function CheckoutPage() {
       console.log('🧪 orderResult RAW:', orderResult);
 
       // Logic xử lý theo payment method
-      if (selectedPayment.id === 'cod') {
+      if (selectedPayment.id === 'COD') {
         // COD: redirect thẳng đến orders
         toast.success('Đặt hàng thành công! Đơn hàng sẽ được giao trong 3-5 ngày.');
         navigate('/orders');
