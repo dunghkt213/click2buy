@@ -4,19 +4,10 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install        # <-- cần devDependencies để build
+RUN npm install --production
 
 COPY . .
-RUN npm run build      # <-- build ra dist/ vì có Nest CLI trong devDeps
 
+RUN npm run build
 
-# --- PRODUCTION STAGE ---
-FROM node:20-alpine AS production
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install --only=production   # <-- chỉ cài deps thật sự cần khi chạy
-
-COPY --from=builder /app/dist ./dist
-
-CMD ["node", "dist/main.js"]
+CMD ["npm", "run", "start:prod"]
