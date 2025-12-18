@@ -57,6 +57,11 @@ export class AppController {
   async updateOrderStatus(@Payload() data: any) {
     return this.appService.updateOrderStatus_paymentSuccess(data)
   }
+  @MessagePattern('payment.failed')
+  async handlePaymentFailed(@Payload() data: any) {
+    return this.appService.updateOrderStatus_paymentFailed(data);
+  }
+
 
   @MessagePattern('order.payment.banking.requested')
   @UseGuards(JwtKafkaAuthGuard)
@@ -78,7 +83,6 @@ export class AppController {
       orderCode,
     });
   }
-
 
   @MessagePattern('order.confirm')
   @UseGuards(JwtKafkaAuthGuard)
@@ -103,4 +107,6 @@ export class AppController {
     const sellerId = user?.sub || user?.id;
     return this.appService.completeOrder(data.orderId, sellerId);
   }
+
+
 }

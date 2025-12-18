@@ -7,7 +7,6 @@ export type PaymentDocument = Payment & Document;
 export enum PaymentStatus {
   PENDING = 'PENDING',   // Đã tạo QR, chờ thanh toán
   PAID = 'PAID',         // Thanh toán thành công
-  EXPIRED = 'EXPIRED',   // QR hết hạn
   FAILED = 'FAILED',     // Thanh toán lỗi / bị huỷ
 }
 
