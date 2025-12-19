@@ -265,7 +265,21 @@ export function useApp() {
   };
 
   const handleContactShop = (orderId: string) => {
-    alert(`Liên hệ shop cho đơn ${orderId} sẽ được phát triển sau`);
+    // Find order to get ownerId
+    const order = orders.orders.find(o => o.id === orderId);
+    if (order) {
+      // Try to get ownerId from order (might need to check order structure)
+      const shopId = (order as any).ownerId || (order as any).sellerId;
+      if (shopId) {
+        // Trigger chat với shop
+        const event = new CustomEvent('openChat', { detail: { targetUserId: shopId } });
+        window.dispatchEvent(event);
+      } else {
+        alert('Không tìm thấy thông tin shop của đơn hàng này');
+      }
+    } else {
+      alert('Không tìm thấy đơn hàng');
+    }
   };
 
   // Store registration handler

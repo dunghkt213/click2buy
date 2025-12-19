@@ -59,6 +59,7 @@ export function mapOrderResponse(data: BackendOrderDto): Order {
       phone: '',
       address: '',
     },
+    ownerId: data.ownerId,
     createdAt: data.createdAt || new Date().toISOString(),
     updatedAt: data.updatedAt || new Date().toISOString(),
     estimatedDelivery: data.expiresAt, // Use expiresAt as estimated delivery if available

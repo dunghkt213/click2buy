@@ -14,6 +14,7 @@ import { AddProductPage } from "./pages/AddProductPage/AddProductPage";
 import LoginPage from "./pages/AuthPage/LoginPage/LoginPage";
 import RegisterPage from "./pages/AuthPage/RegisterPage/RegisterPage";
 import { CartPage } from "./pages/CartPage/CartPage";
+import { ChatPage } from "./pages/ChatPage";
 import { CheckoutPage } from "./pages/CheckoutPage/CheckoutPage";
 import { EditProductPage } from "./pages/EditProductPage/EditProductPage";
 import { FeedPage } from "./pages/FeedPage/FeedPage";
@@ -67,6 +68,9 @@ export default function App() {
 
         <Route path="/profile" element={<MainLayout><ProfilePage /></MainLayout>} />
         <Route path="/profile/:userId" element={<MainLayout><ProfilePage /></MainLayout>} />
+
+        {/* Trang chat - không có footer */}
+        <Route path="/chat" element={<ChatPage />} />
 
         {/* Trang quản lý cửa hàng (của mình) */}
         <Route path="/my-store" element={<MainLayout><MyStorePage /></MainLayout>} />

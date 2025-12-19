@@ -541,9 +541,13 @@ export function ProductDetailPage() {
                       app.handleLogin();
                       return;
                     }
-                    // TODO: Implement chat với shop
-                    toast.info(`Chat với ${shopInfo?.shopName || 'shop'} sẽ được phát triển sau`);
-                    // Có thể mở chat floating button hoặc navigate đến chat page
+                    if (shopId) {
+                      // Trigger chat với shop
+                      const event = new CustomEvent('openChat', { detail: { targetUserId: shopId } });
+                      window.dispatchEvent(event);
+                    } else {
+                      toast.error('Không tìm thấy thông tin shop');
+                    }
                   }}
                   className="gap-2"
                 >

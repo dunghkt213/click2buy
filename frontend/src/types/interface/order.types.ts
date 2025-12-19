@@ -27,6 +27,7 @@ export interface Order {
   status: OrderStatus;
   paymentMethod: string;
   shippingMethod: string;
+  ownerId?: string; // ID của shop/seller
   shippingAddress: {
     name: string;
     phone: string;
