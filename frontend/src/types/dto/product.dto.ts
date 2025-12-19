@@ -118,6 +118,9 @@ export interface BackendProductDto {
   discount?: number;
   category?: string;
   inStock?: boolean;
+  reviewSummary?: string; // AI-generated review summary
+  averageRating?: number;
+  totalReviews?: number;
   createdAt?: string;
   updatedAt?: string;
 }

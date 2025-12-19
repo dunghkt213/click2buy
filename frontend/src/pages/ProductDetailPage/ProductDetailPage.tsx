@@ -3,7 +3,7 @@
  * Hiển thị đầy đủ thông tin sản phẩm, shop, mô tả, đánh giá và sản phẩm liên quan
  */
 
-import { ArrowLeft, ChevronLeft, ChevronRight, MessageCircle, Package, Share2, Shield, ShoppingCart, Star, Store, ThumbsUp, TruckIcon } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, MessageCircle, Package, Share2, Shield, ShoppingCart, Sparkles, Star, Store, ThumbsUp, TruckIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -640,6 +640,23 @@ export function ProductDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* AI Review Summary */}
+          {product.reviewSummary && (
+            <Card className="border-2 bg-gradient-to-br from-primary/5 to-primary/10 mb-6">
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                  </div>
+                  <h3 className="font-bold text-lg">Tóm tắt đánh giá (AI)</h3>
+                </div>
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {product.reviewSummary}
+                </p>
+              </div>
+            </Card>
+          )}
 
           {/* Reviews List */}
           <div className="space-y-6">
