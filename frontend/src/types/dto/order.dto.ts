@@ -52,22 +52,31 @@ export interface OrderQueryDto {
 export interface BackendOrderDto {
   _id?: string;
   id?: string;
+  orderCode?: string;
   orderNumber?: string;
   userId?: string;
+  ownerId?: string;
   items?: BackendOrderItemDto[];
+  total?: number;
   totalPrice?: number;
+  subtotal?: number;
   shippingFee?: number;
+  voucherDiscount?: number;
+  paymentDiscount?: number;
   discount?: number;
+  finalTotal?: number;
   finalPrice?: number;
   status?: string;
   paymentMethod?: string;
   shippingMethod?: string;
   shippingAddress?: ShippingAddressDto;
+  expiresAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface BackendOrderItemDto {
+  _id?: string;
   productId: string;
   product?: any;
   quantity: number;

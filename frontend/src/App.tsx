@@ -14,10 +14,12 @@ import { AddProductPage } from "./pages/AddProductPage/AddProductPage";
 import LoginPage from "./pages/AuthPage/LoginPage/LoginPage";
 import RegisterPage from "./pages/AuthPage/RegisterPage/RegisterPage";
 import { CartPage } from "./pages/CartPage/CartPage";
+import { ChatPage } from "./pages/ChatPage";
 import { CheckoutPage } from "./pages/CheckoutPage/CheckoutPage";
 import { EditProductPage } from "./pages/EditProductPage/EditProductPage";
 import { FeedPage } from "./pages/FeedPage/FeedPage";
 import { MyStorePage } from "./pages/MyStorePage/MyStorePage";
+import { OrderDetailPage } from "./pages/OrderDetailPage/OrderDetailPage";
 import { OrdersPage } from "./pages/OrdersPage/OrdersPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage/ProductDetailPage";
 import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
@@ -62,9 +64,13 @@ export default function App() {
         <Route path="/checkout" element={<MainLayout><CheckoutPage /></MainLayout>} />
         <Route path="/payment/process/:orderCode" element={<PaymentProcessPage />} />
         <Route path="/orders" element={<MainLayout><OrdersPage /></MainLayout>} />
+        <Route path="/orders/:orderId" element={<MainLayout><OrderDetailPage /></MainLayout>} />
 
         <Route path="/profile" element={<MainLayout><ProfilePage /></MainLayout>} />
         <Route path="/profile/:userId" element={<MainLayout><ProfilePage /></MainLayout>} />
+
+        {/* Trang chat - không có footer */}
+        <Route path="/chat" element={<ChatPage />} />
 
         {/* Trang quản lý cửa hàng (của mình) */}
         <Route path="/my-store" element={<MainLayout><MyStorePage /></MainLayout>} />

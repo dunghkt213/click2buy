@@ -65,10 +65,13 @@ export interface Order {
   totalPrice: number;
   shippingFee: number;
   discount: number;
+  voucherDiscount?: number;
+  paymentDiscount?: number;
   finalPrice: number;
   status: OrderStatus;
   paymentMethod: string;
   shippingMethod: string;
+  ownerId?: string; // ID của shop/seller
   shippingAddress: {
     name: string;
     phone: string;
@@ -77,6 +80,7 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   estimatedDelivery?: string;
+  expiresAt?: string;
   trackingNumber?: string;
   note?: string;
   timeline: {

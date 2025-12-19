@@ -38,6 +38,7 @@ export function mapProductResponse(data: BackendProductDto): Product {
     // Lưu ownerId để dùng làm sellerId
     ownerId: data.ownerId,
     sellerId: data.ownerId || data.sellerId, // ownerId là sellerId
+    reviewSummary: data.reviewSummary, // AI-generated review summary
   };
   
   // Debug log để kiểm tra
