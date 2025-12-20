@@ -310,4 +310,41 @@ export class AppService {
     return product;
   }
   
+  /** Cập nhật review summary cho sản phẩm (internal call từ API Gateway) */
+  async updateReviewSummary(productId: string, reviewSummary: string) {
+    try {
+      const updated = await this.productModel.findByIdAndUpdate(
+        productId,
+        { $set: { reviewSummary } },
+        { new: true }
+      );
+
+      if (!updated) {
+        return { success: false, message: 'Product not found' };
+      }
+
+      return { success: true, message: 'Review summary updated', data: { productId, reviewSummary } };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  /** Lấy sản phẩm của seller (dùng cho kiểm tra trùng nội dung) */
+  async findBySeller(sellerId: string, limit: number = 20) {
+    try {
+      const products = await this.productModel
+        .find({ 
+          ownerId: sellerId,
+          status: { $ne: ProductStatus.DELETED }
+        })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .select('_id name description brand tags specifications categoryIds')
+        .lean();
+
+      return { success: true, data: products };
+    } catch (error) {
+      return { success: false, message: error.message, data: [] };
+    }
+  }
 }

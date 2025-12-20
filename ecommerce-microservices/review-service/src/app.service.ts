@@ -1,9 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { CreateReviewDto } from '../dto/create-review.dto';
-import { UpdateReviewDto } from '../dto/update-review.dto';
-import { Review } from 'schemas/review-schema';
+import { CreateReviewDto } from './dto/create-review.dto';
+import { UpdateReviewDto } from './dto/update-review.dto';
+import { Review } from './schemas/review-schema';
 import { RpcException } from '@nestjs/microservices';
 
 @Injectable()

@@ -5,6 +5,7 @@
  * - Merge sản phẩm trùng lặp
  */
 
+import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../providers/AppProvider';
@@ -47,10 +48,10 @@ import { formatPrice } from '../../utils/utils';
 
 // --- TYPES ---
 interface ProductFilters {
-  category: string;
-  status: string;
+  productName: string;
   minPrice: string;
   maxPrice: string;
+  status: string; // 'all' | 'in_stock' | 'out_of_stock' | 'inactive'
 }
 
 type OrderTab = 'pending' | 'shipping' | 'completed';
@@ -58,9 +59,9 @@ type OrderTab = 'pending' | 'shipping' | 'completed';
 // --- MAPPING (VIỆT HÓA) ---
 const STATUS_MAP: Record<string, string> = {
   'all': 'Tất cả',
-  'active': 'Đang bán',
-  'inactive': 'Tạm ngưng',
-  'out_of_stock': 'Hết hàng'
+  'in_stock': 'Còn hàng',
+  'out_of_stock': 'Hết hàng',
+  'inactive': 'Ngừng kinh doanh'
 };
 
 const STOCK_MAP: Record<string, string> = {
@@ -99,6 +100,14 @@ export function MyStorePage() {
       }
     }
   }, [app.isLoggedIn, app.user?.role, app.store.hasStore, navigate, app.modals]);
+
+  // Scroll lên đầu trang khi component mount để đảm bảo có thể scroll lên trên
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    // Force scroll bằng cách set scrollTop trực tiếp
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
 
   useEffect(() => {
     if (app.isLoggedIn && app.user?.role === 'seller') {
@@ -155,10 +164,10 @@ export function MyStorePage() {
   const [timeRange, setTimeRange] = useState<'WEEK' | 'MONTH'>('WEEK');
   // Filter state
   const [filters, setFilters] = useState<ProductFilters>({
-    category: 'all',
-    status: 'all',
+    productName: '',
     minPrice: '',
-    maxPrice: ''
+    maxPrice: '',
+    status: 'all'
   });
 
   const [productForm, setProductForm] = useState({
@@ -344,17 +353,42 @@ const handleUpdateOrderStatus = (orderId: string, status: string) => {
 const categories = Array.from(new Set(mergedStoreProducts.map((p: StoreProduct) => p.category)));
 
 const resetFilters = () => {
-  setFilters({ category: 'all', status: 'all', minPrice: '', maxPrice: '' });
+  setFilters({ productName: '', minPrice: '', maxPrice: '', status: 'all' });
   setSearchQuery('');
 };
 
 const filteredProducts = mergedStoreProducts
   .filter((product: StoreProduct) => {
+    // Lọc theo searchQuery (nếu có)
     if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (filters.category !== 'all' && product.category !== filters.category) return false;
-    if (filters.status !== 'all' && product.status !== filters.status) return false;
+
+    // Lọc theo tên sản phẩm trong filter (không phân biệt hoa thường)
+    if (filters.productName) {
+      const productNameLower = product.name.toLowerCase();
+      const filterNameLower = filters.productName.toLowerCase();
+      if (!productNameLower.includes(filterNameLower)) return false;
+    }
+
+    // Lọc theo giá từ
     if (filters.minPrice && product.price < Number(filters.minPrice)) return false;
+
+    // Lọc theo giá đến
     if (filters.maxPrice && product.price > Number(filters.maxPrice)) return false;
+
+    // Lọc theo trạng thái
+    if (filters.status !== 'all') {
+      if (filters.status === 'in_stock') {
+        // Còn hàng: stock > 0 và status !== 'inactive'
+        if (product.stock <= 0 || product.status === 'inactive') return false;
+      } else if (filters.status === 'out_of_stock') {
+        // Hết hàng: stock === 0
+        if (product.stock !== 0) return false;
+      } else if (filters.status === 'inactive') {
+        // Ngừng kinh doanh: status === 'inactive'
+        if (product.status !== 'inactive') return false;
+      }
+    }
+
     return true;
   });
 
@@ -385,22 +419,63 @@ const totalRevenue = salesData.reduce((sum, item) => sum + item.revenue, 0);
 if (!app.isLoggedIn || app.user?.role !== 'seller') return null;
 
 return (
-  <div className="container mx-auto px-4 py-8">
-    <div className="mb-8">
-      <h1 className="text-3xl font-bold mb-2">Cửa hàng của tôi</h1>
-      <p className="text-muted-foreground">Quản lý sản phẩm và đơn hàng của bạn</p>
-    </div>
-
-    <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+  <div className="w-full min-h-screen pt-16 overflow-visible">
+    <div className="container mx-auto px-4 py-8">
+      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
       <TabsList className="mb-6">
-        <TabsTrigger value="products" className="gap-2"><Package className="w-4 h-4" /> Sản phẩm ({mergedStoreProducts.length})</TabsTrigger>
-        <TabsTrigger value="orders" className="gap-2"><Truck className="w-4 h-4" /> Đơn hàng ({storeOrders.length})</TabsTrigger>
-        <TabsTrigger value="revenue" className="gap-2"><TrendingUp className="w-4 h-4" /> Doanh thu</TabsTrigger>
+        <TabsTrigger 
+          value="products" 
+          className="gap-2 transition-all duration-200 hover:scale-105"
+        >
+          <motion.div
+            animate={selectedTab === 'products' ? { scale: 1.1 } : { scale: 1 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2"
+          >
+            <Package className="w-4 h-4" /> 
+            Sản phẩm ({mergedStoreProducts.length})
+          </motion.div>
+        </TabsTrigger>
+        <TabsTrigger 
+          value="orders" 
+          className="gap-2 transition-all duration-200 hover:scale-105"
+        >
+          <motion.div
+            animate={selectedTab === 'orders' ? { scale: 1.1 } : { scale: 1 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2"
+          >
+            <Truck className="w-4 h-4" /> 
+            Đơn hàng ({storeOrders.length})
+          </motion.div>
+        </TabsTrigger>
+        <TabsTrigger 
+          value="revenue" 
+          className="gap-2 transition-all duration-200 hover:scale-105"
+        >
+          <motion.div
+            animate={selectedTab === 'revenue' ? { scale: 1.1 } : { scale: 1 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2"
+          >
+            <TrendingUp className="w-4 h-4" /> 
+            Doanh thu
+          </motion.div>
+        </TabsTrigger>
       </TabsList>
 
       {/* --- PRODUCTS TAB --- */}
       <TabsContent value="products" className="space-y-4">
-        <div className="flex items-center justify-between">
+        <AnimatePresence mode="wait">
+          {selectedTab === 'products' && (
+            <motion.div
+              key="products"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <div className="flex items-center justify-between">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Tìm sản phẩm..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
@@ -415,13 +490,61 @@ return (
         {showFilters && (
           <Card className="mb-4">
             <div className="p-4">
-              <div className="grid grid-cols-4 gap-4">
-                <div><Label>Danh mục</Label><Select value={filters.category} onValueChange={(value) => setFilters({ ...filters, category: value })}><SelectTrigger className="w-full"><SelectValue>{filters.category === 'all' ? 'Tất cả' : filters.category}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">Tất cả</SelectItem>{categories.map(category => (<SelectItem key={category} value={category}>{category}</SelectItem>))}</SelectContent></Select></div>
-                <div><Label>Trạng thái</Label><Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}><SelectTrigger className="w-full"><SelectValue>{STATUS_MAP[filters.status]}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">Tất cả</SelectItem><SelectItem value="active">Đang bán</SelectItem><SelectItem value="inactive">Tạm ngưng</SelectItem><SelectItem value="out_of_stock">Hết hàng</SelectItem></SelectContent></Select></div>
-                <div><Label>Giá từ</Label><Input type="number" value={filters.minPrice} onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })} placeholder="Min" /></div>
-                <div><Label>Giá đến</Label><Input type="number" value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} placeholder="Max" /></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <Label>Tên sản phẩm</Label>
+                  <Input 
+                    type="text" 
+                    value={filters.productName} 
+                    onChange={(e) => setFilters({ ...filters, productName: e.target.value })} 
+                    placeholder="Nhập tên sản phẩm..." 
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Giá từ</Label>
+                  <Input 
+                    type="number" 
+                    value={filters.minPrice} 
+                    onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })} 
+                    placeholder="Giá tối thiểu" 
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Giá đến</Label>
+                  <Input 
+                    type="number" 
+                    value={filters.maxPrice} 
+                    onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} 
+                    placeholder="Giá tối đa" 
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Trạng thái</Label>
+                  <Select 
+                    value={filters.status} 
+                    onValueChange={(value) => setFilters({ ...filters, status: value })}
+                  >
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue>{STATUS_MAP[filters.status]}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      <SelectItem value="in_stock">Còn hàng</SelectItem>
+                      <SelectItem value="out_of_stock">Hết hàng</SelectItem>
+                      <SelectItem value="inactive">Ngừng kinh doanh</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="flex justify-end mt-4"><Button variant="outline" size="sm" onClick={resetFilters}><RotateCcw className="w-4 h-4 mr-2" /> Đặt lại</Button></div>
+              <div className="flex justify-end mt-4">
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  <RotateCcw className="w-4 h-4 mr-2" /> 
+                  Đặt lại
+                </Button>
+              </div>
             </div>
           </Card>
         )}
@@ -492,19 +615,90 @@ return (
             </table>
           </div>
         </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </TabsContent>
 
       {/* --- ORDERS TAB --- */}
       <TabsContent value="orders" className="space-y-4">
-        <Tabs value={orderTab} onValueChange={(v) => setOrderTab(v as OrderTab)}>
-          <TabsList>
-            <TabsTrigger value="pending" className="gap-2"><Clock className="w-4 h-4" /> Chờ xử lý {getOrderCount('pending') > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{getOrderCount('pending')}</Badge>}</TabsTrigger>
-            <TabsTrigger value="shipping" className="gap-2"><Truck className="w-4 h-4" /> Đang giao {getOrderCount('shipping') > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{getOrderCount('shipping')}</Badge>}</TabsTrigger>
-            <TabsTrigger value="completed" className="gap-2"><CheckCircle className="w-4 h-4" /> Hoàn thành {getOrderCount('completed') > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{getOrderCount('completed')}</Badge>}</TabsTrigger>
-          </TabsList>
+        <AnimatePresence mode="wait">
+          {selectedTab === 'orders' && (
+            <motion.div
+              key="orders"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <Tabs value={orderTab} onValueChange={(v) => setOrderTab(v as OrderTab)}>
+                <TabsList>
+                  <TabsTrigger 
+                    value="pending" 
+                    className="gap-2 transition-all duration-200 hover:scale-105"
+                  >
+                    <motion.div
+                      animate={orderTab === 'pending' ? { scale: 1.1 } : { scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2"
+                    >
+                      <Clock className="w-4 h-4" /> 
+                      Chờ xử lý 
+                      {getOrderCount('pending') > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                          {getOrderCount('pending')}
+                        </Badge>
+                      )}
+                    </motion.div>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="shipping" 
+                    className="gap-2 transition-all duration-200 hover:scale-105"
+                  >
+                    <motion.div
+                      animate={orderTab === 'shipping' ? { scale: 1.1 } : { scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2"
+                    >
+                      <Truck className="w-4 h-4" /> 
+                      Đang giao 
+                      {getOrderCount('shipping') > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                          {getOrderCount('shipping')}
+                        </Badge>
+                      )}
+                    </motion.div>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="completed" 
+                    className="gap-2 transition-all duration-200 hover:scale-105"
+                  >
+                    <motion.div
+                      animate={orderTab === 'completed' ? { scale: 1.1 } : { scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2"
+                    >
+                      <CheckCircle className="w-4 h-4" /> 
+                      Hoàn thành 
+                      {getOrderCount('completed') > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                          {getOrderCount('completed')}
+                        </Badge>
+                      )}
+                    </motion.div>
+                  </TabsTrigger>
+                </TabsList>
 
-          {['pending', 'shipping', 'completed'].map((tab) => (
-            <TabsContent key={tab} value={tab} className="space-y-4">
+                <AnimatePresence mode="wait">
+                  {['pending', 'shipping', 'completed'].map((tab) => (
+                    orderTab === tab && (
+                      <TabsContent key={tab} value={tab} className="space-y-4">
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                        >
               {filteredOrders.length === 0 ? (
                 <Card className="p-12"><div className="text-center"><Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" /><h3 className="text-lg mb-2">Chưa có đơn hàng</h3></div></Card>
               ) : (
@@ -547,15 +741,29 @@ return (
                   </Card>
                 ))
               )}
-            </TabsContent>
-          ))}
-        </Tabs>
+                        </motion.div>
+                      </TabsContent>
+                    )
+                  ))}
+                </AnimatePresence>
+              </Tabs>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </TabsContent>
 
       {/* --- REVENUE TAB --- */}
       <TabsContent value="revenue" className="space-y-6">
-
-        {/* Thêm nút chọn thời gian nếu chưa có */}
+        <AnimatePresence mode="wait">
+          {selectedTab === 'revenue' && (
+            <motion.div
+              key="revenue"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            >
+              {/* Thêm nút chọn thời gian nếu chưa có */}
         <div className="flex justify-end gap-2 mb-4">
           <Button
             variant={timeRange === 'WEEK' ? 'default' : 'outline'}
@@ -668,6 +876,9 @@ return (
             </div>
           </Card>
         </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </TabsContent>
     </Tabs>
 
@@ -957,7 +1168,7 @@ return (
         <div className="flex justify-end gap-2 mt-4 pt-2 border-t"><Button variant="outline" onClick={() => setIsEditProductOpen(false)}>Hủy</Button><Button onClick={handleEditProduct}>Lưu</Button></div>
       </DialogContent>
     </Dialog>
-
+    </div>
   </div>
 );
 }

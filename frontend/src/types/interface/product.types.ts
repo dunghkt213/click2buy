@@ -25,6 +25,7 @@ export interface Product {
   specifications?: Record<string, string>;
   ownerId?: string;
   sellerId?: string;
+  reviewSummary?: string; // AI-generated review summary
 }
 
 export interface StoreProduct {

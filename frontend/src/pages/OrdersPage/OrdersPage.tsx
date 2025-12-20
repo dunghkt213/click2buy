@@ -2,56 +2,52 @@
  * OrdersPage - Trang đơn hàng (Đã fix lỗi Implicit Any TypeScript)
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../../providers/AppProvider";
 
 // Import UI Components
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
+import { Input } from "../../components/ui/input";
 import {
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
-  TabsContent,
 } from "../../components/ui/tabs";
-import { Input } from "../../components/ui/input";
 
 // Icons
 import {
   ArrowLeft,
-  Search,
-  Package,
-  Clock,
-  Truck,
   CheckCircle,
-  XCircle,
-  RotateCcw,
-  ShoppingBag,
-  Star,
+  Clock,
   MessageSquare,
+  Package,
+  Search,
+  Star,
+  Truck,
+  XCircle,
 } from "lucide-react";
 
 // Types & Utils
+import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import { Order, OrderStatus } from "../../types";
 import { formatPrice } from "../../utils/utils";
-import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
 // Import Modals
-import { OrderDetailModal } from "../../components/order/OrderDetailModal";
-import { ReviewModal, ReviewData } from "../../components/review/ReviewModal";
+import { ReviewData, ReviewModal } from "../../components/review/ReviewModal";
 
 // --- CONFIG ---
 type TabValue = OrderStatus;
 
 const statusTabs = [
   { value: "pending" as TabValue, label: "Đang chờ thanh toán", icon: Clock },
-  { value: "confirmed" as TabValue, label: "Tình trạng", icon: CheckCircle },
+  { value: "confirmed" as TabValue, label: "Chờ xác nhận", icon: CheckCircle },
   { value: "shipping" as TabValue, label: "Đang giao", icon: Truck },
   { value: "completed" as TabValue, label: "Hoàn thành", icon: CheckCircle },
   { value: "cancelled" as TabValue, label: "Đã hủy", icon: XCircle },
-  { value: "refund" as TabValue, label: "Trả hàng", icon: RotateCcw },
 ];
 
 const statusConfig: Record<OrderStatus, { label: string; color: string }> = {
@@ -91,7 +87,6 @@ export function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Modal State
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   // --- 2. EFFECT (Load Data) ---
@@ -122,20 +117,12 @@ export function OrdersPage() {
 
   // Count orders by status (Fix lỗi 'order' implicitly any)
   const getStatusCount = (status: TabValue) => {
-    // Tab "Tình trạng" (confirmed) đếm cả pending và confirmed
-    if (status === "confirmed") {
-      return orders.filter((order: Order) => order.status === "pending" || order.status === "confirmed").length;
-    }
     return orders.filter((order: Order) => order.status === status).length;
   };
 
   // --- 4. HANDLERS ---
   const handleViewDetail = (order: Order) => {
-    setSelectedOrder(order);
-    setIsDetailModalOpen(true);
-    if (app.handleViewOrderDetail) {
-      app.handleViewOrderDetail(order);
-    }
+    navigate(`/orders/${order.id}`);
   };
 
   const handleReview = (orderId: string) => {
@@ -278,12 +265,14 @@ export function OrdersPage() {
                             </p>
                           </div>
                         </div>
-                        <Badge
-                          variant="outline"
-                          className={`${statusInfo.color} w-fit`}
-                        >
-                          {statusInfo.label}
-                        </Badge>
+                        {order.status !== "confirmed" && order.status !== "pending" && (
+                          <Badge
+                            variant="outline"
+                            className={`${statusInfo.color} w-fit`}
+                          >
+                            {statusInfo.label}
+                          </Badge>
+                        )}
                       </div>
 
                       {/* Order Items */}
@@ -329,6 +318,22 @@ export function OrdersPage() {
                           )}
                         </div>
 
+                        {/* Expires At Warning for Pending Payment */}
+                        {order.expiresAt && order.status === "pending" && (
+                          <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                            <p className="text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
+                              <Clock className="w-4 h-4" /> Hết hạn thanh toán:{" "}
+                              {new Date(order.expiresAt).toLocaleString("vi-VN", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        )}
+
                         {/* Estimated Delivery */}
                         {order.estimatedDelivery &&
                           order.status === "shipping" && (
@@ -341,11 +346,37 @@ export function OrdersPage() {
                               </p>
                             </div>
                           )}
+
+                        {/* Order Summary */}
+                        <div className="mt-4 pt-4 border-t space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Tạm tính:</span>
+                            <span>{formatPrice(order.totalPrice)}</span>
+                          </div>
+                          {order.shippingFee > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Phí vận chuyển:</span>
+                              <span>{formatPrice(order.shippingFee)}</span>
+                            </div>
+                          )}
+                          {order.voucherDiscount && order.voucherDiscount > 0 && (
+                            <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                              <span>Giảm giá voucher:</span>
+                              <span>-{formatPrice(order.voucherDiscount)}</span>
+                            </div>
+                          )}
+                          {order.paymentDiscount && order.paymentDiscount > 0 && (
+                            <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                              <span>Giảm giá thanh toán:</span>
+                              <span>-{formatPrice(order.paymentDiscount)}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Order Footer */}
                       <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between p-4 bg-muted/30 border-t gap-4">
-                        <div className="flex items-baseline gap-2">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-baseline gap-2">
                           <span className="text-sm text-muted-foreground">
                             Tổng tiền:
                           </span>
@@ -458,19 +489,6 @@ export function OrdersPage() {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Order Detail Modal */}
-      {isDetailModalOpen && (
-        <OrderDetailModal
-          isOpen={isDetailModalOpen}
-          onClose={() => setIsDetailModalOpen(false)}
-          order={selectedOrder}
-          onCancelOrder={app.handleCancelOrder}
-          onReorder={app.handleReorder}
-          onReview={(id) => handleReview(id)}
-          onContactShop={app.handleContactShop}
-        />
-      )}
 
       {/* Review Modal */}
       {isReviewModalOpen && (
