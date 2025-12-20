@@ -103,12 +103,12 @@ export class AppService {
   
       // 3️⃣ Voucher SHOP (demo rule)
       let voucherDiscount = 0;
-      if (cart.voucherCode === 'SHOP10') {
-        voucherDiscount = Math.min(subtotal * 0.1, 50_000);
-      }
+      // if (cart.voucherCode === 'SHOP10') {
+      //   voucherDiscount = Math.min(subtotal * 0.1, 50_000);
+      // }
   
       // 4️⃣ Shipping & payment discount (shop-level)
-      const shippingFee = cart.shippingFee ?? 0;
+      const shippingFee = 0;
       const paymentDiscount = cart.paymentDiscount ?? 0;
   
       // 5️⃣ Final total của SHOP
