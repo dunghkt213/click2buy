@@ -5,6 +5,10 @@ import App from './App.tsx'
 import './styles/globals.css'
 import { Toaster } from 'sonner'
 import { AppProvider } from './providers/AppProvider'
+import { cleanupExpiredCache } from './utils/cache'
+
+// Cleanup expired cache khi app start
+cleanupExpiredCache();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

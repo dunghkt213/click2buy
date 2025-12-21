@@ -2,7 +2,7 @@
  * Order Types - Type definitions for Orders
  */
 
-export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'completed' | 'cancelled' | 'refund';
+export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'completed' | 'cancelled' | 'refund' | 'cancel_request';
 
 export interface OrderItem {
   id: string;

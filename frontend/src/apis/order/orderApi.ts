@@ -63,10 +63,39 @@ export const orderApi = {
 
   /**
    * Lấy tất cả đơn hàng của seller
+   * @param status - Trạng thái đơn hàng (PENDING_ACCEPT, REQUESTED_CANCEL, CONFIRMED, SHIPPING, DELIVERED)
    */
-  getAllForSeller: () =>
-    request<BackendOrder[]>('/orders/seller', {
+  getAllForSeller: (status?: string) => {
+    const url = status 
+      ? `/orders/seller?status=${encodeURIComponent(status)}`
+      : '/orders/seller';
+    return request<BackendOrder[]>(url, {
       method: 'GET',
+      requireAuth: true,
+    });
+  },
+
+  /**
+   * Lấy tất cả đơn hàng của user (buyer)
+   * @param status - Trạng thái đơn hàng (PENDING_PAYMENT, PENDING_ACCEPT, SHIPPING, DELIVERED, REJECTED)
+   */
+  getAllForUser: (status?: string) => {
+    const url = status 
+      ? `/orders/user?status=${encodeURIComponent(status)}`
+      : '/orders/user';
+    return request<BackendOrder[]>(url, {
+      method: 'GET',
+      requireAuth: true,
+    });
+  },
+
+  /**
+   * Hủy đơn hàng (cancel request)
+   * @param orderId - ID của đơn hàng cần hủy
+   */
+  cancelRequest: (orderId: string) =>
+    request<{ success: boolean; message?: string }>(`/orders/${orderId}/cancel_request`, {
+      method: 'PATCH',
       requireAuth: true,
     }),
 };

@@ -30,6 +30,9 @@ import { formatPrice } from '../../utils/utils';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { useAppContext } from '../../providers/AppProvider';
 import { toast } from 'sonner';
+import { productApi } from '../../apis/product/productApi';
+import { orderService } from '../../apis/order';
+import { mapOrderResponse } from '../../apis/order/order.mapper';
 
 const statusConfig: Record<OrderStatus, { label: string; color: string; bgColor: string; icon: any }> = {
   pending: { 
@@ -98,28 +101,73 @@ export function OrderDetailPage() {
       return;
     }
 
-    // Load order from context or fetch by ID
-    if (orderId) {
-      const foundOrder = app.orders.orders.find((o: Order) => o.id === orderId);
-      if (foundOrder) {
-        setOrder(foundOrder);
-        setLoading(false);
-      } else {
-        // If not found in context, try to load orders
-        app.orders.loadOrders().then(() => {
-          const order = app.orders.orders.find((o: Order) => o.id === orderId);
-          if (order) {
-            setOrder(order);
-          } else {
-            toast.error('Không tìm thấy đơn hàng');
-            navigate('/orders');
-          }
-          setLoading(false);
-        });
+    const loadOrderWithProducts = async () => {
+      if (!orderId) {
+        navigate('/orders');
+        return;
       }
-    } else {
-      navigate('/orders');
-    }
+
+      try {
+        setLoading(true);
+        
+        // Try to find order in context first
+        let foundOrder = app.orders.orders.find((o: Order) => o.id === orderId);
+        
+        // If not found, try to load from API
+        if (!foundOrder) {
+          // Try to load all orders for user (without status filter to get all)
+          await app.orders.loadOrdersForUser();
+          foundOrder = app.orders.orders.find((o: Order) => o.id === orderId);
+        }
+
+        if (!foundOrder) {
+          toast.error('Không tìm thấy đơn hàng');
+          navigate('/orders');
+          return;
+        }
+
+        // Fetch product details for each item in the order
+        const enrichedItems = await Promise.all(
+          foundOrder.items.map(async (item) => {
+            try {
+              // Fetch product details from API
+              const product = await productApi.getById(item.productId);
+              
+              return {
+                ...item,
+                name: product.name || item.name || 'Sản phẩm',
+                image: product.image || product.images?.[0] || item.image || '',
+                variant: product.variants ? JSON.stringify(product.variants) : item.variant,
+              };
+            } catch (error) {
+              console.error(`Failed to fetch product ${item.productId}:`, error);
+              // Return item with fallback values if product fetch fails
+              return {
+                ...item,
+                name: item.name || 'Sản phẩm',
+                image: item.image || '',
+              };
+            }
+          })
+        );
+
+        // Update order with enriched items
+        const enrichedOrder: Order = {
+          ...foundOrder,
+          items: enrichedItems,
+        };
+
+        setOrder(enrichedOrder);
+      } catch (error: any) {
+        console.error('Failed to load order:', error);
+        toast.error('Không thể tải thông tin đơn hàng');
+        navigate('/orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrderWithProducts();
   }, [orderId, app, navigate]);
 
   if (loading) {

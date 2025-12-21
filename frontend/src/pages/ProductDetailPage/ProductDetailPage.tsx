@@ -44,8 +44,8 @@ export function ProductDetailPage() {
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
   // Load product khi page mount
+  // Không scroll về đầu trang nữa, để useScrollRestoration xử lý
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
     if (id) {
       loadProduct();
     } else {
@@ -542,9 +542,9 @@ export function ProductDetailPage() {
                       return;
                     }
                     if (shopId) {
-                      // Trigger chat với shop
-                      const event = new CustomEvent('openChat', { detail: { targetUserId: shopId } });
-                      window.dispatchEvent(event);
+                      // Navigate to chat page with shopId as query param
+                      // ChatPage will handle opening the conversation
+                      navigate(`/chat?userId=${shopId}`);
                     } else {
                       toast.error('Không tìm thấy thông tin shop');
                     }

@@ -31,18 +31,21 @@ import {
   DollarSign,
   Edit,
   Filter,
+  List,
   Package,
   Plus,
   RotateCcw,
   Search,
   Trash2,
   TrendingUp,
-  Truck
+  Truck,
+  XCircle
 } from 'lucide-react';
 
 // Types & Utils
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { OrderList } from '../../components/order/OrderList';
 import { Order, StoreProduct } from '../../types';
 import { formatPrice } from '../../utils/utils';
 
@@ -54,7 +57,50 @@ interface ProductFilters {
   status: string; // 'all' | 'in_stock' | 'out_of_stock' | 'inactive'
 }
 
-type OrderTab = 'pending' | 'shipping' | 'completed';
+type OrderTab = 'all' | 'pending' | 'cancel_request' | 'shipping' | 'completed';
+
+// Order tab configuration
+const ORDER_TABS: Array<{
+  value: OrderTab;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  backendStatus?: string;
+  frontendStatus?: Order['status'];
+}> = [
+  {
+    value: 'all',
+    label: 'Tất cả',
+    icon: List,
+  },
+  {
+    value: 'pending',
+    label: 'Chờ xử lý',
+    icon: Clock,
+    backendStatus: 'PENDING_ACCEPT',
+    frontendStatus: 'confirmed', // PENDING_ACCEPT maps to 'confirmed'
+  },
+  {
+    value: 'cancel_request',
+    label: 'Yêu cầu hủy',
+    icon: XCircle,
+    backendStatus: 'REQUESTED_CANCEL',
+    frontendStatus: 'cancel_request',
+  },
+  {
+    value: 'shipping',
+    label: 'Đang giao',
+    icon: Truck,
+    backendStatus: 'CONFIRMED',
+    frontendStatus: 'shipping',
+  },
+  {
+    value: 'completed',
+    label: 'Hoàn thành',
+    icon: CheckCircle,
+    backendStatus: 'DELIVERED',
+    frontendStatus: 'completed',
+  },
+];
 
 // --- MAPPING (VIỆT HÓA) ---
 const STATUS_MAP: Record<string, string> = {
@@ -101,19 +147,24 @@ export function MyStorePage() {
     }
   }, [app.isLoggedIn, app.user?.role, app.store.hasStore, navigate, app.modals]);
 
-  // Scroll lên đầu trang khi component mount để đảm bảo có thể scroll lên trên
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
-    // Force scroll bằng cách set scrollTop trực tiếp
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, []);
+  // Không scroll về đầu trang nữa, để useScrollRestoration xử lý
+  // useEffect(() => {
+  //   window.scrollTo({ top: 0, behavior: 'auto' });
+  //   // Force scroll bằng cách set scrollTop trực tiếp
+  //   document.documentElement.scrollTop = 0;
+  //   document.body.scrollTop = 0;
+  // }, []);
 
   useEffect(() => {
     if (app.isLoggedIn && app.user?.role === 'seller') {
       app.store.setIsMyStorePageOpen(true);
     }
-  }, [app.isLoggedIn, app.user?.role, app.store]);
+    
+    // Cleanup: set false khi component unmount
+    return () => {
+      app.store.setIsMyStorePageOpen(false);
+    };
+  }, [app.isLoggedIn, app.user?.role]); // Loại bỏ app.store khỏi dependencies
 
   // --- 2. XỬ LÝ DỮ LIỆU: MERGE SẢN PHẨM TRÙNG ---
   const rawStoreProducts: StoreProduct[] = app.store.storeProducts || [];
@@ -149,11 +200,58 @@ export function MyStorePage() {
     return Array.from(map.values());
   }, [rawStoreProducts]);
 
-  const storeOrders: Order[] = app.orders.orders.filter((o: Order) => o.status !== 'cancelled');
-
   // --- 3. STATE ---
   const [selectedTab, setSelectedTab] = useState('products');
-  const [orderTab, setOrderTab] = useState<OrderTab>('pending');
+  const [orderTab, setOrderTab] = useState<OrderTab>('all');
+  const [allOrders, setAllOrders] = useState<Order[]>([]); // Store all orders for both counting and filtering
+
+  // Load all orders when entering orders tab (only once)
+  useEffect(() => {
+    if (app.isLoggedIn && app.user?.role === 'seller' && selectedTab === 'orders') {
+      const loadAllOrders = async () => {
+        try {
+          const { orderService } = await import('../../apis/order');
+          const { mapOrderResponse } = await import('../../apis/order/order.mapper');
+          const allOrdersData = await orderService.getAllForSeller(); // Load all orders without status filter
+          const mappedOrders = allOrdersData.map(mapOrderResponse);
+          setAllOrders(mappedOrders);
+          // Also update app.orders for compatibility
+          app.orders.setOrders(mappedOrders);
+        } catch (error) {
+          console.error('Failed to load orders:', error);
+        }
+      };
+      loadAllOrders();
+    }
+  }, [app.isLoggedIn, app.user?.role, selectedTab, app.orders]);
+
+  // Filter orders based on selected tab (frontend filtering for better UX)
+  const filteredOrders: Order[] = useMemo(() => {
+    if (orderTab === 'all') {
+      return allOrders.filter((o: Order) => o.status !== 'cancelled');
+    }
+    
+    const tabConfig = ORDER_TABS.find(tab => tab.value === orderTab);
+    if (!tabConfig?.frontendStatus) {
+      return [];
+    }
+    
+    return allOrders.filter((o: Order) => o.status === tabConfig.frontendStatus);
+  }, [allOrders, orderTab]);
+
+  // Get order count for a specific tab
+  const getOrderCount = (tab: OrderTab): number => {
+    if (tab === 'all') {
+      return allOrders.filter((o: Order) => o.status !== 'cancelled').length;
+    }
+    
+    const tabConfig = ORDER_TABS.find(t => t.value === tab);
+    if (!tabConfig?.frontendStatus) {
+      return 0;
+    }
+    
+    return allOrders.filter((o: Order) => o.status === tabConfig.frontendStatus).length;
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isEditProductOpen, setIsEditProductOpen] = useState(false);
@@ -336,17 +434,64 @@ const openEditDialog = (product: StoreProduct) => {
   setIsEditProductOpen(true);
 };
 
-const handleUpdateOrderStatus = (orderId: string, status: string) => {
-  app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
-    order.id === orderId
-      ? {
-        ...order,
-        status: status as any,
-        updatedAt: new Date().toISOString(),
-        timeline: [...order.timeline, { status: status as any, timestamp: new Date().toISOString(), description: `Đơn hàng đã chuyển sang trạng thái ${status}` }]
-      }
-      : order
-  ));
+const handleUpdateOrderStatus = async (orderId: string, action: string) => {
+  try {
+    const { orderService } = await import('../../apis/order');
+    const { mapOrderResponse } = await import('../../apis/order/order.mapper');
+    const { toast } = await import('sonner');
+
+    let updatedOrder;
+    
+    if (action === 'confirm') {
+      // Xác nhận đơn hàng
+      const backendOrder = await orderService.confirmOrder(orderId);
+      updatedOrder = mapOrderResponse(backendOrder);
+      toast.success('Đã xác nhận đơn hàng');
+    } else if (action === 'reject') {
+      // Từ chối đơn hàng
+      const backendOrder = await orderService.rejectOrder(orderId);
+      updatedOrder = mapOrderResponse(backendOrder);
+      toast.success('Đã từ chối đơn hàng');
+    } else if (action === 'accept_cancel') {
+      // Chấp nhận yêu cầu hủy đơn hàng
+      const backendOrder = await orderService.acceptCancelRequest(orderId);
+      updatedOrder = mapOrderResponse(backendOrder);
+      toast.success('Đã chấp nhận yêu cầu hủy đơn hàng');
+    } else if (action === 'reject_cancel') {
+      // Từ chối yêu cầu hủy đơn hàng
+      const backendOrder = await orderService.rejectCancelRequest(orderId);
+      updatedOrder = mapOrderResponse(backendOrder);
+      toast.success('Đã từ chối yêu cầu hủy đơn hàng');
+    } else {
+      // Các action khác (shipping, completed, cancelled)
+      // Giữ nguyên logic cũ nếu cần
+      app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
+        order.id === orderId
+          ? {
+              ...order,
+              status: action as any,
+              updatedAt: new Date().toISOString(),
+              timeline: [...order.timeline, { status: action as any, timestamp: new Date().toISOString(), description: `Đơn hàng đã chuyển sang trạng thái ${action}` }]
+            }
+          : order
+      ));
+      return;
+    }
+
+    // Cập nhật allOrders với order mới
+    setAllOrders((prev: Order[]) => prev.map((order: Order) =>
+      order.id === orderId ? updatedOrder : order
+    ));
+
+    // Cập nhật app.orders để tương thích
+    app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
+      order.id === orderId ? updatedOrder : order
+    ));
+  } catch (error: any) {
+    console.error('Failed to update order status:', error);
+    const { toast } = await import('sonner');
+    toast.error(error.message || 'Không thể cập nhật trạng thái đơn hàng');
+  }
 };
 
 // --- 5. FILTER LOGIC ---
@@ -392,19 +537,6 @@ const filteredProducts = mergedStoreProducts
     return true;
   });
 
-const filteredOrders = storeOrders.filter((order: Order) => {
-  if (orderTab === 'pending') return order.status === 'pending' || order.status === 'confirmed';
-  if (orderTab === 'shipping') return order.status === 'shipping';
-  if (orderTab === 'completed') return order.status === 'completed';
-  return false;
-});
-
-const getOrderCount = (tab: OrderTab) => {
-  if (tab === 'pending') return storeOrders.filter((o: Order) => o.status === 'pending' || o.status === 'confirmed').length;
-  if (tab === 'shipping') return storeOrders.filter((o: Order) => o.status === 'shipping').length;
-  if (tab === 'completed') return storeOrders.filter((o: Order) => o.status === 'completed').length;
-  return 0;
-};
 
 const salesData = mergedStoreProducts.map((product: StoreProduct) => ({
   name: product.name,
@@ -446,7 +578,7 @@ return (
             className="flex items-center gap-2"
           >
             <Truck className="w-4 h-4" /> 
-            Đơn hàng ({storeOrders.length})
+            Đơn hàng ({allOrders.filter((o: Order) => o.status !== 'cancelled').length})
           </motion.div>
         </TabsTrigger>
         <TabsTrigger 
@@ -633,119 +765,42 @@ return (
             >
               <Tabs value={orderTab} onValueChange={(v) => setOrderTab(v as OrderTab)}>
                 <TabsList>
-                  <TabsTrigger 
-                    value="pending" 
-                    className="gap-2 transition-all duration-200 hover:scale-105"
-                  >
-                    <motion.div
-                      animate={orderTab === 'pending' ? { scale: 1.1 } : { scale: 1 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex items-center gap-2"
-                    >
-                      <Clock className="w-4 h-4" /> 
-                      Chờ xử lý 
-                      {getOrderCount('pending') > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          {getOrderCount('pending')}
-                        </Badge>
-                      )}
-                    </motion.div>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="shipping" 
-                    className="gap-2 transition-all duration-200 hover:scale-105"
-                  >
-                    <motion.div
-                      animate={orderTab === 'shipping' ? { scale: 1.1 } : { scale: 1 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex items-center gap-2"
-                    >
-                      <Truck className="w-4 h-4" /> 
-                      Đang giao 
-                      {getOrderCount('shipping') > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          {getOrderCount('shipping')}
-                        </Badge>
-                      )}
-                    </motion.div>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="completed" 
-                    className="gap-2 transition-all duration-200 hover:scale-105"
-                  >
-                    <motion.div
-                      animate={orderTab === 'completed' ? { scale: 1.1 } : { scale: 1 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex items-center gap-2"
-                    >
-                      <CheckCircle className="w-4 h-4" /> 
-                      Hoàn thành 
-                      {getOrderCount('completed') > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          {getOrderCount('completed')}
-                        </Badge>
-                      )}
-                    </motion.div>
-                  </TabsTrigger>
+                  {ORDER_TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    const count = getOrderCount(tab.value);
+                    return (
+                      <TabsTrigger
+                        key={tab.value}
+                        value={tab.value}
+                        className="gap-2 transition-all duration-200 hover:scale-105"
+                      >
+                        <motion.div
+                          animate={orderTab === tab.value ? { scale: 1.1 } : { scale: 1 }}
+                          transition={{ duration: 0.2 }}
+                          className="flex items-center gap-2"
+                        >
+                          <Icon className="w-4 h-4" />
+                          {tab.label}
+                          {count > 0 && (
+                            <Badge className="ml-1 h-5 px-1.5 text-xs bg-red-500 text-white border-0">
+                              {count}
+                            </Badge>
+                          )}
+                        </motion.div>
+                      </TabsTrigger>
+                    );
+                  })}
                 </TabsList>
 
-                <AnimatePresence mode="wait">
-                  {['pending', 'shipping', 'completed'].map((tab) => (
-                    orderTab === tab && (
-                      <TabsContent key={tab} value={tab} className="space-y-4">
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                        >
-              {filteredOrders.length === 0 ? (
-                <Card className="p-12"><div className="text-center"><Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" /><h3 className="text-lg mb-2">Chưa có đơn hàng</h3></div></Card>
-              ) : (
-                filteredOrders.map((order: Order) => (
-                  <Card key={order.id} className="overflow-hidden">
-                    <div className="p-4 bg-muted/30 border-b">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{order.orderNumber}</p>
-                          <p className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleString('vi-VN')}</p>
-                        </div>
-                        <Badge>
-                          {order.status === 'pending' && 'Chờ xác nhận'}
-                          {order.status === 'confirmed' && 'Đã xác nhận'}
-                          {order.status === 'shipping' && 'Đang giao'}
-                          {order.status === 'completed' && 'Hoàn thành'}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <div className="space-y-3 mb-4">
-                        {order.items.map((item: any) => (
-                          <div key={item.id} className="flex items-center gap-3">
-                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0"><ImageWithFallback src={item.image} alt={item.name} className="w-full h-full object-cover" /></div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium line-clamp-1 break-words">{item.name}</p>
-                              {item.variant && <p className="text-sm text-muted-foreground">{item.variant}</p>}
-                            </div>
-                            <div className="text-right"><p className="text-sm text-muted-foreground">x{item.quantity}</p><p className="font-medium">{formatPrice(item.price)}</p></div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="pt-3 border-t">
-                        <div className="flex items-center justify-between mb-3"><div><p className="text-sm text-muted-foreground">Khách hàng: {order.shippingAddress.name}</p></div><div className="text-right"><p className="text-sm text-muted-foreground">Tổng tiền:</p><p className="text-xl font-bold text-primary">{formatPrice(order.finalPrice)}</p></div></div>
-                        {order.status === 'pending' && (<div className="flex gap-2"><Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')} className="flex-1">Xác nhận đơn</Button><Button variant="outline" size="sm" onClick={() => { if (confirm('Hủy đơn?')) handleUpdateOrderStatus(order.id, 'cancelled'); }}>Hủy đơn</Button></div>)}
-                        {order.status === 'confirmed' && (<Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'shipping')} className="w-full">Bắt đầu giao hàng</Button>)}
-                        {order.status === 'shipping' && (<Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="w-full">Hoàn thành đơn hàng</Button>)}
-                      </div>
-                    </div>
-                  </Card>
-                ))
-              )}
-                        </motion.div>
-                      </TabsContent>
-                    )
-                  ))}
-                </AnimatePresence>
+                {/* Single TabsContent for all tabs - uses dynamic filtering */}
+                {ORDER_TABS.map((tab) => (
+                  <TabsContent key={tab.value} value={tab.value} className="space-y-4">
+                    <OrderList
+                      orders={filteredOrders}
+                      onUpdateStatus={handleUpdateOrderStatus}
+                    />
+                  </TabsContent>
+                ))}
               </Tabs>
             </motion.div>
           )}

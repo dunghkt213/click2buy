@@ -6,6 +6,7 @@ import { FilterState, Product } from 'types';
 import { productApi } from '../../apis/product';
 import { Button } from '../ui/button';
 import { ProductCard } from './ProductCard';
+import { getCache, setCache, CACHE_KEYS } from '../../utils/cache';
 
 interface ProductGridProps {
   filters: FilterState;
@@ -33,6 +34,7 @@ export function ProductGrid({
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const productGridRef = useRef<HTMLDivElement>(null);
+  const isLoadingRef = useRef(false);
 
   // Motion variants
   const motionEase = [0.4, 0, 0.2, 1] as const;
@@ -45,9 +47,35 @@ export function ProductGrid({
     show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: motionEase } },
   };
 
-  // Fetch products từ backend với pagination
-  const fetchProducts = async (page: number = 1, categoryId?: string) => {
+  // Fetch products từ backend với pagination và cache
+  const fetchProducts = async (page: number = 1, categoryId?: string, forceRefresh: boolean = false) => {
+    // Tránh fetch nhiều lần đồng thời
+    if (isLoadingRef.current) {
+      console.log('⏸️ [ProductGrid] Already fetching, skipping...');
+      return;
+    }
+
+    // Thêm categoryId nếu category được chọn và không phải 'all'
+    const selectedCategoryId = categoryId || (filters.category && filters.category !== 'all' ? filters.category : undefined);
+    const cacheKey = CACHE_KEYS.PRODUCTS_PAGE(page, selectedCategoryId);
+
+    // Kiểm tra cache trước
+    if (!forceRefresh) {
+      const cached = getCache<{ products: Product[]; pagination?: any }>(cacheKey);
+      if (cached) {
+        console.log('✅ [ProductGrid] Using cached data');
+        setAllProducts(cached.products);
+        if (cached.pagination) {
+          setCurrentPage(cached.pagination.page || page);
+          setTotalPages(cached.pagination.totalPages || 1);
+          setTotalProducts(cached.pagination.total || cached.products.length);
+        }
+        return;
+      }
+    }
+
     setLoading(true);
+    isLoadingRef.current = true;
     try {
       // Build query với categoryId nếu có
       const queryParams: any = {
@@ -55,8 +83,6 @@ export function ProductGrid({
         limit: 40 
       };
       
-      // Thêm categoryId nếu category được chọn và không phải 'all'
-      const selectedCategoryId = categoryId || (filters.category && filters.category !== 'all' ? filters.category : undefined);
       if (selectedCategoryId) {
         queryParams.categoryId = selectedCategoryId;
       }
@@ -66,6 +92,13 @@ export function ProductGrid({
       const result = await productApi.getAll(queryParams);
       
       console.log('📦 [ProductGrid] API Response:', result);
+      
+      // Lưu vào cache (TTL: 5 phút)
+      const cacheData = {
+        products: result.products,
+        pagination: result.pagination,
+      };
+      setCache(cacheKey, cacheData, 5 * 60 * 1000);
       
       setAllProducts(result.products);
       
@@ -104,9 +137,22 @@ export function ProductGrid({
       }
     } catch (err) {
       console.error('❌ [ProductGrid] Error:', err);
-      toast.error('Không thể tải sản phẩm từ server');
+      // Thử dùng cache cũ nếu có lỗi
+      const cached = getCache<{ products: Product[]; pagination?: any }>(cacheKey);
+      if (cached) {
+        console.log('⚠️ [ProductGrid] Using stale cache due to error');
+        setAllProducts(cached.products);
+        if (cached.pagination) {
+          setCurrentPage(cached.pagination.page || page);
+          setTotalPages(cached.pagination.totalPages || 1);
+          setTotalProducts(cached.pagination.total || cached.products.length);
+        }
+      } else {
+        toast.error('Không thể tải sản phẩm từ server');
+      }
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   };
 

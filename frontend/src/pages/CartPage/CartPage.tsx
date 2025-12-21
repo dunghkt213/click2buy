@@ -11,10 +11,10 @@ export function CartPage() {
   const navigate = useNavigate();
   const app = useAppContext();
 
-  // Scroll về đầu trang khi vào trang cart
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, []);
+  // Không scroll về đầu trang nữa, để useScrollRestoration xử lý
+  // useEffect(() => {
+  //   window.scrollTo({ top: 0, behavior: 'instant' });
+  // }, []);
 
   return (
     <CartPageComponent

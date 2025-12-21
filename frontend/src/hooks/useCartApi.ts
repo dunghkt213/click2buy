@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { cartApi } from '../apis/cart';
 import { productApi } from '../apis/product';
 import { CartItem, Product } from '../types';
+import { getCache, setCache, CACHE_KEYS } from '../utils/cache';
 
 /**
  * Hook để quản lý giỏ hàng với API backend
@@ -14,12 +15,23 @@ export const useCartApi = () => {
   // Ref để track loading state mà không trigger re-render
   const isLoadingRef = useRef(false);
 
-  const loadCart = useCallback(async () => {
+  const loadCart = useCallback(async (forceRefresh: boolean = false) => {
     // Tránh gọi nhiều lần đồng thời
     if (isLoadingRef.current) {
       console.log('⏸️ [useCartApi] loadCart đang chạy, bỏ qua request mới');
       return;
     }
+
+    // Kiểm tra cache trước
+    if (!forceRefresh) {
+      const cached = getCache<CartItem[]>(CACHE_KEYS.CART);
+      if (cached) {
+        console.log('✅ [useCartApi] Using cached cart data');
+        setCartItems(cached);
+        return;
+      }
+    }
+
     try {
       isLoadingRef.current = true;
       setLoading(true);
@@ -104,6 +116,9 @@ export const useCartApi = () => {
       }
       
       console.log('Transformed cart items:', items);
+      
+      // Lưu vào cache (TTL: 2 phút - cart thay đổi thường xuyên hơn)
+      setCache(CACHE_KEYS.CART, items, 2 * 60 * 1000);
       
       // Chỉ update state nếu items thực sự thay đổi (tránh re-render không cần thiết)
       setCartItems(prevItems => {

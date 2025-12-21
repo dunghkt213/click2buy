@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MessageCircle, Send, Search, MoreVertical, Info, Loader2, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { useAppContext } from '../../providers/AppProvider';
@@ -117,29 +117,43 @@ export function ChatPage() {
     sendTyping,
   } = useChat({ userId, autoConnect: true });
 
+  // Function to open chat with a specific user - opens immediately
+  const openChatWithUser = useCallback((targetUserId: string) => {
+    if (!targetUserId || !userId) return;
+
+    // Set receiverId immediately so user can see the chat interface
+    setCurrentReceiverId(targetUserId);
+
+    // Check if conversation already exists
+    const existingConv = conversations.find(conv => 
+      conv.participants.includes(targetUserId) && conv.participants.includes(userId)
+    );
+    
+    if (existingConv) {
+      // Normalize conversation ID
+      const convId = existingConv.id || existingConv._id;
+      if (convId) {
+        setCurrentConversationId(convId);
+        loadMessages(convId);
+        // Mark as read
+        markAsRead(convId);
+      } else {
+        console.error('Existing conversation has no ID:', existingConv);
+        // Start new conversation
+        startConversation(targetUserId);
+      }
+    } else {
+      // Start new conversation immediately - receiverId already set above
+      startConversation(targetUserId);
+    }
+  }, [startConversation, userId, conversations, loadMessages, setCurrentConversationId, markAsRead]);
+
   // Handle openChat event from other pages
   useEffect(() => {
     const handleOpenChat = (event: CustomEvent<{ targetUserId: string }>) => {
       const { targetUserId } = event.detail;
-      if (!targetUserId) return;
-
-      // Check if conversation already exists
-      const existingConv = conversations.find(conv => 
-        conv.participants.includes(targetUserId) && conv.participants.includes(userId || '')
-      );
-      
-      if (existingConv) {
-        // Normalize conversation ID
-        const convId = existingConv.id || existingConv._id;
-        if (convId) {
-          setCurrentConversationId(convId);
-          loadMessages(convId);
-        } else {
-          console.error('Existing conversation has no ID:', existingConv);
-          startConversation(targetUserId);
-        }
-      } else {
-        startConversation(targetUserId);
+      if (targetUserId) {
+        openChatWithUser(targetUserId);
       }
     };
 
@@ -147,7 +161,115 @@ export function ChatPage() {
     return () => {
       window.removeEventListener('openChat', handleOpenChat as EventListener);
     };
-  }, [startConversation, userId, conversations, loadMessages, setCurrentConversationId]);
+  }, [openChatWithUser]);
+
+  // Track pending userId from URL to open when ready
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+
+  // Handle userId from URL query params (when navigating from other pages)
+  // Open immediately without waiting for conversations to load
+  useEffect(() => {
+    const userIdFromUrl = searchParams.get('userId');
+    if (userIdFromUrl && userId) {
+      // Set receiverId immediately for instant UI feedback
+      setCurrentReceiverId(userIdFromUrl);
+      setPendingUserId(userIdFromUrl);
+      
+      // Clean up URL param immediately
+      navigate('/chat', { replace: true });
+    }
+  }, [searchParams, userId, navigate]);
+
+  // Process pending userId when connected - open conversation immediately
+  useEffect(() => {
+    if (!pendingUserId || !userId || !isConnected) return;
+
+    // Wait a bit for conversations to load if they haven't loaded yet
+    // But don't wait too long - if conversations are empty after a short delay, start new conversation
+    const checkAndOpen = () => {
+      // Check if conversation already exists
+      const existingConv = conversations.find(conv => 
+        conv.participants.includes(pendingUserId) && conv.participants.includes(userId)
+      );
+      
+      if (existingConv) {
+        const convId = existingConv.id || existingConv._id;
+        if (convId && convId !== currentConversationId) {
+          setCurrentConversationId(convId);
+          setCurrentReceiverId(pendingUserId);
+          loadMessages(convId);
+          markAsRead(convId);
+        }
+        setPendingUserId(null); // Clear pending
+      } else {
+        // If conversations list has been loaded (even if empty), start new conversation
+        // We check if we've had time to load conversations (500ms delay)
+        // If still no conversation found, start a new one
+        startConversation(pendingUserId);
+        // pendingUserId will be cleared when conversation is created and selected
+      }
+    };
+
+    // Small delay to allow conversations to load, but not too long
+    const timeoutId = setTimeout(checkAndOpen, 300);
+    return () => clearTimeout(timeoutId);
+  }, [pendingUserId, userId, isConnected, conversations, currentConversationId, startConversation, loadMessages, markAsRead, setCurrentConversationId]);
+
+  // Set receiverId when conversation is created/selected
+  useEffect(() => {
+    if (currentConversationId && userId) {
+      const conv = conversations.find(c => {
+        const cId = c.id || c._id;
+        return cId === currentConversationId;
+      });
+      
+      if (conv) {
+        // Find the other participant (not current user)
+        const otherParticipant = conv.participants.find(p => p !== userId);
+        if (otherParticipant && otherParticipant !== currentReceiverId) {
+          setCurrentReceiverId(otherParticipant);
+        }
+        
+        // Clear pending if this is the conversation we were waiting for
+        if (pendingUserId && conv.participants.includes(pendingUserId)) {
+          setPendingUserId(null);
+        }
+      }
+    } else if (pendingUserId && !currentConversationId) {
+      // If we have pendingUserId but no conversation yet, ensure receiverId is set
+      if (currentReceiverId !== pendingUserId) {
+        setCurrentReceiverId(pendingUserId);
+      }
+    }
+  }, [currentConversationId, conversations, userId, currentReceiverId, pendingUserId]);
+
+  // Ensure receiverId is set when pendingUserId changes
+  useEffect(() => {
+    if (pendingUserId && currentReceiverId !== pendingUserId) {
+      setCurrentReceiverId(pendingUserId);
+    }
+  }, [pendingUserId, currentReceiverId]);
+
+  // Load user info for currentReceiverId when it changes
+  useEffect(() => {
+    if (currentReceiverId && !userInfoCache[currentReceiverId]) {
+      const loadUserInfo = async () => {
+        try {
+          const userInfo = await userApi.findOne(currentReceiverId);
+          setUserInfoCache(prev => ({
+            ...prev,
+            [currentReceiverId]: {
+              name: userInfo.shopName || userInfo.name || 'Người dùng',
+              avatar: userInfo.avatar,
+            },
+          }));
+        } catch (error) {
+          console.error('Failed to load user info:', error);
+        }
+      };
+      loadUserInfo();
+    }
+  }, [currentReceiverId, userInfoCache]);
 
   // Load user info for conversations
   useEffect(() => {
@@ -252,27 +374,51 @@ export function ChatPage() {
     return cId === currentConversationId;
   });
 
-  // Debug: Log selected conversation messages
+  // Create virtual conversation when we have receiverId but no conversation yet
+  const virtualConversation = useMemo(() => {
+    if (!currentReceiverId || selectedConversation) return null;
+    
+    const receiverInfo = userInfoCache[currentReceiverId];
+    
+    // Create virtual conversation even if we don't have user info yet
+    // It will be updated when user info loads
+    return {
+      id: null,
+      sellerId: currentReceiverId,
+      sellerName: receiverInfo?.name || 'Người dùng',
+      sellerAvatar: receiverInfo?.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=User',
+      sellerStatus: 'online' as const,
+      lastMessage: '',
+      lastMessageTime: '',
+      unreadCount: 0,
+      messages: [],
+    };
+  }, [currentReceiverId, selectedConversation, userInfoCache]);
+
+  // Use virtual conversation if no selected conversation but we have receiverId
+  const activeConversation = selectedConversation || virtualConversation;
+
+  // Debug: Log active conversation messages
   useEffect(() => {
-    if (selectedConversation) {
-      console.log('📋 Selected conversation messages:', {
-        conversationId: selectedConversation.id,
-        messageCount: selectedConversation.messages.length,
-        messages: selectedConversation.messages,
-        messagesByConversation: messagesByConversation[selectedConversation.id || ''],
+    if (activeConversation) {
+      console.log('📋 Active conversation messages:', {
+        conversationId: activeConversation.id,
+        messageCount: activeConversation.messages.length,
+        messages: activeConversation.messages,
+        messagesByConversation: messagesByConversation[activeConversation.id || ''],
       });
     }
-  }, [selectedConversation, messagesByConversation]);
+  }, [activeConversation, messagesByConversation]);
 
   // Auto-scroll to bottom when messages change or conversation changes
   useEffect(() => {
-    if (messagesEndRef.current && selectedConversation) {
+    if (messagesEndRef.current && activeConversation) {
       // Small delay to ensure DOM is updated
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     }
-  }, [selectedConversation?.messages.length, currentConversationId]);
+  }, [activeConversation?.messages.length, currentConversationId]);
   
   const totalUnreadCount = unreadCount || enhancedConversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
 
@@ -352,10 +498,10 @@ export function ChatPage() {
       return; // Will auto-send after conversation is created
     }
 
-    // If we have selected conversation, use its data
-    if (selectedConversation) {
-      receiverId = selectedConversation.sellerId;
-      conversationId = selectedConversation.id;
+    // If we have active conversation, use its data
+    if (activeConversation) {
+      receiverId = activeConversation.sellerId;
+      conversationId = activeConversation.id || null;
     }
 
     if (!receiverId) {
@@ -363,14 +509,25 @@ export function ChatPage() {
       return;
     }
 
+    // If no conversationId but we have receiverId, start conversation first
+    if (!conversationId && receiverId) {
+      console.log('No conversation ID, starting new conversation with:', receiverId);
+      // Save message to send after conversation is created
+      setPendingMessage({ content, receiverId });
+      startConversation(receiverId);
+      setMessage(''); // Clear input
+      toast.info('Đang tạo cuộc trò chuyện...');
+      return; // Will auto-send after conversation is created
+    }
+
     // conversationId is REQUIRED by backend
     if (!conversationId) {
       console.error('❌ Cannot send message: conversationId is missing', {
         currentConversationId,
-        selectedConversation,
+        activeConversation,
         receiverId,
       });
-      toast.error('Vui lòng chọn cuộc trò chuyện hoặc đợi cuộc trò chuyện được tạo');
+      toast.error('Vui lòng đợi cuộc trò chuyện được tạo');
       return;
     }
 
@@ -806,26 +963,26 @@ export function ChatPage() {
       </div>
 
       {/* Chat Content - Right Side */}
-      {selectedConversation ? (
+      {activeConversation ? (
         <div className="flex-1 flex flex-col bg-background">
           {/* Chat Header */}
           <div className="flex items-center justify-between border-b border-border p-4 bg-white shadow-sm">
-            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
               <div className="relative">
                 <ImageWithFallback
-                  src={selectedConversation.sellerAvatar}
-                  alt={selectedConversation.sellerName}
+                  src={activeConversation.sellerAvatar}
+                  alt={activeConversation.sellerName}
                   className="h-12 w-12 rounded-full object-cover border-2 border-border"
                 />
                 <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                  selectedConversation.sellerStatus === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                  activeConversation.sellerStatus === 'online' ? 'bg-green-500' : 'bg-gray-400'
                 }`}></span>
               </div>
               
               <div>
-                <h4 className="font-semibold">{selectedConversation.sellerName}</h4>
+                <h4 className="font-semibold">{activeConversation.sellerName}</h4>
                 <p className="text-xs text-muted-foreground">
-                  {selectedConversation.sellerStatus === 'online' ? 'Đang hoạt động' : 'Không hoạt động'}
+                  {activeConversation.sellerStatus === 'online' ? 'Đang hoạt động' : 'Không hoạt động'}
                 </p>
               </div>
             </div>
@@ -842,20 +999,20 @@ export function ChatPage() {
 
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-background to-muted/20">
-            {loading && selectedConversation.messages.length === 0 ? (
+            {loading && activeConversation.messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
-            ) : selectedConversation.messages.length === 0 ? (
+            ) : activeConversation.messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Chưa có tin nhắn nào</p>
+                  <p className="text-sm text-muted-foreground">Chưa có tin nhắn nào. Bắt đầu trò chuyện!</p>
                 </div>
               </div>
             ) : (
               <>
-                {selectedConversation.messages
+                {activeConversation.messages
                   .sort((a, b) => {
                     try {
                       const timeA = new Date(a.timestamp).getTime();
@@ -970,7 +1127,7 @@ export function ChatPage() {
               {/* Image upload button */}
               <button
                 onClick={handleImageButtonClick}
-                disabled={uploadingImage || !isConnected || !currentConversationId || !currentReceiverId}
+                disabled={uploadingImage || !isConnected || !currentReceiverId}
                 className="p-2.5 hover:bg-accent rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 title="Gửi hình ảnh"
               >
@@ -1004,13 +1161,13 @@ export function ChatPage() {
                     maxHeight: '120px',
                     lineHeight: '1.5',
                   }}
-                  disabled={!isConnected || !currentConversationId || !currentReceiverId}
+                  disabled={!isConnected || !currentReceiverId}
                 />
               </div>
 
               <button
                 onClick={() => handleSendMessage()}
-                disabled={!message.trim() || !isConnected || uploadingImage || !currentConversationId || !currentReceiverId}
+                disabled={!message.trim() || !isConnected || uploadingImage || !currentReceiverId}
                 className="p-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-md hover:shadow-lg flex items-center justify-center h-[44px] w-[44px]"
               >
                 <Send className="h-5 w-5" />
