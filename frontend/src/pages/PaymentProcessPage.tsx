@@ -45,7 +45,7 @@ export function PaymentProcessPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const app = useAppContext();
-  const state = location.state as PaymentProcessState;
+  const state = (location.state as PaymentProcessState) ?? null;
 
   const [currentStep, setCurrentStep] = useState<'connecting' | 'loading' | 'qr' | 'success'>('connecting');
   const [payments, setPayments] = useState<PaymentQR[]>([]);
@@ -301,7 +301,7 @@ export function PaymentProcessPage() {
               {state && (
                 <>
                   <p>Phương thức: {state.paymentMethod === 'BANKING' ? 'Chuyển khoản' : 'COD'}</p>
-                  <p>Số tiền: {formatPrice(state.totalAmount)}</p>
+                  <p>Số tiền: {formatPrice(state?.totalAmount ?? 0)}</p>
                 </>
               )}
             </div>
@@ -419,7 +419,7 @@ export function PaymentProcessPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Số tiền:</span>
                     <span className="font-semibold text-lg text-primary">
-                      {formatPrice(state.totalAmount)}
+                    {formatPrice(state?.totalAmount ?? 0)}
                     </span>
                   </div>
 
