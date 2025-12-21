@@ -28,7 +28,9 @@ export class OrderGateway implements OnModuleInit {
     this.kafka.subscribeToResponseOf('order.confirm');
     this.kafka.subscribeToResponseOf('order.reject');
     this.kafka.subscribeToResponseOf('order.complete');
-
+    this.kafka.subscribeToResponseOf('order.cancel_request');
+    this.kafka.subscribeToResponseOf('order.reject.cancel_request');
+    this.kafka.subscribeToResponseOf('order.accept.cancel_request');
     await this.kafka.connect();
   }
 
@@ -41,7 +43,7 @@ export class OrderGateway implements OnModuleInit {
     }
   }
 
-  @Patch('seller/orders/:orderId/confirm')
+  @Patch('seller/:orderId/confirm')
   async approveOrderForSeller(
     @Param('orderId') orderId: string,
     @Headers('authorization') auth: string,
@@ -59,7 +61,7 @@ export class OrderGateway implements OnModuleInit {
     }
   }
 
-  @Patch('seller/orders/:orderId/reject')
+  @Patch('seller/:orderId/reject')
   async rejectOrderForSeller(
     @Param('orderId') orderId: string,
     @Headers('authorization') auth: string,
@@ -84,50 +86,101 @@ export class OrderGateway implements OnModuleInit {
     try {
       // Gọi sang order-service để báo đơn hàng đã hoàn tất -> Lúc này mới cộng tiền
       return await this.kafka
-        .send('order.complete', { orderId, auth }) // Lưu ý: MessagePattern bên Order Service phải là 'order.complete'
+        .send('order.complete', { orderId, auth }) 
+        .toPromise();
+    } catch (err) {
+      throw new BadRequestException(err.message || 'Complete order failed');
+    }
+  }
+  @Patch(':orderId/cancel_request')
+  async cancelOrder(
+    @Param('orderId') orderId: string,
+    @Headers('authorization') auth: string,
+  ) {
+    try {
+      // Gọi sang order-service để báo đơn hàng đã hoàn tất -> Lúc này mới cộng tiền
+      return await this.kafka
+        .send('order.cancel_request', { orderId, auth }) 
         .toPromise();
     } catch (err) {
       throw new BadRequestException(err.message || 'Complete order failed');
     }
   }
 
-  @Get('seller')
-  async getOrder(@Headers('authorization') auth?: string) {
+    @Patch(':orderId/cancel_request.accept')
+  async AcceptCancelOrder(
+    @Param('orderId') orderId: string,
+    @Headers('authorization') auth: string,
+  ) {
     try {
-      const orders = await firstValueFrom(
-        this.kafka.send('order.getAllOrderForSaller', { auth }),
-      );
-
-      if (!orders?.length) return [];
-
-      const productIds = orders.flatMap(o => o.items.map(i => i.productId));
-      const uniqueIds = [...new Set(productIds.map(String))];
-
-      const products = await firstValueFrom(
-        this.kafka.send('product.batch', { ids: uniqueIds }),
-      );
-
-      const map: Record<string, any> = {};
-      (products || []).forEach(p => (map[String(p._id)] = p));
-
-      // enrich items
-      return orders.map(o => ({
-        ...o,
-        items: o.items.map(it => ({
-          ...it,
-          product: map[String(it.productId)] || null,
-        })),
-      }));
-
+      // Gọi sang order-service để báo đơn hàng đã hoàn tất -> Lúc này mới cộng tiền
+      return await this.kafka
+        .send('order.accept.cancel_request', { orderId, auth }) 
+        .toPromise();
     } catch (err) {
-      return new BadRequestException(err.message || 'Service error');
+      throw new BadRequestException(err.message || 'Complete order failed');
     }
   }
 
-  @Get('user')
-  getOrderForUser(@Headers('authorization') auth?: string) {
+      @Patch(':orderId/cancel_request.reject')
+  async RejectCancelOrder(
+    @Param('orderId') orderId: string,
+    @Headers('authorization') auth: string,
+  ) {
     try {
-      return this.kafka.send('order.getAllOrderForUser', { auth });
+      // Gọi sang order-service để báo đơn hàng đã hoàn tất -> Lúc này mới cộng  tiền
+      return await this.kafka
+        .send('order.reject.cancel_request', { orderId, auth }) 
+        .toPromise();
+    } catch (err) {
+      throw new BadRequestException(err.message || 'Complete order failed');
+    }
+  }
+@Get('seller')
+async getOrder(
+  @Headers('authorization') auth?: string,
+  @Query('status') status?: string,
+) {
+  try {
+    // gọi lấy danh sách order cho seller theo status
+    const orders = await firstValueFrom(
+      this.kafka.send('order.getAllOrderForSaller', { auth, status }),
+    );
+
+    if (!orders?.length) return [];
+
+    const productIds = orders.flatMap(o => o.items.map(i => i.productId));
+    const uniqueIds = [...new Set(productIds.map(String))];
+
+    // gọi lấy thông tin product
+    const products = await firstValueFrom(
+      this.kafka.send('product.batch', { ids: uniqueIds }),
+    );
+
+    const map: Record<string, any> = {};
+    (products || []).forEach(p => (map[String(p._id)] = p));
+
+    // enrich items
+    return orders.map(o => ({
+      ...o,
+      items: o.items.map(it => ({
+        ...it,
+        product: map[String(it.productId)] || null,
+      })),
+    }));
+
+  } catch (err) {
+    return new BadRequestException(err.message || 'Service error');
+  }
+}
+
+
+  @Get('user')
+  getOrderForUser(@Headers('authorization') auth?: string,
+    @Query('status') status?: string,
+) {
+    try {
+      return this.kafka.send('order.getAllOrderForUser', { auth, status });
     } catch (err) {
       return new BadRequestException(err.message || 'Service error');
     }

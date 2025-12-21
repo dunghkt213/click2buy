@@ -34,18 +34,31 @@ export class AppController {
 
   }
 
-  @MessagePattern('order.getAllOrderForSaller')
-  @UseGuards(JwtKafkaAuthGuard)
-  async getAllOrderForSaller(@CurrentUser() user: any) {
-    const ownerId = user?.sub || user?.id;
-    return this.appService.getAllOrderForSaller(ownerId)
-  }
-  @MessagePattern('order.getAllOrderForUser')
-  @UseGuards(JwtKafkaAuthGuard)
-  async getAllOrderForUser(@CurrentUser() user: any) {
-    const userId = user?.sub || user?.id;
-    return this.appService.getAllOrderForUser(userId)
-  }
+ @MessagePattern('order.getAllOrderForSaller')
+@UseGuards(JwtKafkaAuthGuard)
+async getAllOrderForSaller(
+  @Payload() data: any,         // nhận auth + status
+  @CurrentUser() user: any
+) {
+  const ownerId = user?.sub || user?.id;
+  const status = data?.status || null;   // lấy status từ payload
+
+  return this.appService.getAllOrderForSaller(ownerId, status);
+}
+
+
+ @MessagePattern('order.getAllOrderForUser')
+@UseGuards(JwtKafkaAuthGuard)
+async getAllOrderForUser(
+  @Payload() data: any,         // lấy payload từ Kafka
+  @CurrentUser() user: any
+) {
+  const userId = user?.sub || user?.id;
+  const status = data?.status || null;   // lấy status
+
+  return this.appService.getAllOrderForUser(userId, status);
+}
+
 
   @MessagePattern('order.timeout')
   timeout(@Payload() data: any) {
@@ -114,5 +127,33 @@ export class AppController {
     return this.appService.completeOrder(data.orderId, sellerId);
   }
 
+  @MessagePattern('order.cancel_request')
+  @UseGuards(JwtKafkaAuthGuard)
+  async cancelOrder(
+    @Payload() data: { orderId: string},
+    @CurrentUser() user: any,
+  ) {
+    const   userId = user?.sub || user?.id;
+    return this.appService.cancelOrder(data.orderId, userId);
+  }
 
+  @MessagePattern('order.reject.cancel_request')
+  @UseGuards(JwtKafkaAuthGuard)
+  async RejectCancelOrder(
+    @Payload() data: { orderId: string},
+    @CurrentUser() user: any,
+  ) {
+    const   sellerId = user?.sub || user?.id;
+    return this.appService.RejectCancelOrder(data.orderId, sellerId);
+  }
+
+  @MessagePattern('order.accept.cancel_request')
+  @UseGuards(JwtKafkaAuthGuard)
+  async AcceptCancelOrder(
+    @Payload() data: { orderId: string},
+    @CurrentUser() user: any,
+  ) {
+    const   sellerId = user?.sub || user?.id;
+    return this.appService.AcceptCancelOrder(data.orderId, sellerId);
+  }
 }
