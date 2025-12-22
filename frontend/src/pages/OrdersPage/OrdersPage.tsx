@@ -213,6 +213,30 @@ export function OrdersPage() {
     }
   };
 
+  const handleMarkAsReceived = async (orderId: string) => {
+    try {
+      const { orderService } = await import('../../apis/order');
+      const { mapOrderResponse } = await import('../../apis/order/order.mapper');
+      
+      // Gọi API để xác nhận đã nhận hàng
+      await orderService.markAsReceived(orderId);
+      
+      toast.success('Đã xác nhận nhận hàng thành công');
+      
+      // Reload orders để cập nhật danh sách
+      const backendStatus = mapStatusToBackend(selectedTab);
+      await app.orders.loadOrdersForUser(backendStatus);
+      
+      // Reload all orders để cập nhật badge
+      const allOrdersData = await orderService.getAllForUser();
+      const mappedOrders = allOrdersData.map(mapOrderResponse);
+      setAllOrders(mappedOrders);
+    } catch (error: any) {
+      console.error('Failed to mark order as received:', error);
+      toast.error(error.message || 'Không thể xác nhận nhận hàng. Vui lòng thử lại.');
+    }
+  };
+
   const handleReviewSubmit = (reviewData: ReviewData) => {
     if (selectedOrder) {
       app.handleReview(selectedOrder.id, reviewData);
@@ -466,35 +490,69 @@ export function OrdersPage() {
 
                         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                           {order.status === "pending" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              // Fix lỗi 'e' implicitly any
-                              onClick={async (e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                if (
-                                  confirm("Bạn có chắc muốn hủy đơn hàng này?")
-                                ) {
-                                  await handleCancelOrder(order.id);
-                                }
-                              }}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              Hủy đơn
-                            </Button>
+                            <>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  // Navigate to payment process page
+                                  navigate(`/payment/process/${order.orderNumber}`, {
+                                    state: {
+                                      orderCode: order.orderNumber,
+                                      totalAmount: order.finalPrice,
+                                    }
+                                  });
+                                }}
+                              >
+                                Tiếp tục thanh toán
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                // Fix lỗi 'e' implicitly any
+                                onClick={async (e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  if (
+                                    confirm("Bạn có chắc muốn hủy đơn hàng này?")
+                                  ) {
+                                    await handleCancelOrder(order.id);
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                Hủy đơn
+                              </Button>
+                            </>
                           )}
 
                           {order.status === "shipping" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                handleViewDetail(order);
-                              }}
-                            >
-                              Theo dõi
-                            </Button>
+                            <>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={async (e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  if (
+                                    confirm("Bạn đã nhận được hàng?")
+                                  ) {
+                                    await handleMarkAsReceived(order.id);
+                                  }
+                                }}
+                              >
+                                Đã nhận
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  handleViewDetail(order);
+                                }}
+                              >
+                                Theo dõi
+                              </Button>
+                            </>
                           )}
 
                           {order.status === "completed" && (
@@ -537,6 +595,23 @@ export function OrdersPage() {
                             </Button>
                           )}
 
+                          {order.status === "confirmed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                if (
+                                  confirm("Bạn có chắc muốn hủy đơn hàng này?")
+                                ) {
+                                  await handleCancelOrder(order.id);
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              Hủy đơn hàng
+                            </Button>
+                          )}
                           <Button
                             variant="default"
                             size="sm"

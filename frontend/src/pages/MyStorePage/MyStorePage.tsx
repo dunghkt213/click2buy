@@ -811,6 +811,7 @@ return (
                     <OrderList
                       orders={filteredOrders}
                       onUpdateStatus={handleUpdateOrderStatus}
+                      showActionButtons={tab.value !== 'all'} // Hide action buttons in "Tất cả" tab
                     />
                   </TabsContent>
                 ))}

@@ -12,6 +12,7 @@ import { formatPrice } from '../../utils/utils';
 interface OrderCardProps {
   order: Order;
   onUpdateStatus: (orderId: string, status: string) => void;
+  showActionButtons?: boolean; // Optional prop to show/hide action buttons
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -22,7 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
   cancel_request: 'Yêu cầu hủy',
 };
 
-export function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
+export function OrderCard({ order, onUpdateStatus, showActionButtons = true }: OrderCardProps) {
   const statusLabel = STATUS_LABELS[order.status] || order.status;
 
   return (
@@ -76,12 +77,11 @@ export function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
               </p>
             </div>
           </div>
-          {order.status === 'pending' && (
+          {showActionButtons && order.status === 'pending' && (
             <div className="flex gap-2">
               <Button
                 size="sm"
                 onClick={() => onUpdateStatus(order.id, 'confirmed')}
-                className="flex-1"
               >
                 Xác nhận đơn
               </Button>
@@ -98,12 +98,11 @@ export function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
               </Button>
             </div>
           )}
-          {order.status === 'confirmed' && (
-            <div className="flex gap-2">
+          {showActionButtons && order.status === 'confirmed' && (
+            <div className="flex gap-2 justify-end">
               <Button
                 size="sm"
                 onClick={() => onUpdateStatus(order.id, 'confirm')}
-                className="flex-1"
               >
                 Xác nhận
               </Button>
@@ -120,12 +119,11 @@ export function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
               </Button>
             </div>
           )}
-          {order.status === 'cancel_request' && (
+          {showActionButtons && order.status === 'cancel_request' && (
             <div className="flex gap-2">
               <Button
                 size="sm"
                 onClick={() => onUpdateStatus(order.id, 'accept_cancel')}
-                className="flex-1"
               >
                 Xác nhận
               </Button>
@@ -142,15 +140,7 @@ export function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
               </Button>
             </div>
           )}
-          {order.status === 'shipping' && (
-            <Button
-              size="sm"
-              onClick={() => onUpdateStatus(order.id, 'completed')}
-              className="w-full"
-            >
-              Hoàn thành đơn hàng
-            </Button>
-          )}
+          {/* Removed "Hoàn thành đơn hàng" button for shipping status as requested */}
         </div>
       </div>
     </Card>

@@ -97,5 +97,15 @@ export const orderService = {
       method: 'PATCH',
       requireAuth: true,
     }),
+
+  /**
+   * Xác nhận đã nhận hàng (buyer) - Complete order
+   * @param orderId - ID của đơn hàng cần xác nhận đã nhận
+   */
+  markAsReceived: (orderId: string) =>
+    request<BackendOrderDto>(`/orders/${orderId}/complete`, {
+      method: 'PATCH',
+      requireAuth: true,
+    }),
 };
 
