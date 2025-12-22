@@ -6,7 +6,7 @@
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../providers/AppProvider';
 
@@ -204,10 +204,21 @@ export function MyStorePage() {
   const [selectedTab, setSelectedTab] = useState('products');
   const [orderTab, setOrderTab] = useState<OrderTab>('all');
   const [allOrders, setAllOrders] = useState<Order[]>([]); // Store all orders for both counting and filtering
+  const isLoadingOrdersRef = useRef(false); // Prevent duplicate API calls
 
   // Load all orders when entering orders tab (only once)
   useEffect(() => {
-    if (app.isLoggedIn && app.user?.role === 'seller' && selectedTab === 'orders') {
+    // Chỉ load khi:
+    // 1. User đã đăng nhập và là seller
+    // 2. Đang ở tab orders
+    // 3. Chưa đang load (tránh duplicate calls)
+    if (
+      app.isLoggedIn && 
+      app.user?.role === 'seller' && 
+      selectedTab === 'orders' && 
+      !isLoadingOrdersRef.current
+    ) {
+      isLoadingOrdersRef.current = true;
       const loadAllOrders = async () => {
         try {
           const { orderService } = await import('../../apis/order');
@@ -219,11 +230,13 @@ export function MyStorePage() {
           app.orders.setOrders(mappedOrders);
         } catch (error) {
           console.error('Failed to load orders:', error);
+        } finally {
+          isLoadingOrdersRef.current = false;
         }
       };
       loadAllOrders();
     }
-  }, [app.isLoggedIn, app.user?.role, selectedTab, app.orders]);
+  }, [app.isLoggedIn, app.user?.role, selectedTab]); // Loại bỏ app.orders khỏi dependency array
 
   // Filter orders based on selected tab (frontend filtering for better UX)
   const filteredOrders: Order[] = useMemo(() => {

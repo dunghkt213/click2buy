@@ -12,23 +12,23 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "../../components/ui/tabs";
 
 // Icons
 import {
-    ArrowLeft,
-    CheckCircle,
-    Clock,
-    MessageSquare,
-    Package,
-    Search,
-    Star,
-    Truck,
-    XCircle,
+  ArrowLeft,
+  CheckCircle,
+  Clock,
+  MessageSquare,
+  Package,
+  Search,
+  Star,
+  Truck,
+  XCircle,
 } from "lucide-react";
 
 // Types & Utils
@@ -548,20 +548,20 @@ export function OrdersPage() {
                             Xem chi tiết
                           </Button>
                           {order.ownerId && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
                                 e.preventDefault();
                                 // Navigate directly to chat page with shop ownerId
                                 navigate(`/chat?userId=${order.ownerId}`);
-                              }}
-                              className="gap-2 px-2"
-                              title="Liên hệ Shop"
-                            >
-                              <MessageSquare className="w-4 h-4" />
-                            </Button>
+                            }}
+                            className="gap-2 px-2"
+                            title="Liên hệ Shop"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
                           )}
                         </div>
                       </div>
