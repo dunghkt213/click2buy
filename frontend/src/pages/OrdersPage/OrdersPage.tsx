@@ -37,6 +37,7 @@ import { orderService } from "../../apis/order";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import { Order, OrderStatus } from "../../types";
 import { formatPrice } from "../../utils/utils";
+import { refreshAccessToken } from "../../apis/client/apiClient";
 
 // ReviewModal removed - now using ReviewPage
 
@@ -112,14 +113,22 @@ export function OrdersPage() {
   useEffect(() => {
     if (!app.isLoggedIn) return;
     
-    // Auto refresh token when entering OrdersPage
+    // Auto refresh token when entering OrdersPage (similar to login flow)
     const autoRefreshToken = async () => {
       try {
-        const { refreshAccessToken } = await import('../../apis/client/apiClient');
-        await refreshAccessToken();
+        // Refresh token proactively to ensure valid token before API calls
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          console.log('✅ [OrdersPage] Token refreshed successfully');
+        } else {
+          console.warn('⚠️ [OrdersPage] Token refresh failed, user may need to login again');
+          // Don't show error to user, let normal flow handle it
+          // If token is invalid, subsequent API calls will handle 401 errors
+        }
       } catch (error) {
-        console.warn('Auto refresh token failed:', error);
+        console.warn('⚠️ [OrdersPage] Auto refresh token failed:', error);
         // Don't show error to user, let normal flow handle it
+        // If token is invalid, subsequent API calls will handle 401 errors via apiClient
       }
     };
     
