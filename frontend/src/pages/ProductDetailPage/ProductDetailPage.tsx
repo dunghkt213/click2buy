@@ -720,19 +720,63 @@ export function ProductDetailPage() {
                       {/* Review Images */}
                       {review.images && review.images.length > 0 && (
                         <div className="grid grid-cols-4 gap-2 mb-3">
-                          {review.images.map((img, idx) => (
-                            <div
-                              key={idx}
-                              className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => window.open(img, '_blank')}
-                            >
-                              <ImageWithFallback
-                                src={img}
-                                alt={`Review image ${idx + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ))}
+                          {review.images.map((img, idx) => {
+                            // Convert Google Drive URL to displayable format
+                            const convertGoogleDriveUrl = (url: string): string => {
+                              if (!url || typeof url !== 'string') return url;
+                              
+                              const trimmedUrl = url.trim();
+                              let fileId: string | null = null;
+                              
+                              // Handle Google Drive thumbnail URL
+                              if (trimmedUrl.includes('drive.google.com/thumbnail')) {
+                                const match = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                                if (match && match[1]) {
+                                  fileId = match[1];
+                                }
+                              }
+                              // Handle Google Drive file URL
+                              else if (trimmedUrl.includes('drive.google.com/file/d/')) {
+                                const match = trimmedUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+                                if (match && match[1]) {
+                                  fileId = match[1];
+                                }
+                              }
+                              // Handle Google Drive uc URL
+                              else if (trimmedUrl.includes('drive.google.com/uc')) {
+                                const match = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                                if (match && match[1]) {
+                                  fileId = match[1];
+                                }
+                              }
+                              // Already converted
+                              else if (trimmedUrl.includes('lh3.googleusercontent.com')) {
+                                return url;
+                              }
+                              
+                              if (fileId) {
+                                return `https://lh3.googleusercontent.com/d/${fileId}`;
+                              }
+                              
+                              return url;
+                            };
+                            
+                            const convertedUrl = convertGoogleDriveUrl(img);
+                            
+                            return (
+                              <div
+                                key={idx}
+                                className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => window.open(img, '_blank')}
+                              >
+                                <ImageWithFallback
+                                  src={convertedUrl}
+                                  alt={`Review image ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
 

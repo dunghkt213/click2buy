@@ -57,6 +57,11 @@ export class AppService  {
       shopEmail: obj.shopEmail,
     };
   }
+  
+    async findMany(ids: string[]) {
+    if (!ids || !ids.length) return [];
+    return this.userModel.find({ _id: { $in: ids } }).exec();
+  }
 
   async create(dto: CreateUserDto): Promise<UserDto> {
     // Kiểm tra trùng username/email (đề phòng trước khi đụng unique index)

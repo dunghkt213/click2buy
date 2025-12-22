@@ -324,8 +324,8 @@ export function MyStorePage() {
           setIsLoadingRevenue(false);
         }
       };
-      fetchData();
-    }
+    fetchData();
+  }
   }, [selectedTab, timeRange]);
 
 // 4. QUAN TRỌNG: Mapping dữ liệu Swagger -> Recharts
@@ -499,16 +499,16 @@ const handleUpdateOrderStatus = async (orderId: string, action: string) => {
     } else {
       // Các action khác (shipping, completed, cancelled)
       // Giữ nguyên logic cũ nếu cần
-      app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
-        order.id === orderId
-          ? {
-              ...order,
+  app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
+    order.id === orderId
+      ? {
+        ...order,
               status: action as any,
-              updatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
               timeline: [...order.timeline, { status: action as any, timestamp: new Date().toISOString(), description: `Đơn hàng đã chuyển sang trạng thái ${action}` }]
-            }
-          : order
-      ));
+      }
+      : order
+  ));
       return;
     }
 
@@ -803,25 +803,25 @@ return (
                     const Icon = tab.icon;
                     const count = getOrderCount(tab.value);
                     return (
-                      <TabsTrigger
+                  <TabsTrigger 
                         key={tab.value}
                         value={tab.value}
-                        className="gap-2 transition-all duration-200 hover:scale-105"
-                      >
-                        <motion.div
+                    className="gap-2 transition-all duration-200 hover:scale-105"
+                  >
+                    <motion.div
                           animate={orderTab === tab.value ? { scale: 1.1 } : { scale: 1 }}
-                          transition={{ duration: 0.2 }}
-                          className="flex items-center gap-2"
-                        >
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2"
+                    >
                           <Icon className="w-4 h-4" />
                           {tab.label}
                           {count > 0 && (
                             <Badge className="ml-1 h-5 px-1.5 text-xs bg-red-500 text-white border-0">
                               {count}
-                            </Badge>
-                          )}
-                        </motion.div>
-                      </TabsTrigger>
+                        </Badge>
+                      )}
+                    </motion.div>
+                  </TabsTrigger>
                     );
                   })}
                 </TabsList>
@@ -834,8 +834,8 @@ return (
                       onUpdateStatus={handleUpdateOrderStatus}
                       showActionButtons={tab.value !== 'all'} // Hide action buttons in "Tất cả" tab
                     />
-                  </TabsContent>
-                ))}
+                      </TabsContent>
+                  ))}
               </Tabs>
             </motion.div>
           )}
@@ -920,34 +920,34 @@ return (
         {/* Content khi không có lỗi và không đang load */}
         {!isLoadingRevenue && !revenueError && (
           <>
-            {/* Các thẻ Card thống kê */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
-                  <Package className="w-5 h-5 text-primary" />
-                </div>
-                <p className="text-3xl font-bold">{apiTotalSold.toLocaleString()}</p>
-              </Card>
-
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Tổng doanh thu</p>
-                  <DollarSign className="w-5 h-5 text-green-500" />
-                </div>
-                <p className="text-3xl font-bold text-green-600">{formatPrice(apiTotalRevenue)}</p>
-              </Card>
-
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Bán chạy nhất</p>
-                  <TrendingUp className="w-5 h-5 text-orange-500" />
-                </div>
-                <p className="text-xl font-bold line-clamp-1">
-                  {topProducts.length > 0 ? topProducts[0].productName : 'Chưa có dữ liệu'}
-                </p>
-              </Card>
+        {/* Các thẻ Card thống kê */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
+              <Package className="w-5 h-5 text-primary" />
             </div>
+            <p className="text-3xl font-bold">{apiTotalSold.toLocaleString()}</p>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-muted-foreground">Tổng doanh thu</p>
+              <DollarSign className="w-5 h-5 text-green-500" />
+            </div>
+            <p className="text-3xl font-bold text-green-600">{formatPrice(apiTotalRevenue)}</p>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-muted-foreground">Bán chạy nhất</p>
+              <TrendingUp className="w-5 h-5 text-orange-500" />
+            </div>
+            <p className="text-xl font-bold line-clamp-1">
+              {topProducts.length > 0 ? topProducts[0].productName : 'Chưa có dữ liệu'}
+            </p>
+          </Card>
+        </div>
 
             {/* Biểu đồ doanh thu theo thời gian */}
             {lineChartData.length > 0 && (
@@ -987,7 +987,7 @@ return (
               </Card>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Biểu đồ tròn */}
           <Card className="lg:col-span-2">
             <div className="p-6">

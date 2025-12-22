@@ -373,19 +373,17 @@ async getAllOrderForUser(userId: string, status?: string) {
     return { success: true, status: 'CANCELLED_BY_SELLER' };
   }
 
+   async CancelOrderOnPendingPayment(orderId: string) {
+    const order = await this.orderModel.findById(orderId);
+
+    order.status = 'CANCELLED';
+    await order.save();
+  }
   /**
    * Đánh dấu đơn hàng đã giao thành công - CẬP NHẬT DOANH THU TẠI ĐÂY
    */
   async completeOrder(orderId: string, sellerId: string) {
     const order = await this.orderModel.findById(orderId);
-
-    if (!order) {
-      throw new NotFoundException(`Order not found: ${orderId}`);
-    }
-
-    if (order.ownerId !== sellerId) {
-      throw new BadRequestException('You are not the owner of this order');
-    }
 
     // Chỉ cho phép complete từ trạng thái CONFIRMED hoặc SHIPPING
     const allowedStatuses = ['CONFIRMED', 'SHIPPING'];

@@ -38,8 +38,7 @@ import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import { Order, OrderStatus } from "../../types";
 import { formatPrice } from "../../utils/utils";
 
-// Import Modals
-import { ReviewData, ReviewModal } from "../../components/review/ReviewModal";
+// ReviewModal removed - now using ReviewPage
 
 // --- CONFIG ---
 type TabValue = OrderStatus;
@@ -93,8 +92,7 @@ export function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [allOrders, setAllOrders] = useState<Order[]>([]); // Store all orders for counting
 
-  // Modal State
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  // ReviewModal removed - now using ReviewPage
 
   // Map frontend status to backend status
   const mapStatusToBackend = (status: TabValue): string | undefined => {
@@ -110,7 +108,25 @@ export function OrdersPage() {
     return statusMap[status];
   };
 
-  // --- 2. EFFECT (Load All Orders for Counting) ---
+  // --- 2. EFFECT (Auto Refresh Token) ---
+  useEffect(() => {
+    if (!app.isLoggedIn) return;
+    
+    // Auto refresh token when entering OrdersPage
+    const autoRefreshToken = async () => {
+      try {
+        const { refreshAccessToken } = await import('../../apis/client/apiClient');
+        await refreshAccessToken();
+      } catch (error) {
+        console.warn('Auto refresh token failed:', error);
+        // Don't show error to user, let normal flow handle it
+      }
+    };
+    
+    autoRefreshToken();
+  }, [app.isLoggedIn]);
+
+  // --- 3. EFFECT (Load All Orders for Counting) ---
   useEffect(() => {
     if (!app.isLoggedIn) {
       navigate("/login");
@@ -125,18 +141,50 @@ export function OrdersPage() {
         const { mapOrderResponse } = await import('../../apis/order/order.mapper');
         
         // Load all orders without status filter
-        const allOrdersData = await orderService.getAllForUser();
+        const response = await orderService.getAllForUser();
+        
+        // Handle different response formats
+        let allOrdersData: any[] = [];
+        if (Array.isArray(response)) {
+          allOrdersData = response;
+        } else if (response && typeof response === 'object') {
+          // Check if it's an error object (has status, message, name)
+          if (response.status && response.message && response.name) {
+            // This is an error object, not a success response
+            throw new Error(response.message || 'Failed to load orders');
+          }
+          
+          // Try common response formats
+          if (Array.isArray(response.data)) {
+            allOrdersData = response.data;
+          } else if (Array.isArray(response.orders)) {
+            allOrdersData = response.orders;
+          } else if (Array.isArray(response.result)) {
+            allOrdersData = response.result;
+          } else {
+            // If no array found, it might be empty or unexpected format
+            console.warn('Unexpected response format, treating as empty:', response);
+            allOrdersData = [];
+          }
+        }
+        
         const mappedOrders = allOrdersData.map(mapOrderResponse);
         setAllOrders(mappedOrders);
-      } catch (error) {
-        console.error('Failed to load orders for counting:', error);
+      } catch (error: any) {
+        // Don't log error for authentication issues (user might not be logged in)
+        if (error?.status === 401 || error?.status === 403) {
+          console.warn('Authentication error when loading orders for counting:', error?.message);
+        } else {
+          console.error('Failed to load orders for counting:', error);
+        }
+        setAllOrders([]); // Set empty array on error
       }
     };
 
     loadAllOrdersForCounting();
   }, [app.isLoggedIn, navigate]); // Only run once on mount
 
-  // --- 3. EFFECT (Load Orders for Selected Tab) ---
+  // --- 4. EFFECT (Load Orders for Selected Tab) ---
   useEffect(() => {
     if (!app.isLoggedIn) {
       return;
@@ -174,17 +222,24 @@ export function OrdersPage() {
   };
 
   const handleReview = (orderId: string) => {
-    // Fix lỗi 'order' implicitly any trong find
-    setSelectedOrder(
-      orders.find((order: Order) => order.id === orderId) || null
-    );
-    setIsReviewModalOpen(true);
+    // Navigate to review page instead of opening modal
+    navigate(`/review/${orderId}`);
   };
 
-  const handleCancelOrder = async (orderId: string) => {
+  const handleCancelOrder = async (orderId: string, orderStatus?: string) => {
     try {
-      // Gọi API để hủy đơn hàng
-      await orderService.cancelRequest(orderId);
+      const { orderService } = await import('../../apis/order');
+      const { mapOrderResponse } = await import('../../apis/order/order.mapper');
+      
+      // Nếu order status là "pending" (Đang chờ thanh toán), dùng cancel_order
+      // Nếu order status là "confirmed" (Chờ xác nhận), dùng cancel_request
+      if (orderStatus === 'pending') {
+        await orderService.cancelOrder(orderId);
+        toast.success('Đã hủy đơn hàng thành công');
+      } else {
+        await orderService.cancelRequest(orderId);
+        toast.success('Đã gửi yêu cầu hủy đơn hàng thành công');
+      }
       
       // Cập nhật UI: xóa order khỏi danh sách hoặc cập nhật status
       app.orders.setOrders((prev: Order[]) => 
@@ -196,15 +251,12 @@ export function OrdersPage() {
         prev.filter((order: Order) => order.id !== orderId)
       );
       
-      toast.success('Đã gửi yêu cầu hủy đơn hàng thành công');
-      
       // Reload orders để cập nhật danh sách
       const backendStatus = mapStatusToBackend(selectedTab);
       await app.orders.loadOrdersForUser(backendStatus);
       
       // Reload all orders để cập nhật badge
       const allOrdersData = await orderService.getAllForUser();
-      const { mapOrderResponse } = await import('../../apis/order/order.mapper');
       const mappedOrders = allOrdersData.map(mapOrderResponse);
       setAllOrders(mappedOrders);
     } catch (error: any) {
@@ -237,12 +289,7 @@ export function OrdersPage() {
     }
   };
 
-  const handleReviewSubmit = (reviewData: ReviewData) => {
-    if (selectedOrder) {
-      app.handleReview(selectedOrder.id, reviewData);
-      setIsReviewModalOpen(false);
-    }
-  };
+  // handleReviewSubmit removed - now using ReviewPage
 
   const onBack = () => {
     navigate("/feed");
@@ -516,7 +563,7 @@ export function OrdersPage() {
                                   if (
                                     confirm("Bạn có chắc muốn hủy đơn hàng này?")
                                   ) {
-                                    await handleCancelOrder(order.id);
+                                    await handleCancelOrder(order.id, order.status);
                                   }
                                 }}
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -527,32 +574,20 @@ export function OrdersPage() {
                           )}
 
                           {order.status === "shipping" && (
-                            <>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={async (e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  if (
-                                    confirm("Bạn đã nhận được hàng?")
-                                  ) {
-                                    await handleMarkAsReceived(order.id);
-                                  }
-                                }}
-                              >
-                                Đã nhận
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  handleViewDetail(order);
-                                }}
-                              >
-                                Theo dõi
-                              </Button>
-                            </>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={async (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                if (
+                                  confirm("Bạn đã nhận được hàng?")
+                                ) {
+                                  await handleMarkAsReceived(order.id);
+                                }
+                              }}
+                            >
+                              Đã nhận
+                            </Button>
                           )}
 
                           {order.status === "completed" && (
@@ -604,7 +639,7 @@ export function OrdersPage() {
                                 if (
                                   confirm("Bạn có chắc muốn hủy đơn hàng này?")
                                 ) {
-                                  await handleCancelOrder(order.id);
+                                  await handleCancelOrder(order.id, order.status);
                                 }
                               }}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -649,15 +684,7 @@ export function OrdersPage() {
         </Tabs>
       </div>
 
-      {/* Review Modal */}
-      {isReviewModalOpen && (
-        <ReviewModal
-          isOpen={isReviewModalOpen}
-          onClose={() => setIsReviewModalOpen(false)}
-          order={selectedOrder}
-          onSubmitReview={handleReviewSubmit}
-        />
-      )}
+      {/* ReviewModal removed - now using ReviewPage */}
     </div>
   );
 }
