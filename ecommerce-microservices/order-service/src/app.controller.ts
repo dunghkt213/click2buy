@@ -156,4 +156,14 @@ async getAllOrderForUser(
     const   sellerId = user?.sub || user?.id;
     return this.appService.AcceptCancelOrder(data.orderId, sellerId);
   }
+
+   @MessagePattern('order.cancel_order')
+  @UseGuards(JwtKafkaAuthGuard)
+  async CancelOrderOnPendingPayment(
+    @Payload() data: { orderId: string},
+    @CurrentUser() user: any,
+  ) {
+    const   userId = user?.sub || user?.id;
+    return this.appService.CancelOrderOnPendingPayment(data.orderId);
+  }
 }
