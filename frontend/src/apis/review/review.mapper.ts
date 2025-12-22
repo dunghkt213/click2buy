@@ -14,9 +14,16 @@ export function mapReviewResponse(data: BackendReviewDto): ProductReview {
     rating: data.rating || 0,
     comment: data.comment || '',
     images: data.images,
-    date: data.createdAt || data.updatedAt || new Date().toISOString(),
+    date: data.updatedAt || data.createdAt || new Date().toISOString(), // Ưu tiên updatedAt
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
     helpful: data.helpful || 0,
     isVerifiedPurchase: data.isVerifiedPurchase,
+    user: data.user ? {
+      name: data.user.name,
+      username: data.user.username,
+      avatar: data.user.avatar,
+    } : undefined,
   };
 }
 

@@ -1067,16 +1067,21 @@ export function ChatPage() {
                     
                     <div className={`flex flex-col gap-1.5 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
                       {(() => {
+                        // Check for images array first (multiple images in one message)
+                        const messageImages = (msg as any).images;
+                        const hasImagesArray = Array.isArray(messageImages) && messageImages.length > 0;
+                        
                         // Determine if this is an image message
                         // Check multiple conditions:
                         // 1. msg.type === 'image'
                         // 2. msg.imageUrl exists
-                        // 3. msg.content is an image URL
+                        // 3. msg.images array exists
+                        // 4. msg.content is an image URL
                         const rawImageUrl = (msg as any).imageUrl || msg.content;
                         const hasImageUrlField = !!(msg as any).imageUrl;
                         const isTypeImage = msg.type === 'image';
                         const contentIsImage = isImageUrl(msg.content || '');
-                        const isImage = isTypeImage || hasImageUrlField || contentIsImage;
+                        const isImage = isTypeImage || hasImageUrlField || contentIsImage || hasImagesArray;
                         
                         // Debug log in development
                         if (process.env.NODE_ENV === 'development') {
@@ -1084,6 +1089,8 @@ export function ChatPage() {
                             id: msg.id,
                             type: msg.type,
                             hasImageUrlField,
+                            hasImagesArray,
+                            imagesCount: hasImagesArray ? messageImages.length : 0,
                             contentIsImage,
                             isImage,
                             content: msg.content?.substring(0, 100),
@@ -1091,7 +1098,39 @@ export function ChatPage() {
                           });
                         }
                         
-                        // Only render image if we have a valid URL
+                        // Render multiple images if images array exists
+                        if (hasImagesArray) {
+                          return (
+                            <div className="flex flex-col gap-2">
+                              {messageImages.map((img: string, idx: number) => {
+                                const imageUrl = convertGoogleDriveUrl(img);
+                                const isGoogleDrive = img.includes('drive.google.com');
+                                
+                                return (
+                                  <div key={idx} className="rounded-2xl overflow-hidden max-w-[400px] shadow-md hover:shadow-lg transition-shadow bg-muted/50">
+                                    {isGoogleDrive ? (
+                                      <GoogleDriveImage
+                                        url={imageUrl}
+                                        originalUrl={img}
+                                        className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
+                                      />
+                                    ) : (
+                                      <ImageWithFallback
+                                        src={imageUrl}
+                                        alt={`Shared image ${idx + 1}`}
+                                        className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
+                                        onClick={() => window.open(img, '_blank')}
+                                        loading="lazy"
+                                      />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+                        
+                        // Only render single image if we have a valid URL
                         if (isImage && rawImageUrl && typeof rawImageUrl === 'string' && rawImageUrl.trim()) {
                           // Convert Google Drive URLs to direct image URLs
                           const imageUrl = convertGoogleDriveUrl(rawImageUrl);

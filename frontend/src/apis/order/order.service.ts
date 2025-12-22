@@ -49,11 +49,21 @@ export const orderService = {
   },
 
   /**
-   * Hủy đơn hàng (cancel request)
+   * Hủy đơn hàng (cancel request) - Dùng cho orders đã được xác nhận
    * @param orderId - ID của đơn hàng cần hủy
    */
   cancelRequest: (orderId: string) =>
     request<{ success: boolean; message?: string }>(`/orders/${orderId}/cancel_request`, {
+      method: 'PATCH',
+      requireAuth: true,
+    }),
+
+  /**
+   * Hủy đơn hàng (cancel order) - Dùng cho orders đang chờ thanh toán (pending)
+   * @param orderId - ID của đơn hàng cần hủy
+   */
+  cancelOrder: (orderId: string) =>
+    request<BackendOrderDto>(`/orders/${orderId}/cancel_order`, {
       method: 'PATCH',
       requireAuth: true,
     }),

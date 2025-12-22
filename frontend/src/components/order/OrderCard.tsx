@@ -125,7 +125,7 @@ export function OrderCard({ order, onUpdateStatus, showActionButtons = true }: O
                 size="sm"
                 onClick={() => onUpdateStatus(order.id, 'accept_cancel')}
               >
-                Xác nhận
+                Đồng ý hủy
               </Button>
               <Button
                 variant="outline"
@@ -136,7 +136,7 @@ export function OrderCard({ order, onUpdateStatus, showActionButtons = true }: O
                   }
                 }}
               >
-                Hủy đơn
+                Từ chối hủy
               </Button>
             </div>
           )}

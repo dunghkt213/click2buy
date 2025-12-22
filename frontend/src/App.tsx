@@ -24,6 +24,7 @@ import { OrderDetailPage } from "./pages/OrderDetailPage/OrderDetailPage";
 import { OrdersPage } from "./pages/OrdersPage/OrdersPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage/ProductDetailPage";
 import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
+import { ReviewPage } from "./pages/ReviewPage/ReviewPage";
 import { SearchPage } from "./pages/SearchPage/SearchPage";
 import { ShopPage } from "./pages/ShopPage/ShopPage";
 
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="/payment/process/:orderCode" element={<PaymentProcessPage />} />
         <Route path="/orders" element={<MainLayout><OrdersPage /></MainLayout>} />
         <Route path="/orders/:orderId" element={<MainLayout><OrderDetailPage /></MainLayout>} />
+        <Route path="/review/:orderId" element={<MainLayout><ReviewPage /></MainLayout>} />
 
         <Route path="/profile" element={<MainLayout><ProfilePage /></MainLayout>} />
         <Route path="/profile/:userId" element={<MainLayout><ProfilePage /></MainLayout>} />
