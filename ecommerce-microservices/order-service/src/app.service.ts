@@ -36,20 +36,34 @@ export class AppService {
       .toPromise();
   }
 
-  async getAllOrderForSaller(ownerId: string) {
-    try {
-      return this.orderModel.find({ ownerId });
-    } catch (err) {
-      throw err.message;
+async getAllOrderForSaller(ownerId: string, status?: string) {
+  try {
+    const query: any = { ownerId };
+
+    if (status) {
+      query.status = status;
     }
+
+    return this.orderModel.find(query);
+  } catch (err) {
+    throw err.message;
   }
-  async getAllOrderForUser(userId: string) {
-    try {
-      return this.orderModel.find({ userId });
-    } catch (err) {
-      throw err.message;
+}
+
+async getAllOrderForUser(userId: string, status?: string) {
+  try {
+    const query: any = { userId };
+
+    if (status) {
+      query.status = status;
     }
+
+    return this.orderModel.find(query);
+  } catch (err) {
+    throw err.message;
   }
+}
+
   async createOrders(input: CreateOrderDto) {
     console.log('=>> service order.create')
     const { userId, orderCode, paymentMethod, carts } = input;
@@ -284,6 +298,49 @@ export class AppService {
     return { success: true, status: 'CONFIRMED' };
   }
 
+
+  async cancelOrder(orderId: string, userId: string) {
+    const order = await this.orderModel.findById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order not found: ${orderId}`);
+    }
+    order.status = 'REQUESTED_CANCEL';
+    await order.save();
+    this.kafka.emit('order.cancel_request.created', {
+      orderId: order._id.toString(),
+      userId: order.userId,
+      requestedAt: new Date().toISOString(),
+    });
+  } 
+
+
+  async AcceptCancelOrder(orderId: string, userId: string) {
+    const order = await this.orderModel.findById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order not found: ${orderId}`);
+    }
+    order.status = 'CANCELLED';
+    await order.save();
+    this.kafka.emit('order.cancel_request.successed', {
+      orderId: order._id.toString(),
+      userId: order.userId,
+      requestedAt: new Date().toISOString(),
+    });
+  }
+
+  async RejectCancelOrder(orderId: string, userId: string) {
+    const order = await this.orderModel.findById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order not found: ${orderId}`);
+    }
+    order.status = 'CONFIRMED';
+    await order.save();
+    this.kafka.emit('order.cancel_request.failed', {
+      orderId: order._id.toString(),
+      userId: order.userId,
+      requestedAt: new Date().toISOString(),
+    });
+  } 
   /**
    * Seller từ chối đơn hàng
    */
@@ -298,7 +355,7 @@ export class AppService {
       throw new BadRequestException(`Cannot reject order with status: ${order.status}`);
     }
 
-    order.status = 'REJECTED';
+    order.status = 'CANCELLED';
     await order.save();
 
     // Emit event để các service khác xử lý (hoàn tiền, restock, notify user...)
@@ -313,7 +370,7 @@ export class AppService {
 
     this.logger.log(`❌ Order ${orderId} rejected by seller ${sellerId}`);
 
-    return { success: true, status: 'REJECTED' };
+    return { success: true, status: 'CANCELLED_BY_SELLER' };
   }
 
   /**
