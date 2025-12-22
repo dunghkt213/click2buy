@@ -5,7 +5,7 @@ import { AiReviewGuard } from '../guards/ai-review.guard';
 import { AiImageGuard } from '../guards/ai-image.guard';
 import { AiImageType } from '../decorators/ai-image-type.decorator';
 import { AiService } from '../modules/ai-guard/ai.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
 
 @Controller('reviews')
 export class ReviewGateway {
@@ -94,10 +94,37 @@ export class ReviewGateway {
     }
 
     @Get()
-    findAll(@Query() q: any) {
-        console.log("Lấy tất cả review");
-        return this.kafka.send('review.findAll', { q });
+    async findAll(@Query() q: any) {
+    console.log("Gateway: Lấy tất cả review");
+
+    // 1. Lấy danh sách review từ review-service
+    const reviews = await lastValueFrom(
+        this.kafka.send('review.findAll', { q })
+    );
+
+    // 2. Lấy danh sách userId
+    const userIds = [...new Set(reviews.map(r => r.userId))];
+
+    if (userIds.length === 0) return reviews;
+
+    // 3. Batch lấy thông tin user
+    const users = await lastValueFrom(
+        this.kafka.send('user.batch', { ids: userIds })
+    );
+
+    // 4. Tạo map để lookup nhanh
+    const userMap = new Map(
+        users.map(u => [u._id, u.name]) // 👈 Chỉ lấy name
+    );
+
+    // 5. Chỉ trả thêm "userName"
+    return reviews.map(r => ({
+        ...r,
+        userName: userMap.get(r.userId) ?? null,
+    }));
     }
+
+
 
     @Get(':id')
     findOne(@Param('id') id: string) {

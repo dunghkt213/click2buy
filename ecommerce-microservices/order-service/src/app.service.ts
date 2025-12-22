@@ -142,7 +142,7 @@ async getAllOrderForUser(userId: string, status?: string) {
         voucherDiscount,
         paymentDiscount,
         finalTotal,
-  
+        address: input.address,
         paymentMethod,
         status: 'PENDING_PAYMENT',
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
