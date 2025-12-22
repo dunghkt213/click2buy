@@ -11,9 +11,10 @@ import { OrderCard } from './OrderCard';
 interface OrderListProps {
   orders: Order[];
   onUpdateStatus: (orderId: string, status: string) => void;
+  showActionButtons?: boolean; // Optional prop to show/hide action buttons
 }
 
-export function OrderList({ orders, onUpdateStatus }: OrderListProps) {
+export function OrderList({ orders, onUpdateStatus, showActionButtons = true }: OrderListProps) {
   if (orders.length === 0) {
     return (
       <Card className="p-12">
@@ -38,6 +39,7 @@ export function OrderList({ orders, onUpdateStatus }: OrderListProps) {
           key={order.id}
           order={order}
           onUpdateStatus={onUpdateStatus}
+          showActionButtons={showActionButtons}
         />
       ))}
     </motion.div>

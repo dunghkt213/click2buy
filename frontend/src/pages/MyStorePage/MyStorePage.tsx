@@ -32,6 +32,7 @@ import {
   Edit,
   Filter,
   List,
+  Loader2,
   Package,
   Plus,
   RotateCcw,
@@ -43,7 +44,7 @@ import {
 } from 'lucide-react';
 
 // Types & Utils
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, Area, AreaChart } from 'recharts';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { OrderList } from '../../components/order/OrderList';
 import { Order, StoreProduct } from '../../types';
@@ -273,6 +274,8 @@ export function MyStorePage() {
   const [revenueData, setRevenueData] = useState<RevenueDataItem[]>([]);
   const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
   const [timeRange, setTimeRange] = useState<'WEEK' | 'MONTH'>('WEEK');
+  const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
+  const [revenueError, setRevenueError] = useState<string | null>(null);
   // Filter state
   const [filters, setFilters] = useState<ProductFilters>({
     productName: '',
@@ -301,7 +304,8 @@ export function MyStorePage() {
   useEffect(() => {
     if (selectedTab === 'revenue') {
       const fetchData = async () => {
-        // ... loading state ...
+        setIsLoadingRevenue(true);
+        setRevenueError(null);
         try {
           const [revData, topProdData] = await Promise.all([
             // ✅ Sẽ gọi lại getRevenue khi timeRange thay đổi
@@ -309,15 +313,19 @@ export function MyStorePage() {
             // ⚠️ API getTopProducts không nhận timeRange. Ta vẫn gọi lại.
             sellerService.getTopProducts(10) // Lấy top 10 sản phẩm
           ]);
-          setRevenueData(revData);
-          setTopProducts(topProdData);
-        } catch (error) {
-          console.error(error);
+          setRevenueData(revData || []);
+          setTopProducts(topProdData || []);
+        } catch (error: any) {
+          console.error('Error fetching revenue data:', error);
+          setRevenueError(error.message || 'Không thể tải dữ liệu doanh thu');
+          setRevenueData([]);
+          setTopProducts([]);
+        } finally {
+          setIsLoadingRevenue(false);
         }
       };
-      // ... set loading false ...
-    fetchData();
-  }
+      fetchData();
+    }
   }, [selectedTab, timeRange]);
 
 // 4. QUAN TRỌNG: Mapping dữ liệu Swagger -> Recharts
@@ -340,6 +348,19 @@ const apiTotalRevenue = useMemo(() => {
 // Ở đây tôi dùng tổng từ revenueData (số đơn hàng) vì nó phản ánh đúng "Tổng quan" hơn là chỉ top 5 sp
 const apiTotalSold = useMemo(() => {
   return revenueData.reduce((sum, item) => sum + Number(item.totalOrders || 0), 0);
+}, [revenueData]);
+
+// Format revenue data for Line Chart - Doanh thu theo thời gian
+const lineChartData = useMemo(() => {
+  return revenueData.map((item) => ({
+    date: new Date(item.date).toLocaleDateString('vi-VN', { 
+      day: '2-digit', 
+      month: '2-digit' 
+    }),
+    fullDate: item.date,
+    revenue: Number(item.totalRevenue || 0),
+    orders: Number(item.totalOrders || 0),
+  }));
 }, [revenueData]);
 
 // Màu sắc biểu đồ (Giữ nguyên như mẫu)
@@ -811,6 +832,7 @@ return (
                     <OrderList
                       orders={filteredOrders}
                       onUpdateStatus={handleUpdateOrderStatus}
+                      showActionButtons={tab.value !== 'all'} // Hide action buttons in "Tất cả" tab
                     />
                   </TabsContent>
                 ))}
@@ -847,39 +869,125 @@ return (
           </Button>
         </div>
 
-        {/* Các thẻ Card thống kê */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
-              <Package className="w-5 h-5 text-primary" />
+        {/* Loading State */}
+        {isLoadingRevenue && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Đang tải dữ liệu...</p>
             </div>
-            {/* 👇 Dùng biến apiTotalSold */}
-            <p className="text-3xl font-bold">{apiTotalSold.toLocaleString()}</p>
-          </Card>
+          </div>
+        )}
 
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Tổng doanh thu</p>
-              <DollarSign className="w-5 h-5 text-green-500" />
+        {/* Error State */}
+        {revenueError && !isLoadingRevenue && (
+          <Card className="p-6 border-destructive">
+            <div className="text-center">
+              <XCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
+              <p className="text-sm text-destructive font-medium">{revenueError}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => {
+                  setRevenueError(null);
+                  if (selectedTab === 'revenue') {
+                    const fetchData = async () => {
+                      setIsLoadingRevenue(true);
+                      try {
+                        const [revData, topProdData] = await Promise.all([
+                          sellerService.getRevenue(timeRange),
+                          sellerService.getTopProducts(10),
+                        ]);
+                        setRevenueData(revData || []);
+                        setTopProducts(topProdData || []);
+                      } catch (error: any) {
+                        setRevenueError(error.message || 'Không thể tải dữ liệu doanh thu');
+                      } finally {
+                        setIsLoadingRevenue(false);
+                      }
+                    };
+                    fetchData();
+                  }
+                }}
+              >
+                Thử lại
+              </Button>
             </div>
-            {/* 👇 Dùng biến apiTotalRevenue */}
-            <p className="text-3xl font-bold text-green-600">{formatPrice(apiTotalRevenue)}</p>
           </Card>
+        )}
 
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Bán chạy nhất</p>
-              <TrendingUp className="w-5 h-5 text-orange-500" />
+        {/* Content khi không có lỗi và không đang load */}
+        {!isLoadingRevenue && !revenueError && (
+          <>
+            {/* Các thẻ Card thống kê */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
+                  <Package className="w-5 h-5 text-primary" />
+                </div>
+                <p className="text-3xl font-bold">{apiTotalSold.toLocaleString()}</p>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">Tổng doanh thu</p>
+                  <DollarSign className="w-5 h-5 text-green-500" />
+                </div>
+                <p className="text-3xl font-bold text-green-600">{formatPrice(apiTotalRevenue)}</p>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">Bán chạy nhất</p>
+                  <TrendingUp className="w-5 h-5 text-orange-500" />
+                </div>
+                <p className="text-xl font-bold line-clamp-1">
+                  {topProducts.length > 0 ? topProducts[0].productName : 'Chưa có dữ liệu'}
+                </p>
+              </Card>
             </div>
-            {/* 👇 Dùng topProducts[0] */}
-            <p className="text-xl font-bold line-clamp-1">
-              {topProducts.length > 0 ? topProducts[0].productName : 'Chưa có dữ liệu'}
-            </p>
-          </Card>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Biểu đồ doanh thu theo thời gian */}
+            {lineChartData.length > 0 && (
+              <Card>
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Doanh Thu Theo Thời Gian</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={lineChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 12 }}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                      />
+                      <Tooltip 
+                        formatter={(value: any) => formatPrice(value)}
+                        labelFormatter={(label) => `Ngày: ${label}`}
+                      />
+                      <Legend />
+                      <Area 
+                        type="monotone" 
+                        dataKey="revenue" 
+                        stroke="#10b981" 
+                        fill="#10b981" 
+                        fillOpacity={0.6}
+                        name="Doanh thu"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Biểu đồ tròn */}
           <Card className="lg:col-span-2">
             <div className="p-6">
@@ -944,6 +1052,8 @@ return (
             </div>
           </Card>
         </div>
+          </>
+        )}
             </motion.div>
           )}
         </AnimatePresence>
