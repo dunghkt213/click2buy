@@ -33,6 +33,15 @@ async reserveStock(data: any ) {
       continue;
     }
 
+    if (inventory.availableStock < quantity) {
+      results.push({
+        productId,
+        success: false,
+        message: `Insufficient stock. available=${inventory.availableStock}, requested=${quantity}`,
+      });
+      continue;
+    }
+
     // Trừ available, tăng reserved
     inventory.availableStock -= quantity;
     inventory.reservedStock += quantity;
@@ -78,6 +87,7 @@ async commitStock(data: {
 
     // Giảm reserved vì hàng đã bán thành công
     inventory.reservedStock = Math.max(0, inventory.reservedStock - quantity);
+    inventory.soldStock += quantity;
     inventory.status = this.resolveStatus(inventory);
 
     await inventory.save();

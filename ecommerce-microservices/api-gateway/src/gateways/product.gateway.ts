@@ -77,6 +77,8 @@ async findAllOfSeller(
       ...p,
       stock: stock?.availableStock ?? 0,
       reservedStock: stock?.reservedStock ?? 0,
+      soldStock: stock?.soldStock ?? 0,
+      status: stock?.status ?? "OUT_OF_STOCK",
     };
   });
 

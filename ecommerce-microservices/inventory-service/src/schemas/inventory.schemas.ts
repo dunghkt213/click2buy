@@ -30,6 +30,9 @@ export class Inventory {
   @Prop({ default: 5 })
   lowStockThreshold: number;
 
+  @Prop({ default: 0, min: 0 })
+  soldStock: number;
+
   @Prop({
     enum: InventoryStatus,
     default: InventoryStatus.IN_STOCK,
