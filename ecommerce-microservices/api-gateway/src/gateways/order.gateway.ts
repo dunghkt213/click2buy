@@ -142,7 +142,6 @@ async getOrder(
   @Query('status') status?: string,
 ) {
   try {
-    // gọi lấy danh sách order cho seller theo status
     const orders = await firstValueFrom(
       this.kafka.send('order.getAllOrderForSaller', { auth, status }),
     );
@@ -152,15 +151,18 @@ async getOrder(
     const productIds = orders.flatMap(o => o.items.map(i => i.productId));
     const uniqueIds = [...new Set(productIds.map(String))];
 
-    // gọi lấy thông tin product
     const products = await firstValueFrom(
       this.kafka.send('product.batch', { ids: uniqueIds }),
     );
 
     const map: Record<string, any> = {};
-    (products || []).forEach(p => (map[String(p._id)] = p));
+    (products || []).forEach(p => {
+      map[String(p._id)] = {
+        name: p.name,
+        images: p.images || [],
+      };
+    });
 
-    // enrich items
     return orders.map(o => ({
       ...o,
       items: o.items.map(it => ({
@@ -168,21 +170,50 @@ async getOrder(
         product: map[String(it.productId)] || null,
       })),
     }));
-
   } catch (err) {
     return new BadRequestException(err.message || 'Service error');
   }
 }
 
 
-  @Get('user')
-  getOrderForUser(@Headers('authorization') auth?: string,
-    @Query('status') status?: string,
+
+@Get('user')
+async getOrderForUser(
+  @Headers('authorization') auth?: string,
+  @Query('status') status?: string,
 ) {
-    try {
-      return this.kafka.send('order.getAllOrderForUser', { auth, status });
-    } catch (err) {
-      return new BadRequestException(err.message || 'Service error');
-    }
+  try {
+    const orders = await firstValueFrom(
+      this.kafka.send('order.getAllOrderForUser', { auth, status }),
+    );
+
+    if (!orders?.length) return [];
+
+    const productIds = orders.flatMap(o => o.items.map(i => i.productId));
+    const uniqueIds = [...new Set(productIds.map(String))];
+
+    const products = await firstValueFrom(
+      this.kafka.send('product.batch', { ids: uniqueIds }),
+    );
+
+    const map: Record<string, any> = {};
+    (products || []).forEach(p => {
+      map[String(p._id)] = {
+        name: p.name,
+        images: p.images || [],
+      };
+    });
+
+    return orders.map(o => ({
+      ...o,
+      items: o.items.map(it => ({
+        ...it,
+        product: map[String(it.productId)] || null,
+      })),
+    }));
+  } catch (err) {
+    return new BadRequestException(err.message || 'Service error');
   }
+}
+
 }
