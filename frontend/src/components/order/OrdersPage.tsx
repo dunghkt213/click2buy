@@ -279,7 +279,22 @@ export function OrdersPage() {
                           )}
 
                           <Button variant="default" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleViewDetail(order); }}>Xem chi tiết</Button>
-                          <Button variant="ghost" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); app.handleContactShop(order.id); }} className="gap-2 px-2" title="Liên hệ Shop"><MessageSquare className="w-4 h-4" /></Button>
+                          {order.ownerId && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={(e: React.MouseEvent) => { 
+                                e.stopPropagation();
+                                e.preventDefault();
+                                // Navigate directly to chat page with shop ownerId
+                                navigate(`/chat?userId=${order.ownerId}`);
+                              }} 
+                              className="gap-2 px-2" 
+                              title="Liên hệ Shop"
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </Card>

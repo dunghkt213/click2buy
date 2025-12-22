@@ -1,0 +1,146 @@
+[33mea54d9dc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mph_hung[m[33m)[m Merge branch 'main' of https://github.com/dunghkt213/click2buy into ph_hung
+[33m6a823037[m WIP: local changes
+[33mb6507d67[m fix chat
+[33m2b36e4a0[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #100 from dunghkt213/dung_backup
+[33m8cc33c13[m 'xong_search_cancel_acceppt_order'
+[33m085cd396[m Merge pull request #99 from dunghkt213/chie41_merge
+[33mbc3434b3[m Update PaymentProcessPage.tsx
+[33m6954164a[m Merge pull request #98 from dunghkt213/chie41_merge
+[33m21566d47[m 'moi'
+[33m77fe37cd[m test add
+[33m001ced65[m Merge pull request #97 from dunghkt213/main
+[33m4f15c334[m Merge pull request #96 from dunghkt213/ph_hung
+[33me774f676[m[33m ([m[1;31morigin/ph_hung[m[33m)[m connect chat service
+[33me5978ba8[m connect ai-review
+[33m927d8638[m Merge branch 'main' of https://github.com/dunghkt213/click2buy into ph_hung
+[33m29701c60[m Merge pull request #95 from dunghkt213/kien
+[33m3b301cda[m add api documentation for AI & chat
+[33m7cd17855[m ...
+[33m611e2886[m connect get orders/seller
+[33mda8ceef5[m Merge branch 'main' of https://github.com/dunghkt213/click2buy into ph_hung
+[33m5355856b[m Merge pull request #94 from dunghkt213/chie41_merge
+[33m86b48de7[m Restore frontend from ced496ab
+[33m6192d606[m Merge pull request #93 from dunghkt213/chie41_merge
+[33m4f40febe[m[33m ([m[1;31morigin/chie41_merge[m[33m)[m Update app.service.ts
+[33m2b2257a4[m Update lại confirm
+[33m1ad903db[m enrich getorder
+[33m09dc8c43[m Xóa cart khi đặt hàng thành công
+[33m53f70939[m Cập nhật lại ko cho tạo lại mã QR
+[33ma21c21e8[m Merge pull request #92 from dunghkt213/kien
+[33m428477d8[m[33m ([m[1;31morigin/kien[m[33m)[m Merge branch 'kien' of https://github.com/dunghkt213/click2buy into kien
+[33m3de1d978[m feat(chat): add chat-service microservice with Kafka persistence
+[33m40e7899d[m Merge pull request #91 from dunghkt213/kien
+[33mfbdd2715[m Merge branch 'main' into kien
+[33m1e1cbe66[m feat(ai): prevent duplicate products using single-request similarity check
+[33me837fe65[m Merge pull request #90 from dunghkt213/chie41_merge
+[33mcc777ab0[m Update app.service.ts
+[33mdad98089[m Merge pull request #89 from dunghkt213/chie41_merge
+[33m3c4800cf[m Nối QR
+[33m89060db6[m Merge pull request #88 from dunghkt213/ph_hung
+[33m3b833a10[m Merge branch 'main' into ph_hung
+[33m6501602a[m feat(ai): add image moderation for product and review using Gemini
+[33m9be91076[m search, filter
+[33m684ba285[m Thêm hot deal
+[33m0b41c8a9[m Merge pull request #87 from dunghkt213/ph_hung
+[33m6f69942a[m Merge pull request #86 from dunghkt213/kien
+[33md59f529b[m feat(ai): auto generate product review summary using Gemini
+[33m58f8b0b8[m connect media
+[33m7545f049[m Merge branch 'chie41_merge' of https://github.com/dunghkt213/click2buy into ph_hung
+[33m1d84becb[m edit product
+[33md50fede9[m[33m ([m[1;32mchie41_merge[m[33m)[m sửa lại media-service dùng thumbnail
+[33m9878ab23[m Xóa sse, sửa lại GET product/seller
+[33m9e1863ab[m Update docker-compose.yml
+[33m7eefceb2[m Up tạm paymentProcessPage nối (chưa fix lỗi)
+[33ma7ebdce9[m Merge pull request #85 from dunghkt213/ph_hung
+[33m1f2ad60f[m[33m ([m[1;31morigin/backcommitFe[m[33m)[m Merge branch 'chie41_merge' into ph_hung
+[33m6d68edbb[m limit = 40
+[33ma4e39bda[m Thêm stock phần getAll của seller product
+[33mbc981276[m Update app.service.ts
+[33mbb8bfe19[m Del frontend copy
+[33me9f89298[m gitignore
+[33m3901d688[m Update Dockerfile
+[33m42bb6cd4[m Update Dockerfile
+[33md2bbd543[m Update docker-compose.yml
+[33m586e6d66[m Update cart.gateway.ts
+[33m0eef6583[m Update app.controller.ts
+[33m6c611ba4[m fix accessToken
+[33m303b981f[m get product của seller có stock
+[33mebbd51a6[m Sửa product gateway
+[33mcb388afc[m connect update product
+[33m8816468b[m[33m ([m[1;31morigin/dung_v4[m[33m)[m Merge pull request #83 from dunghkt213/dung_v2
+[33m6e3ced56[m[33m ([m[1;31morigin/dung_v2[m[33m)[m Merge branch 'main' into dung_v2
+[33m3f1e8a15[m Merge pull request #82 from dunghkt213/b_huy
+[33m1a241a92[m 'reset_docker_compose'
+[33m7acda717[m[33m ([m[1;31morigin/b_huy[m[33m)[m shortcut chat init
+[33m707bbd60[m Them chart
+[33me4669aef[m Merge pull request #81 from dunghkt213/kien
+[33ma5bb76be[m fix seller analytics api
+[33m66cbcac4[m Merge pull request #80 from dunghkt213/kien
+[33m1fce4061[m fix auth: add JwtModule for AuthModule and export it
+[33m1d1ae0a3[m update commitStock()
+[33m9b2be532[m bla
+[33m0be5c9ba[m Update package.json
+[33meb818008[m Merge pull request #76 from dunghkt213/dung
+[33m09afe711[m fix(infra): add redis dependency to order-service to fix startup error
+[33m2292d55b[m fix: resolve merge conflicts from main
+[33m42aceb6d[m feat(order): update revenue logic to DELIVERED status, add reject flow and fix inventory sync
+[33mda5b686c[m add event order.confirmed for order-service
+[33mc523504d[m Merge pull request #74 from dunghkt213/dung
+[33m41831bd2[m dung
+[33m7712ecf7[m Merge pull request #73 from dunghkt213/b_huy
+[33m7475f950[m fix: FE merge conflicts, clean vite cache & regenerate lock
+[33m8336b940[m 'f'
+[33me8883ce9[m update FE
+[33m45be0104[m Merge branch 'main' of https://github.com/dunghkt213/click2buy into dung
+[33m670bd04a[m Merge branch 'dung' of https://github.com/dunghkt213/click2buy into dung
+[33mf64fd93d[m resolve merge conflict
+[33m1a181cbf[m Merge pull request #72 from dunghkt213/dung
+[33m6b7d63e0[m Merge branch 'main' into dung
+[33md681afe3[m Merge pull request #71 from dunghkt213/chie41_BeMicro
+[33m83495565[m 'fix_up_role'
+[33mec692b7a[m Merge branch 'main' into chie41_BeMicro
+[33m4ae73195[m Merge pull request #70 from dunghkt213/be
+[33md0ae8db0[m Merge pull request #69 from dunghkt213/kien
+[33mee0ef175[m Sửa logic sse gateway
+[33m917ebde8[m implement realtime chat websocket with AI content check
+[33m0908ee12[m Add Review processing
+[33m80d91d9d[m Add AI Core and Guard
+[33m6153eb30[m Add libraries and general configuration
+[33m2caf8f87[m Thêm chức năng thanh toán mã QR payment-service
+[33m3fab4fd6[m Merge pull request #68 from dunghkt213/fe
+[33mbe74c180[m[33m ([m[1;31morigin/fe[m[33m)[m 'add_be'
+[33ma5958ed5[m Merge pull request #67 from dunghkt213/be
+[33m92b7ccf4[m Merge pull request #66 from dunghkt213/dung
+[33m7db251a0[m 'add_code_fe'
+[33mf8ffb3e5[m Merge pull request #61 from dunghkt213/ph_hung
+[33ma697f337[m Merge pull request #64 from dunghkt213/kien
+[33mb31a4ef4[m Merge pull request #63 from dunghkt213/chie41
+[33m8ef0ee0d[m add swagger for seller analytics
+[33me35cc3e5[m checkoutpage
+[33mf211566e[m ProductDetailPage
+[33m9c65f17a[m fix UI orders
+[33meae12a75[m Merge pull request #60 from dunghkt213/be
+[33m92a6bb77[m fix my-store
+[33m16c28b59[m nguoi dung truy cap vao shop
+[33m8d7c0883[m Merge pull request #58 from dunghkt213/dung
+[33m0f86fe59[m update_get_shop_infor
+[33mb21d28fc[m Sync backend from be branch
+[33m3ecede65[m connect review-add comment, up role user
+[33m8dc4a509[m Merge pull request #57 from dunghkt213/dung
+[33m888818fe[m 'fix_get_user'
+[33m9e3ecbfe[m Sync backend from be into ph_hung
+[33m285734d9[m them UI review va shop
+[33mb1b2813d[m review product, shop
+[33mc59417b4[m Merge pull request #56 from dunghkt213/dung
+[33m55cd1b3f[m Merge branch 'be' into dung
+[33m73f93bbf[m 'create_update_Role_For_Seller'
+[33mbac72099[m sap xep lai
+[33m6b387b91[m tai cau truc frontend
+[33mab890539[m connect product-get product for seller, delete product
+[33m9a56b0e2[m Merge branch 'chie41_BeMicro' of https://github.com/dunghkt213/click2buy into ph_hung
+[33md78cc56e[m[33m ([m[1;32mchie41_BeMicro[m[33m)[m Bổ sung các dto để viết Openapi.yaml
+[33mf03cc6f7[m Update product-service: thêm GET product/seller
+[33mfc193eda[m connect auth-google login
+[33m9db9e2ea[m connect product-add product
+[33m1a7a7ca4[m ...
+[33m1

@@ -7,6 +7,7 @@ import { productApi } from '../../apis/product';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { getCache, setCache, CACHE_KEYS } from '../../utils/cache';
 
 interface HotDealsSectionProps {
   onAddToCart: (product: Product) => void;
@@ -28,6 +29,7 @@ export function HotDealsSection({
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const sectionHeaderRef = useRef<HTMLDivElement>(null);
+  const isLoadingRef = useRef(false);
 
   // Tính discount percentage từ originalPrice và price
   const calculateDiscount = (originalPrice: number, price: number): number => {
@@ -40,9 +42,26 @@ export function HotDealsSection({
     loadHotDeals();
   }, []);
 
-  const loadHotDeals = async () => {
+  const loadHotDeals = async (forceRefresh: boolean = false) => {
+    // Tránh load nhiều lần đồng thời
+    if (isLoadingRef.current) {
+      console.log('⏸️ [HotDealsSection] Already loading, skipping...');
+      return;
+    }
+
+    // Kiểm tra cache trước
+    if (!forceRefresh) {
+      const cached = getCache<Product[]>(CACHE_KEYS.HOT_DEALS);
+      if (cached) {
+        console.log('✅ [HotDealsSection] Using cached data');
+        setAllHotDeals(cached);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
+      isLoadingRef.current = true;
       
       // Load nhiều sản phẩm hơn để đảm bảo có đủ sau khi filter
       // Vì filter client-side (chỉ lấy sản phẩm có isSale), nên cần load nhiều hơn
@@ -64,14 +83,24 @@ export function HotDealsSection({
       
       console.log(`🔥 [HotDealsSection] Loaded ${result.products.length} products, filtered to ${dealsWithDiscount.length} hot deals`);
       
+      // Lưu vào cache (TTL: 5 phút)
+      setCache(CACHE_KEYS.HOT_DEALS, dealsWithDiscount, 5 * 60 * 1000);
+      
       setAllHotDeals(dealsWithDiscount);
     } catch (error: any) {
       console.error('Failed to load hot deals:', error);
-      toast.error('Không thể tải sản phẩm hot deals');
-      // Fallback to empty array
-      setAllHotDeals([]);
+      // Thử dùng cache cũ nếu có lỗi
+      const cached = getCache<Product[]>(CACHE_KEYS.HOT_DEALS);
+      if (cached) {
+        console.log('⚠️ [HotDealsSection] Using stale cache due to error');
+        setAllHotDeals(cached);
+      } else {
+        toast.error('Không thể tải sản phẩm hot deals');
+        setAllHotDeals([]);
+      }
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   };
 

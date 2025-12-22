@@ -34,6 +34,13 @@ export class AppController {
      else return this.AppService.findAll(data.q);
   }
 
+  // ⭐ BATCH USER
+  @MessagePattern('user.batch')
+  async batchUsers(@Payload() data: any) {
+    const ids = data.ids || [];
+    return this.AppService.findMany(ids);
+  }
+  
   @MessagePattern('user.findOne')
   async findOne(@Payload() data: any) {
     return this.AppService.findOne(data.id);

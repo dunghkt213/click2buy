@@ -62,6 +62,16 @@ export function useAuth() {
   }, []);
 
   const handleLoginSuccess = useCallback(async ({ user: userData, accessToken }: AuthSuccessPayload) => {
+    // Clear cart cache của user cũ (nếu có) trước khi login vào tài khoản mới
+    if (typeof window !== 'undefined') {
+      const oldUser = authStorage.getUser();
+      if (oldUser?.id && oldUser.id !== userData.id) {
+        const { removeCache, CACHE_KEYS } = require('../utils/cache');
+        removeCache(CACHE_KEYS.CART);
+        console.log('🧹 [useAuth] Đã xóa cart cache của user cũ:', oldUser.id);
+      }
+    }
+    
     setIsLoggedIn(true);
     setUser(userData);
     authStorage.save(userData, accessToken);
@@ -96,10 +106,32 @@ export function useAuth() {
 
   const handleLogout = useCallback(async () => {
     try {
-      await authService.logout();
+      // Clear cart cache trước khi clear auth (để có thể access được)
+      if (typeof window !== 'undefined') {
+        try {
+          const { removeCache, CACHE_KEYS } = require('../utils/cache');
+          removeCache(CACHE_KEYS.CART);
+          console.log('🧹 [useAuth] Đã xóa cart cache khi logout');
+        } catch (cacheError) {
+          console.warn('Failed to clear cart cache:', cacheError);
+        }
+      }
+      
+      // Clear auth storage trước
+      authStorage.clear();
+      setIsLoggedIn(false);
+      setUser(undefined);
+      
+      // Sau đó mới gọi API logout (không block nếu API fail)
+      try {
+        await authService.logout();
+      } catch (apiError) {
+        console.error('Failed to logout from API', apiError);
+        // Không throw error, vì đã clear local storage rồi
+      }
     } catch (error) {
-      console.error('Failed to logout from API', error);
-    } finally {
+      console.error('Unexpected error during logout:', error);
+      // Vẫn clear local storage ngay cả khi có lỗi
       authStorage.clear();
       setIsLoggedIn(false);
       setUser(undefined);

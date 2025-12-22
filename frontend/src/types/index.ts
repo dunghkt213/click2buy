@@ -46,7 +46,7 @@ export interface CartItem extends Product {
 }
 
 // THÊM: Order types
-export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'completed' | 'cancelled' | 'refund';
+export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'completed' | 'cancelled' | 'refund' | 'cancel_request';
 
 export interface OrderItem {
   id: string;

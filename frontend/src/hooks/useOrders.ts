@@ -12,14 +12,36 @@ export function useOrders() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [isOrdersPageOpen, setIsOrdersPageOpen] = useState(false);
 
-  const loadOrders = useCallback(async () => {
+  /**
+   * Load orders for seller with optional status filter
+   * @param status - Order status (PENDING_ACCEPT, REQUESTED_CANCEL, CONFIRMED, SHIPPING, DELIVERED)
+   */
+  const loadOrders = useCallback(async (status?: string) => {
     try {
       setLoadingOrders(true);
-      const backendOrders = await orderService.getAllForSeller();
+      const backendOrders = await orderService.getAllForSeller(status);
       const mappedOrders = backendOrders.map(mapOrderResponse);
       setOrders(mappedOrders);
     } catch (error: any) {
       console.error('Failed to load orders:', error);
+      toast.error('Không thể tải danh sách đơn hàng');
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, []);
+
+  /**
+   * Load orders for user (buyer) with optional status filter
+   * @param status - Order status (PENDING_PAYMENT, PENDING_ACCEPT, SHIPPING, DELIVERED, REJECTED)
+   */
+  const loadOrdersForUser = useCallback(async (status?: string) => {
+    try {
+      setLoadingOrders(true);
+      const backendOrders = await orderService.getAllForUser(status);
+      const mappedOrders = backendOrders.map(mapOrderResponse);
+      setOrders(mappedOrders);
+    } catch (error: any) {
+      console.error('Failed to load user orders:', error);
       toast.error('Không thể tải danh sách đơn hàng');
     } finally {
       setLoadingOrders(false);
@@ -66,7 +88,8 @@ export function useOrders() {
     setLoadingOrders: setLoadingOrdersCallback,
     setIsOrdersPageOpen: setIsOrdersPageOpenCallback,
     loadOrders,
+    loadOrdersForUser,
     handleUpdateOrderStatus,
-  }), [orders, loadingOrders, isOrdersPageOpen, setOrdersCallback, setLoadingOrdersCallback, setIsOrdersPageOpenCallback, loadOrders, handleUpdateOrderStatus]);
+  }), [orders, loadingOrders, isOrdersPageOpen, setOrdersCallback, setLoadingOrdersCallback, setIsOrdersPageOpenCallback, loadOrders, loadOrdersForUser, handleUpdateOrderStatus]);
 }
 

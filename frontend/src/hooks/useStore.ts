@@ -54,37 +54,67 @@ export function useStore({ isLoggedIn, userRole, userId }: UseStoreProps) {
 
   // Load seller products từ API khi mở My Store page
   useEffect(() => {
+    // Chỉ load khi page được mở và user đã đăng nhập
+    if (!isMyStorePageOpen || !isLoggedIn || userRole !== 'seller' || !userId) {
+      return;
+    }
+
+    let isMounted = true;
+
     const loadSellerProducts = async () => {
-      if (isMyStorePageOpen && isLoggedIn && userRole === 'seller' && userId) {
-        try {
-          const storeProducts = await loadSellerProductsByUserId(userId);
-          
-          if (storeProducts.length === 0) {
-            console.warn('⚠️ [My Store] Không có sản phẩm nào được trả về từ API');
-            toast.info('Bạn chưa có sản phẩm nào trong cửa hàng. Hãy thêm sản phẩm mới!');
-          } else {
-            toast.success(`Đã tải ${storeProducts.length} sản phẩm từ cửa hàng của bạn`);
-          }
-          
-          setStoreProducts(storeProducts);
-          
-          // Cập nhật storeInfo với totalProducts
-          setStoreInfo(prev => prev ? {
-            ...prev,
-            totalProducts: storeProducts.length,
-          } : null);
-        } catch (error: any) {
-          if (error.status === 401) {
-            toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-          } else {
-            toast.error(error.message || 'Không thể tải danh sách sản phẩm. Vui lòng thử lại.');
-          }
-          setStoreProducts([]);
+      try {
+        const storeProducts = await loadSellerProductsByUserId(userId);
+        
+        // Chỉ update state nếu component vẫn còn mounted
+        if (!isMounted) return;
+        
+        if (storeProducts.length === 0) {
+          console.warn('⚠️ [My Store] Không có sản phẩm nào được trả về từ API');
+          // Chỉ hiện toast khi component đã mount xong
+          setTimeout(() => {
+            if (isMounted) {
+              toast.info('Bạn chưa có sản phẩm nào trong cửa hàng. Hãy thêm sản phẩm mới!');
+            }
+          }, 0);
+        } else {
+          // Chỉ hiện toast khi component đã mount xong
+          setTimeout(() => {
+            if (isMounted) {
+              toast.success(`Đã tải ${storeProducts.length} sản phẩm từ cửa hàng của bạn`);
+            }
+          }, 0);
         }
+        
+        setStoreProducts(storeProducts);
+        
+        // Cập nhật storeInfo với totalProducts
+        setStoreInfo(prev => prev ? {
+          ...prev,
+          totalProducts: storeProducts.length,
+        } : null);
+      } catch (error: any) {
+        if (!isMounted) return;
+        
+        // Chỉ hiện toast khi component đã mount xong
+        setTimeout(() => {
+          if (isMounted) {
+            if (error.status === 401) {
+              toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            } else {
+              toast.error(error.message || 'Không thể tải danh sách sản phẩm. Vui lòng thử lại.');
+            }
+          }
+        }, 0);
+        
+        setStoreProducts([]);
       }
     };
 
     loadSellerProducts();
+
+    return () => {
+      isMounted = false;
+    };
   }, [isMyStorePageOpen, isLoggedIn, userRole, userId, loadSellerProductsByUserId]);
 
   const handleAddProduct = useCallback(async (productFormData: {

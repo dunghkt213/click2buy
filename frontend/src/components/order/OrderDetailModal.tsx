@@ -487,10 +487,14 @@ export function OrderDetailModal({
             </Button>
           )}
 
-          {onContactShop && (
+          {order.ownerId && (
             <Button
               variant="outline"
-              onClick={() => onContactShop(order.id)}
+              onClick={() => {
+                // Trigger chat với shop của đơn hàng
+                const event = new CustomEvent('openChat', { detail: { targetUserId: order.ownerId } });
+                window.dispatchEvent(event);
+              }}
               className="gap-2"
             >
               <MessageSquare className="w-4 h-4" />
