@@ -248,20 +248,7 @@ export function OrdersPage() {
                         </div>
 
                         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                          {order.status === 'pending' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              // Fix lỗi 'e' implicitly any
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                if(confirm('Bạn có chắc muốn hủy đơn hàng này?')) app.handleCancelOrder(order.id);
-                              }}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              Hủy đơn
-                            </Button>
-                          )}
+                          {/* Removed "Hủy đơn" button for "all" tab as requested */}
 
                           {order.status === 'shipping' && (
                             <Button variant="outline" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleViewDetail(order); }}>Theo dõi</Button>

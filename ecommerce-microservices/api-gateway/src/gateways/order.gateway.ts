@@ -29,6 +29,7 @@ export class OrderGateway implements OnModuleInit {
     this.kafka.subscribeToResponseOf('order.reject');
     this.kafka.subscribeToResponseOf('order.complete');
     this.kafka.subscribeToResponseOf('order.cancel_request');
+    this.kafka.subscribeToResponseOf('order.cancel_order');
     this.kafka.subscribeToResponseOf('order.reject.cancel_request');
     this.kafka.subscribeToResponseOf('order.accept.cancel_request');
     this.kafka.subscribeToResponseOf('order.reject.cancel_request');
@@ -103,6 +104,21 @@ export class OrderGateway implements OnModuleInit {
       // Gọi sang order-service để báo đơn hàng đã hoàn tất -> Lúc này mới cộng tiền
       return await this.kafka
         .send('order.cancel_request', { orderId, auth }) 
+        .toPromise();
+    } catch (err) {
+      throw new BadRequestException(err.message || 'Complete order failed');
+    }
+  }
+
+  @Patch(':orderId/cancel_order')
+  async CancelOrderOnPendingPayment(
+    @Param('orderId') orderId: string,
+    @Headers('authorization') auth: string,
+  ) {
+    try {
+      // Gọi sang order-service để báo đơn hàng đã hoàn tất -> Lúc này mới cộng tiền
+      return await this.kafka
+        .send('order.cancel_order', { orderId, auth }) 
         .toPromise();
     } catch (err) {
       throw new BadRequestException(err.message || 'Complete order failed');

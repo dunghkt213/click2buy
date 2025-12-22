@@ -67,6 +67,8 @@ export class Order {
   @Prop()
   expiresAt: Date;
 
+  @Prop({ required: true })
+  address: string;
 }
 
 
