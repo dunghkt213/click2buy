@@ -3,7 +3,8 @@ import { toast } from 'sonner';
 import { cartApi } from '../apis/cart';
 import { productApi } from '../apis/product';
 import { CartItem, Product } from '../types';
-import { getCache, setCache, CACHE_KEYS } from '../utils/cache';
+import { getCache, setCache, removeCache, CACHE_KEYS } from '../utils/cache';
+import { authStorage } from '../apis/auth';
 
 /**
  * Hook để quản lý giỏ hàng với API backend
@@ -14,6 +15,12 @@ export const useCartApi = () => {
 
   // Ref để track loading state mà không trigger re-render
   const isLoadingRef = useRef(false);
+  
+  // Track userId để detect khi user thay đổi
+  const currentUserIdRef = useRef<string | undefined>(() => {
+    const user = authStorage.getUser();
+    return user?.id;
+  });
 
   const loadCart = useCallback(async (forceRefresh: boolean = false) => {
     // Tránh gọi nhiều lần đồng thời
@@ -22,7 +29,22 @@ export const useCartApi = () => {
       return;
     }
 
-    // Kiểm tra cache trước
+    // Kiểm tra xem userId có thay đổi không
+    const user = authStorage.getUser();
+    const currentUserId = user?.id;
+    const previousUserId = currentUserIdRef.current;
+    
+    // Nếu userId thay đổi, clear cache và force refresh
+    if (previousUserId && currentUserId && previousUserId !== currentUserId) {
+      console.log('🔄 [useCartApi] User đã thay đổi, clear cache và force refresh');
+      removeCache(CACHE_KEYS.CART);
+      forceRefresh = true;
+    }
+    
+    // Cập nhật userId hiện tại
+    currentUserIdRef.current = currentUserId;
+
+    // Kiểm tra cache trước (chỉ khi không force refresh và userId không thay đổi)
     if (!forceRefresh) {
       const cached = getCache<CartItem[]>(CACHE_KEYS.CART);
       if (cached) {
@@ -144,11 +166,45 @@ export const useCartApi = () => {
     }
   }, []); // Không có dependencies - function ổn định
 
-  // Load cart từ API khi component mount
+  // Load cart từ API khi component mount hoặc khi user thay đổi
   useEffect(() => {
-    loadCart();
+    // Force refresh để đảm bảo lấy cart với token mới nhất
+    loadCart(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Chỉ chạy một lần khi mount
+  }, []); // Chỉ chạy một lần khi mount (reload sẽ được handle bởi window.location.reload)
+  
+  // Watch userId thay đổi từ authStorage (polling để detect khi user đăng nhập tài khoản khác)
+  useEffect(() => {
+    const checkUserChange = () => {
+      const user = authStorage.getUser();
+      const currentUserId = user?.id;
+      const previousUserId = currentUserIdRef.current;
+      
+      // Nếu userId thay đổi, reload cart
+      if (previousUserId && currentUserId && previousUserId !== currentUserId) {
+        console.log('🔄 [useCartApi] Phát hiện user thay đổi, reload cart');
+        currentUserIdRef.current = currentUserId;
+        loadCart(true);
+      } else if (!previousUserId && currentUserId) {
+        // User mới đăng nhập
+        currentUserIdRef.current = currentUserId;
+        loadCart(true);
+      } else if (previousUserId && !currentUserId) {
+        // User đã logout
+        currentUserIdRef.current = undefined;
+        setCartItems([]);
+        removeCache(CACHE_KEYS.CART);
+      }
+    };
+    
+    // Check mỗi 500ms để detect user change (sau khi reload page)
+    const interval = setInterval(checkUserChange, 500);
+    
+    // Check ngay lập tức
+    checkUserChange();
+    
+    return () => clearInterval(interval);
+  }, [loadCart]);
 
   const addToCart = useCallback(async (product: Product, sellerId?: string) => {
     if (!sellerId) {
@@ -171,7 +227,12 @@ export const useCartApi = () => {
       
       await cartApi.addItem(payload);
       
-      await loadCart();
+      // Xóa cache để force reload từ API
+      removeCache(CACHE_KEYS.CART);
+      
+      // Force refresh từ API (không dùng cache)
+      await loadCart(true);
+      
       toast.success('Đã thêm vào giỏ hàng');
     } catch (error: any) {
       console.error('useCartApi.addToCart - Error:', error);
@@ -200,9 +261,15 @@ export const useCartApi = () => {
         sellerId,
       });
       
-      await loadCart();
+      // Xóa cache để force reload từ API
+      removeCache(CACHE_KEYS.CART);
+      
+      // Force refresh từ API (không dùng cache)
+      await loadCart(true);
+      
       toast.success('Đã xóa khỏi giỏ hàng');
     } catch (error: any) {
+      console.error('Error removing from cart:', error);
       toast.error(error.message || 'Không thể xóa khỏi giỏ hàng');
     }
   }, [cartItems, loadCart]);
@@ -238,7 +305,11 @@ export const useCartApi = () => {
         sellerId,
       });
       
-      await loadCart();
+      // Xóa cache để force reload từ API
+      removeCache(CACHE_KEYS.CART);
+      
+      // Force refresh từ API (không dùng cache)
+      await loadCart(true);
     } catch (error: any) {
       toast.error(error.message || 'Không thể cập nhật số lượng');
     }
@@ -280,6 +351,7 @@ export const useCartApi = () => {
 
   const clearCart = useCallback(() => {
     setCartItems([]);
+    removeCache(CACHE_KEYS.CART);
   }, []);
 
   return {

@@ -131,9 +131,14 @@ export function useApp() {
   };
 
   const handleLogoutWithReload = async () => {
-    await handleLogout();
-    // Chuyển về trang chủ sau khi đăng xuất
-    window.location.href = '/';
+    try {
+      await handleLogout();
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      // Luôn chuyển về trang chủ sau khi đăng xuất, kể cả khi có lỗi
+      window.location.href = '/';
+    }
   };
 
   // OAuth callback check
