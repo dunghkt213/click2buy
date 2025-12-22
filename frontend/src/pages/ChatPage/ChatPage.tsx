@@ -9,53 +9,58 @@ import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
 import { mediaApi } from '../../apis/media/mediaApi';
 
-// Component to handle Google Drive images with multiple fallback URLs
+// Component to handle Google Drive images - similar to how product images are displayed
+// Specifically handles: https://drive.google.com/thumbnail?id=FILE_ID
+// Uses ImageWithFallback for consistent behavior with product images
+// If direct image URL fails, will show clickable placeholder to open in new tab
 const GoogleDriveImage: React.FC<{ url: string; originalUrl: string; className?: string }> = ({ url, originalUrl, className }) => {
-  const [currentUrl, setCurrentUrl] = useState<string>(url);
-  const [errorCount, setErrorCount] = useState(0);
+  const [hasError, setHasError] = useState(false);
   
-  // Extract file ID from Google Drive URL
-  const getFileId = (driveUrl: string): string | null => {
-    const match = driveUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) || driveUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    return match && match[1] ? match[1] : null;
+  // Handle image load error
+  const handleImageError = () => {
+    setHasError(true);
   };
   
-  const isGoogleDrive = originalUrl.includes('drive.google.com');
-  const fileId = isGoogleDrive ? getFileId(originalUrl) : null;
+  // If image fails to load, show clickable placeholder
+  if (hasError) {
+    return (
+      <div 
+        className={`${className} bg-muted/50 flex flex-col items-center justify-center cursor-pointer hover:bg-muted transition-colors rounded-2xl`}
+        onClick={() => window.open(originalUrl, '_blank')}
+        title="Nhấn để mở hình ảnh trong tab mới"
+      >
+        <ImageIcon className="w-12 h-12 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground text-center px-4">
+          Không thể tải hình ảnh
+        </p>
+        <p className="text-xs text-muted-foreground/70 mt-1 px-4">
+          Nhấn để mở trong tab mới
+        </p>
+      </div>
+    );
+  }
   
-  const handleError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    
-    if (isGoogleDrive && fileId && errorCount < 4) {
-      // Try different Google Drive URL formats
-      const formats = [
-        `https://lh3.googleusercontent.com/d/${fileId}`, // Format 1
-        `https://drive.google.com/uc?export=view&id=${fileId}`, // Format 2
-        `https://drive.google.com/uc?export=download&id=${fileId}`, // Format 3
-        `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000-h1000`, // Format 4
-        `https://drive.google.com/file/d/${fileId}/preview`, // Format 5
-      ];
-      
-      const nextFormat = formats[errorCount];
-      if (nextFormat && img.src !== nextFormat) {
-        console.log(`Trying Google Drive format ${errorCount + 1}:`, nextFormat);
-        setCurrentUrl(nextFormat);
-        setErrorCount(errorCount + 1);
-        img.src = nextFormat;
-      }
-    }
-  };
-  
+  // Render image with ImageWithFallback (same as product images)
   return (
-    <img
-      src={currentUrl}
-      alt="Shared image"
-      className={className}
+    <div 
+      className="relative group cursor-pointer"
       onClick={() => window.open(originalUrl, '_blank')}
-      loading="lazy"
-      onError={handleError}
-      crossOrigin="anonymous"
-    />
+      title="Nhấn để mở hình ảnh trong tab mới"
+    >
+      <ImageWithFallback
+        src={url}
+        alt="Shared image"
+        className={className}
+        loading="lazy"
+        onError={handleImageError}
+      />
+      {/* Overlay hint on hover */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+        <div className="bg-black/70 text-white text-xs px-3 py-1.5 rounded-full">
+          Nhấn để mở
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -98,6 +103,7 @@ export function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevConversationIdRef = useRef<string | null>(null);
 
   // Use chat hook
   const {
@@ -302,7 +308,10 @@ export function ChatPage() {
 
   // Update messages by conversation when messages change
   useEffect(() => {
-    console.log('📦 Updating messagesByConversation, total messages:', messages.length);
+    // Only log in development mode and when messages actually change
+    if (process.env.NODE_ENV === 'development' && messages.length > 0) {
+      console.log('📦 Updating messagesByConversation, total messages:', messages.length);
+    }
     const grouped: Record<string, ChatMessage[]> = {};
     messages.forEach(msg => {
       if (msg.conversationId) {
@@ -311,10 +320,16 @@ export function ChatPage() {
         }
         grouped[msg.conversationId].push(msg);
       } else {
-        console.warn('Message without conversationId:', msg);
+        // Only warn in development
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Message without conversationId:', msg);
+        }
       }
     });
-    console.log('📦 Grouped messages by conversation:', grouped);
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📦 Grouped messages by conversation:', grouped);
+    }
     setMessagesByConversation(grouped);
   }, [messages]);
 
@@ -355,13 +370,14 @@ export function ChatPage() {
             const convMessages = messagesByConversation[conversationId] || 
                                 messagesByConversation[conv._id || ''] || 
                                 [];
-            console.log(`📦 Messages for conversation ${conversationId}:`, {
-              conversationId,
-              _id: conv._id,
-              messagesByConvId: messagesByConversation[conversationId]?.length || 0,
-              messagesBy_id: messagesByConversation[conv._id || '']?.length || 0,
-              finalMessages: convMessages.length,
-            });
+            // Removed console.log to prevent spam - only log in development if needed
+            // console.log(`📦 Messages for conversation ${conversationId}:`, {
+            //   conversationId,
+            //   _id: conv._id,
+            //   messagesByConvId: messagesByConversation[conversationId]?.length || 0,
+            //   messagesBy_id: messagesByConversation[conv._id || '']?.length || 0,
+            //   finalMessages: convMessages.length,
+            // });
             return convMessages;
           })(),
         };
@@ -398,17 +414,21 @@ export function ChatPage() {
   // Use virtual conversation if no selected conversation but we have receiverId
   const activeConversation = selectedConversation || virtualConversation;
 
-  // Debug: Log active conversation messages
+  // Debug: Log active conversation messages (only in development, and only when conversation actually changes)
   useEffect(() => {
-    if (activeConversation) {
-      console.log('📋 Active conversation messages:', {
-        conversationId: activeConversation.id,
-        messageCount: activeConversation.messages.length,
-        messages: activeConversation.messages,
-        messagesByConversation: messagesByConversation[activeConversation.id || ''],
-      });
+    if (process.env.NODE_ENV === 'development' && activeConversation) {
+      const conversationId = activeConversation.id;
+      // Only log when conversation ID changes, not on every render
+      if (prevConversationIdRef.current !== conversationId) {
+        console.log('📋 Active conversation changed:', {
+          conversationId: activeConversation.id,
+          messageCount: activeConversation.messages.length,
+        });
+        prevConversationIdRef.current = conversationId || null;
+      }
     }
-  }, [activeConversation, messagesByConversation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation?.id]);
 
   // Auto-scroll to bottom when messages change or conversation changes
   useEffect(() => {
@@ -770,7 +790,9 @@ export function ChatPage() {
     let fileId: string | null = null;
     
     // Handle Google Drive thumbnail URL: https://drive.google.com/thumbnail?id=FILE_ID&sz=w1000
+    // This is the most common format from backend
     if (trimmedUrl.includes('drive.google.com/thumbnail')) {
+      // Match: ?id=FILE_ID or &id=FILE_ID
       const match = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
         fileId = match[1];
@@ -792,11 +814,10 @@ export function ChatPage() {
     }
     
     // If we found a file ID, convert to direct image URL
-    // Try multiple formats for better compatibility
     if (fileId) {
-      // Method 1: Use Google's direct image serving (lh3.googleusercontent.com)
-      // This is the most reliable method for displaying images from Google Drive
+      // Use Google's direct image serving (lh3.googleusercontent.com)
       // Format: https://lh3.googleusercontent.com/d/FILE_ID
+      // This format works best for embedding in img tags
       return `https://lh3.googleusercontent.com/d/${fileId}`;
     }
     
@@ -805,6 +826,7 @@ export function ChatPage() {
   };
 
   // Check if content is an image URL
+  // Specifically handles Google Drive thumbnail URLs: https://drive.google.com/thumbnail?id=
   const isImageUrl = (content: string): boolean => {
     if (!content || typeof content !== 'string') {
       return false;
@@ -819,12 +841,14 @@ export function ChatPage() {
     
     const lowerContent = trimmedContent.toLowerCase();
     
-    // Check for Google Drive URLs (thumbnail, file, uc)
-    const isGoogleDrive = lowerContent.includes('drive.google.com/thumbnail') ||
-                         lowerContent.includes('drive.google.com/file/d/') ||
-                         (lowerContent.includes('drive.google.com/uc') && lowerContent.includes('id='));
+    // Priority 1: Check for Google Drive URLs (most common in this app)
+    // Specifically check for thumbnail format: drive.google.com/thumbnail?id=
+    const isGoogleDriveThumbnail = lowerContent.includes('drive.google.com/thumbnail') && lowerContent.includes('id=');
+    const isGoogleDriveFile = lowerContent.includes('drive.google.com/file/d/');
+    const isGoogleDriveUc = lowerContent.includes('drive.google.com/uc') && lowerContent.includes('id=');
+    const isGoogleDrive = isGoogleDriveThumbnail || isGoogleDriveFile || isGoogleDriveUc;
     
-    // Check if it's an image file extension (even with query params)
+    // Priority 2: Check if it's an image file extension (even with query params)
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico'];
     const hasImageExtension = imageExtensions.some(ext => {
       // Check if extension exists in URL (before query params or at the end)
@@ -832,13 +856,14 @@ export function ChatPage() {
       return urlWithoutQuery.endsWith(ext);
     });
     
-    // Check for common image hosting patterns
+    // Priority 3: Check for common image hosting patterns
     const hasImagePattern = lowerContent.includes('/image/') ||
                             lowerContent.includes('cloudinary') ||
                             lowerContent.includes('imgur') ||
                             lowerContent.includes('i.imgur') ||
                             lowerContent.includes('res.cloudinary.com') ||
                             lowerContent.includes('images.unsplash.com') ||
+                            lowerContent.includes('lh3.googleusercontent.com') ||
                             lowerContent.includes('media/') ||
                             lowerContent.includes('/upload/');
     
@@ -1043,14 +1068,42 @@ export function ChatPage() {
                     <div className={`flex flex-col gap-1.5 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
                       {(() => {
                         // Determine if this is an image message
-                        const rawImageUrl = msg.imageUrl || msg.content;
-                        const isImage = msg.type === 'image' || isImageUrl(msg.content);
+                        // Check multiple conditions:
+                        // 1. msg.type === 'image'
+                        // 2. msg.imageUrl exists
+                        // 3. msg.content is an image URL
+                        const rawImageUrl = (msg as any).imageUrl || msg.content;
+                        const hasImageUrlField = !!(msg as any).imageUrl;
+                        const isTypeImage = msg.type === 'image';
+                        const contentIsImage = isImageUrl(msg.content || '');
+                        const isImage = isTypeImage || hasImageUrlField || contentIsImage;
                         
-                        // Convert Google Drive URLs to direct image URLs
-                        const imageUrl = isImage ? convertGoogleDriveUrl(rawImageUrl) : rawImageUrl;
+                        // Debug log in development
+                        if (process.env.NODE_ENV === 'development') {
+                          console.log('🖼️ Message check:', {
+                            id: msg.id,
+                            type: msg.type,
+                            hasImageUrlField,
+                            contentIsImage,
+                            isImage,
+                            content: msg.content?.substring(0, 100),
+                            rawImageUrl: rawImageUrl?.substring(0, 100),
+                          });
+                        }
                         
-                        if (isImage) {
+                        // Only render image if we have a valid URL
+                        if (isImage && rawImageUrl && typeof rawImageUrl === 'string' && rawImageUrl.trim()) {
+                          // Convert Google Drive URLs to direct image URLs
+                          const imageUrl = convertGoogleDriveUrl(rawImageUrl);
                           const isGoogleDrive = rawImageUrl.includes('drive.google.com');
+                          
+                          if (process.env.NODE_ENV === 'development') {
+                            console.log('🖼️ Rendering image:', {
+                              rawImageUrl: rawImageUrl.substring(0, 100),
+                              imageUrl: imageUrl.substring(0, 100),
+                              isGoogleDrive,
+                            });
+                          }
                           
                           return (
                             <div className="rounded-2xl overflow-hidden max-w-[400px] shadow-md hover:shadow-lg transition-shadow bg-muted/50">
@@ -1073,17 +1126,23 @@ export function ChatPage() {
                           );
                         }
                         
-                        return (
-                          <div
-                            className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                              isUser
-                                ? 'bg-primary text-primary-foreground rounded-br-sm'
-                                : 'bg-white text-foreground rounded-bl-sm border border-border'
-                            }`}
-                          >
-                            <p className="break-words text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p> 
-                          </div>
-                        );
+                        // Regular text message - only show if content exists and is not an image URL
+                        if (msg.content && !contentIsImage) {
+                          return (
+                            <div
+                              className={`rounded-2xl px-4 py-2.5 shadow-sm ${
+                                isUser
+                                  ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                  : 'bg-white text-foreground rounded-bl-sm border border-border'
+                              }`}
+                            >
+                              <p className="break-words text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p> 
+                            </div>
+                          );
+                        }
+                        
+                        // Fallback: if content is empty or only image URL, show nothing or placeholder
+                        return null;
                       })()}
                       {msg.timestamp && (
                         <span className="text-xs text-muted-foreground px-1.5">
