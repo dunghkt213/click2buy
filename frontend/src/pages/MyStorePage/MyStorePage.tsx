@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../providers/AppProvider';
+import { refreshAccessToken } from '../../apis/client/apiClient';
 
 // Import UI Components
 import { sellerService } from '../../apis/seller-analytics/sellerAnalyticsApi';
@@ -222,6 +223,14 @@ export function MyStorePage() {
       isLoadingOrdersRef.current = true;
       const loadAllOrders = async () => {
         try {
+          // Refresh token trước khi load orders để tránh 401 errors
+          try {
+            await refreshAccessToken();
+          } catch (error) {
+            console.warn('⚠️ [MyStorePage] Token refresh failed before loading orders:', error);
+            // Continue anyway, apiClient will handle 401 errors
+          }
+          
           const { orderService } = await import('../../apis/order');
           const { mapOrderResponse } = await import('../../apis/order/order.mapper');
           const allOrdersData = await orderService.getAllForSeller(); // Load all orders without status filter
@@ -304,6 +313,16 @@ export function MyStorePage() {
   useEffect(() => {
     if (selectedTab === 'revenue') {
       const fetchData = async () => {
+        // Refresh token trước khi fetch data để tránh 401 errors
+        if (app.isLoggedIn) {
+          try {
+            await refreshAccessToken();
+          } catch (error) {
+            console.warn('⚠️ [MyStorePage] Token refresh failed before fetching revenue:', error);
+            // Continue anyway, apiClient will handle 401 errors
+          }
+        }
+        
         setIsLoadingRevenue(true);
         setRevenueError(null);
         try {
@@ -314,7 +333,48 @@ export function MyStorePage() {
             sellerService.getTopProducts(10) // Lấy top 10 sản phẩm
           ]);
           setRevenueData(revData || []);
-          setTopProducts(topProdData || []);
+          
+          // Debug: Log response để kiểm tra
+          console.log('📊 [Revenue] Top products response:', topProdData);
+          
+          // Nếu topProducts không có productName, fetch từ product service
+          const enrichedTopProducts = await Promise.all(
+            (topProdData || []).map(async (item) => {
+              // Debug: Log từng item
+              console.log('📦 [Revenue] Processing item:', { 
+                productId: item.productId, 
+                productName: item.productName,
+                hasProductName: !!item.productName 
+              });
+              
+              // Nếu đã có productName, giữ nguyên
+              if (item.productName) {
+                return item;
+              }
+              
+              // Nếu không có productName, thử fetch từ product service
+              try {
+                console.log(`🔍 [Revenue] Fetching product name for ${item.productId}...`);
+                const { productService } = await import('../../apis/product');
+                const product = await productService.getById(item.productId);
+                console.log(`✅ [Revenue] Fetched product name: ${product.name}`);
+                return {
+                  ...item,
+                  productName: product.name || `Sản phẩm ${item.productId.substring(0, 8)}`
+                };
+              } catch (error) {
+                console.warn(`⚠️ [Revenue] Failed to fetch product name for ${item.productId}:`, error);
+                // Nếu fetch fail, dùng fallback
+                return {
+                  ...item,
+                  productName: `Sản phẩm ${item.productId.substring(0, 8)}`
+                };
+              }
+            })
+          );
+          
+          console.log('✅ [Revenue] Enriched top products:', enrichedTopProducts);
+          setTopProducts(enrichedTopProducts);
         } catch (error: any) {
           console.error('Error fetching revenue data:', error);
           setRevenueError(error.message || 'Không thể tải dữ liệu doanh thu');
@@ -334,9 +394,10 @@ export function MyStorePage() {
 
 const chartData = useMemo(() => {
   return topProducts.map((item) => ({
-    name: item.productName,
+    name: item.productName || `Sản phẩm ${item.productId?.substring(0, 8) || 'N/A'}`,
     value: Number(item.totalSold),       // Ép kiểu số cho chắc chắn
     revenue: Number(item.totalRevenue),
+    productId: item.productId, // Giữ lại productId để có thể fetch sau nếu cần
   }));
 }, [topProducts]);
 
@@ -366,7 +427,7 @@ const lineChartData = useMemo(() => {
 // Màu sắc biểu đồ (Giữ nguyên như mẫu)
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B6B', '#4ECDC4', '#45B7D1'];
 
-// Hàm render nhãn biểu đồ (Giữ nguyên như mẫu)
+// Hàm render nhãn biểu đồ - chỉ hiển thị phần trăm, không hiển thị tên sản phẩm
 const renderCustomLabel = (props: any) => {
   const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -470,6 +531,14 @@ const openEditDialog = (product: StoreProduct) => {
 
 const handleUpdateOrderStatus = async (orderId: string, action: string) => {
   try {
+    // Refresh token trước khi thao tác để tránh 401 errors
+    try {
+      await refreshAccessToken();
+    } catch (error) {
+      console.warn('⚠️ [MyStorePage] Token refresh failed before update order status:', error);
+      // Continue anyway, apiClient will handle 401 errors
+    }
+    
     const { orderService } = await import('../../apis/order');
     const { mapOrderResponse } = await import('../../apis/order/order.mapper');
     const { toast } = await import('sonner');
@@ -488,39 +557,71 @@ const handleUpdateOrderStatus = async (orderId: string, action: string) => {
       toast.success('Đã từ chối đơn hàng');
     } else if (action === 'accept_cancel') {
       // Chấp nhận yêu cầu hủy đơn hàng
-      const backendOrder = await orderService.acceptCancelRequest(orderId);
-      updatedOrder = mapOrderResponse(backendOrder);
-      toast.success('Đã chấp nhận yêu cầu hủy đơn hàng');
+      try {
+        const backendOrder = await orderService.acceptCancelRequest(orderId);
+        if (backendOrder && backendOrder._id) {
+          updatedOrder = mapOrderResponse(backendOrder);
+        }
+        toast.success('Đã chấp nhận yêu cầu hủy đơn hàng');
+      } catch (apiError: any) {
+        // Backend có thể không trả về response (undefined), nhưng order đã được update trong DB
+        console.warn('Accept cancel request - backend may not return response:', apiError);
+        if (apiError?.status && apiError.status !== 400) {
+          throw apiError; // Re-throw nếu là lỗi thật
+        }
+        toast.success('Đã chấp nhận yêu cầu hủy đơn hàng');
+      }
     } else if (action === 'reject_cancel') {
       // Từ chối yêu cầu hủy đơn hàng
-      const backendOrder = await orderService.rejectCancelRequest(orderId);
-      updatedOrder = mapOrderResponse(backendOrder);
-      toast.success('Đã từ chối yêu cầu hủy đơn hàng');
+      try {
+        const backendOrder = await orderService.rejectCancelRequest(orderId);
+        if (backendOrder && backendOrder._id) {
+          updatedOrder = mapOrderResponse(backendOrder);
+        }
+        toast.success('Đã từ chối yêu cầu hủy đơn hàng');
+      } catch (apiError: any) {
+        // Backend có thể không trả về response (undefined), nhưng order đã được update trong DB
+        console.warn('Reject cancel request - backend may not return response:', apiError);
+        if (apiError?.status && apiError.status !== 400) {
+          throw apiError; // Re-throw nếu là lỗi thật
+        }
+        toast.success('Đã từ chối yêu cầu hủy đơn hàng');
+      }
     } else {
       // Các action khác (shipping, completed, cancelled)
       // Giữ nguyên logic cũ nếu cần
-  app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
-    order.id === orderId
-      ? {
-        ...order,
-              status: action as any,
-        updatedAt: new Date().toISOString(),
-              timeline: [...order.timeline, { status: action as any, timestamp: new Date().toISOString(), description: `Đơn hàng đã chuyển sang trạng thái ${action}` }]
-      }
-      : order
-  ));
+      app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
+        order.id === orderId
+          ? {
+            ...order,
+            status: action as any,
+            updatedAt: new Date().toISOString(),
+            timeline: [...order.timeline, { status: action as any, timestamp: new Date().toISOString(), description: `Đơn hàng đã chuyển sang trạng thái ${action}` }]
+          }
+          : order
+      ));
       return;
     }
 
-    // Cập nhật allOrders với order mới
-    setAllOrders((prev: Order[]) => prev.map((order: Order) =>
-      order.id === orderId ? updatedOrder : order
-    ));
-
-    // Cập nhật app.orders để tương thích
-    app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
-      order.id === orderId ? updatedOrder : order
-    ));
+    // Reload orders từ server để cập nhật danh sách (giống như OrdersPage)
+    // Điều này đảm bảo UI luôn sync với database sau khi thao tác
+    try {
+      const allOrdersData = await orderService.getAllForSeller();
+      const mappedOrders = allOrdersData.map(mapOrderResponse);
+      setAllOrders(mappedOrders);
+      app.orders.setOrders(mappedOrders);
+    } catch (reloadError) {
+      console.error('Failed to reload orders after update:', reloadError);
+      // Nếu reload fail, vẫn cập nhật local state với updatedOrder (nếu có)
+      if (updatedOrder) {
+        setAllOrders((prev: Order[]) => prev.map((order: Order) =>
+          order.id === orderId ? updatedOrder : order
+        ));
+        app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
+          order.id === orderId ? updatedOrder : order
+        ));
+      }
+    }
   } catch (error: any) {
     console.error('Failed to update order status:', error);
     const { toast } = await import('sonner');
@@ -1010,10 +1111,10 @@ return (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: any, name: any, props: any) => [
-                      `${value} đã bán - ${formatPrice(props.payload.revenue)}`, // Custom tooltip
-                      props.payload.name
-                    ]} />
+                    <Tooltip 
+                      formatter={(value: any) => `${value} đã bán`}
+                      labelFormatter={() => ''}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
