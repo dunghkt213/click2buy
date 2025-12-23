@@ -314,13 +314,64 @@ export function OrderDetailModal({
                     </div>
                     Địa chỉ nhận hàng
                   </h3>
-                  <div className="space-y-2">
-                    <p className="font-semibold text-base">{order.shippingAddress.name}</p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5" />
-                      {order.shippingAddress.phone}
-                    </p>
-                    <p className="text-sm leading-relaxed">{order.shippingAddress.address}</p>
+                  <div className="space-y-3">
+                    {(() => {
+                      // Parse address field if it exists (format: "Tên - SĐT - Địa chỉ")
+                      let recipientName = '';
+                      let recipientPhone = '';
+                      let recipientAddress = '';
+                      
+                      if (order.address) {
+                        const parts = order.address.split(' - ');
+                        if (parts.length >= 3) {
+                          recipientName = parts[0].trim();
+                          recipientPhone = parts[1].trim();
+                          recipientAddress = parts.slice(2).join(' - ').trim();
+                        } else if (parts.length === 2) {
+                          recipientName = parts[0].trim();
+                          recipientPhone = parts[1].trim();
+                          recipientAddress = '';
+                        } else {
+                          recipientAddress = order.address.trim();
+                        }
+                      }
+                      
+                      // Fallback to individual fields if address is not parsed
+                      if (!recipientName) {
+                        recipientName = order.shippingAddress?.name || order.user?.name || order.user?.username || 'N/A';
+                      }
+                      if (!recipientPhone) {
+                        recipientPhone = order.shippingAddress?.phone || order.user?.phone || 'N/A';
+                      }
+                      if (!recipientAddress) {
+                        recipientAddress = order.shippingAddress?.address || 'N/A';
+                      }
+                      
+                      return (
+                        <>
+                          {/* Tên người nhận */}
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Tên người nhận:</p>
+                            <p className="font-semibold text-base">{recipientName}</p>
+                          </div>
+                          
+                          {/* Số điện thoại */}
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Số điện thoại:</p>
+                            <p className="text-sm text-foreground flex items-center gap-2">
+                              <Phone className="w-3.5 h-3.5" />
+                              {recipientPhone}
+                            </p>
+                          </div>
+                          
+                          {/* Địa chỉ nhận hàng */}
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Địa chỉ nhận hàng:</p>
+                            <p className="text-sm leading-relaxed break-words">{recipientAddress}</p>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </Card>

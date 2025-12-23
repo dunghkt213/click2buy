@@ -42,6 +42,7 @@ export interface BackendReviewDto {
   _id?: string;
   id?: string;
   userId?: string;
+  name?: string; // Tên người đánh giá (trực tiếp từ review object)
   user?: {
     username?: string;
     name?: string;

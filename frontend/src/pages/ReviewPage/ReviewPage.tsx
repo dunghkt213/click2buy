@@ -382,7 +382,7 @@ export function ReviewPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium text-sm">
-                                {review.user?.name || review.user?.username || 'Người dùng'}
+                                {review.userName || 'Người dùng'}
                               </span>
                               {review.isVerifiedPurchase && (
                                 <Badge variant="outline" className="text-xs">Đã mua</Badge>

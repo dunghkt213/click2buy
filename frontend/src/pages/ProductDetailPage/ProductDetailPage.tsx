@@ -158,7 +158,8 @@ export function ProductDetailPage() {
   }
 
   const productImages = product.images || (product.image ? [product.image] : []);
-  const soldCount = product.soldCount || 0;
+  // Ưu tiên reservedStock (số đã bán từ backend), sau đó mới đến soldCount
+  const soldCount = product.reservedStock ?? product.soldCount ?? 0;
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
@@ -358,7 +359,7 @@ export function ProductDetailPage() {
               </div>
               <Separator orientation="vertical" className="h-5" />
               <span className="text-sm text-muted-foreground">
-                {product.reviews.toLocaleString()} Đánh giá
+                {reviews.length.toLocaleString()} Đánh giá
               </span>
               <Separator orientation="vertical" className="h-5" />
               <span className="text-sm text-muted-foreground">
@@ -603,7 +604,7 @@ export function ProductDetailPage() {
                   ))}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {product.reviews.toLocaleString()} đánh giá
+                  {reviews.length.toLocaleString()} đánh giá
                 </p>
               </div>
 

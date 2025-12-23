@@ -55,7 +55,7 @@ export const userService = {
    */
   update: (id: string, dto: UpdateUserDto) =>
     request<BackendUserDto>(`/users/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(dto),
       requireAuth: true,
     }),

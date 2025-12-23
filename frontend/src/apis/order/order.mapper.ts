@@ -62,12 +62,27 @@ export function mapOrderResponse(data: BackendOrderDto): Order {
       phone: '',
       address: '',
     },
+    address: data.address, // Địa chỉ nhận hàng trực tiếp từ order object
     ownerId: data.ownerId,
     createdAt: data.createdAt || new Date().toISOString(),
     updatedAt: data.updatedAt || new Date().toISOString(),
     estimatedDelivery: data.expiresAt, // Use expiresAt as estimated delivery if available
     expiresAt: data.expiresAt,
     timeline: [],
+    user: data.user ? {
+      id: data.user._id || data.user.id,
+      username: data.user.username,
+      name: data.user.name,
+      email: data.user.email,
+      phone: data.user.phone,
+      avatar: data.user.avatar,
+      role: data.user.role as any,
+      shopName: data.user.shopName,
+      shopPhone: data.user.shopPhone,
+      shopEmail: data.user.shopEmail,
+      shopAddress: data.user.shopAddress,
+      shopDescription: data.user.shopDescription,
+    } : undefined,
   };
 }
 

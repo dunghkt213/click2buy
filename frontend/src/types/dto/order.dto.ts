@@ -71,9 +71,25 @@ export interface BackendOrderDto {
   paymentMethod?: string;
   shippingMethod?: string;
   shippingAddress?: ShippingAddressDto;
+  address?: string; // Địa chỉ nhận hàng (trực tiếp từ order object)
   expiresAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  user?: {
+    _id?: string;
+    id?: string;
+    username?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    avatar?: string;
+    role?: string;
+    shopName?: string;
+    shopPhone?: string;
+    shopEmail?: string;
+    shopAddress?: string;
+    shopDescription?: string;
+  };
 }
 
 export interface BackendOrderItemDto {

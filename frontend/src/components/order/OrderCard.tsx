@@ -5,6 +5,7 @@
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { Order } from '../../types';
 import { formatPrice } from '../../utils/utils';
@@ -64,13 +65,51 @@ export function OrderCard({ order, onUpdateStatus, showActionButtons = true }: O
           ))}
         </div>
         <div className="pt-3 border-t">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Khách hàng: {order.shippingAddress.name}
-              </p>
+          <div className="space-y-2 mb-3">
+            {/* Thông tin khách hàng */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">Thông tin khách hàng:</p>
+              <div className="flex items-start gap-3 pl-2">
+                {order.user?.avatar && (
+                  <Avatar className="w-10 h-10 shrink-0">
+                    <AvatarImage src={order.user.avatar} alt={order.user.name || order.user.username} />
+                    <AvatarFallback>
+                      {(order.user.name || order.user.username || 'U').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                <div className="flex-1 space-y-1 min-w-0">
+                  <p className="text-sm text-foreground">
+                    <span className="font-medium">Tên:</span> {order.user?.name || order.user?.username || order.shippingAddress?.name || 'N/A'}
+                  </p>
+                  {order.user?.phone && (
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium">SĐT:</span> {order.user.phone}
+                    </p>
+                  )}
+                  {order.user?.email && (
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium">Email:</span> {order.user.email}
+                    </p>
+                  )}
+                  {order.shippingAddress?.phone && order.shippingAddress.phone !== order.user?.phone && (
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium">SĐT giao hàng:</span> {order.shippingAddress.phone}
+                    </p>
+                  )}
+                  {(order.address || order.shippingAddress?.address) && (
+                    <div className="mt-2 pt-2 border-t">
+                      <p className="text-sm font-medium text-foreground mb-1">Địa chỉ nhận hàng:</p>
+                      <p className="text-sm text-muted-foreground break-words pl-2">
+                        {order.address || order.shippingAddress?.address}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="text-right">
+            {/* Tổng tiền */}
+            <div className="text-right pt-2 border-t">
               <p className="text-sm text-muted-foreground">Tổng tiền:</p>
               <p className="text-xl font-bold text-primary">
                 {formatPrice(order.finalPrice)}

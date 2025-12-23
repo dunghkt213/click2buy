@@ -48,6 +48,8 @@ import { Header } from "../../components/layout/Header";
 import { Footer } from "../../components/layout/Footer";
 import { useTheme } from "../../hooks/useTheme";
 import { Switch } from "../../components/ui/switch";
+import { userService } from "../../apis/user";
+import { toast } from "sonner";
 const maskPhoneNumber = (phone: string) => {
   if (!phone || phone.length < 3) return phone;
   // Giữ lại phần đầu, thay 3 số cuối bằng ***
@@ -110,7 +112,7 @@ export function ProfilePage() {
   // --- CÁC HÀM XỬ LÝ (LOGIC GIẢ LẬP) ---
 
   // Handle profile update
-  const handleProfileUpdate = () => {
+  const handleProfileUpdate = async () => {
     if (!name.trim() || !email.trim() || !phone.trim()) {
       setDialogMessage("Vui lòng điền đầy đủ thông tin");
       setShowErrorDialog(true);
@@ -122,15 +124,34 @@ export function ProfilePage() {
       setShowErrorDialog(true);
       return;
     }
-    
 
-    // TODO: Gọi API cập nhật profile ở đây
-    console.log("Update Profile:", { name, email, phone });
+    if (!user?.id) {
+      setDialogMessage("Không tìm thấy thông tin người dùng");
+      setShowErrorDialog(true);
+      return;
+    }
 
-    // Giả lập thành công
-    setDialogMessage("Đổi thông tin tài khoản thành công");
-    setShowSuccessDialog(true);
-    setProfilePassword("");
+    try {
+      // Gọi API cập nhật profile
+      await userService.update(user.id, {
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        currentPassword: profilePassword,
+      });
+
+      setDialogMessage("Cập nhật thông tin tài khoản thành công");
+      setShowSuccessDialog(true);
+      setProfilePassword("");
+      
+      // Reload user data from context (nếu có method refresh)
+      // Hoặc navigate để reload page
+      window.location.reload();
+    } catch (error: any) {
+      console.error("Failed to update profile:", error);
+      setDialogMessage(error?.message || "Cập nhật thông tin thất bại. Vui lòng thử lại.");
+      setShowErrorDialog(true);
+    }
   };
 
   // Handle bank account update
@@ -150,7 +171,7 @@ export function ProfilePage() {
   };
 
   // Handle password change
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
       setDialogMessage("Vui lòng điền đầy đủ thông tin");
       setShowErrorDialog(true);
@@ -169,14 +190,29 @@ export function ProfilePage() {
       return;
     }
 
-    // TODO: Gọi API đổi mật khẩu
-    console.log("Change Password", { oldPassword, newPassword });
+    if (!user?.id) {
+      setDialogMessage("Không tìm thấy thông tin người dùng");
+      setShowErrorDialog(true);
+      return;
+    }
 
-    setDialogMessage("Đổi mật khẩu thành công (Demo)");
-    setShowSuccessDialog(true);
-    setOldPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    try {
+      // Gọi API đổi mật khẩu
+      await userService.update(user.id, {
+        password: newPassword,
+        currentPassword: oldPassword,
+      });
+
+      setDialogMessage("Đổi mật khẩu thành công");
+      setShowSuccessDialog(true);
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error("Failed to change password:", error);
+      setDialogMessage(error?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ.");
+      setShowErrorDialog(true);
+    }
   };
 
   // Handle account deletion
