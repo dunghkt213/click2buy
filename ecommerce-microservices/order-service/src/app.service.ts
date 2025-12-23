@@ -221,6 +221,21 @@ async getAllOrderForUser(userId: string, status?: string) {
         userId: dto.userId,
         items,
       });
+      for (const order of orders) {
+      const sellerId = order.ownerId;
+
+      this.kafka.emit('noti.create', {
+        userId: sellerId,
+        title: 'Có đơn hàng mới',
+        content: `Bạn vừa nhận 1 đơn hàng mới (Mã: ${order.orderCode}).`,
+        type: 'ORDER',
+        metadata: {
+          orderId: order._id,
+          total: order.finalTotal,
+          paymentMethod: order.paymentMethod,
+        },
+      });
+    }
     }
     
 
@@ -288,6 +303,7 @@ async getAllOrderForUser(userId: string, status?: string) {
 
     // 🔔 Event chỉ để tracking - KHÔNG chứa totalAmount để tránh cộng doanh thu
     this.kafka.emit('order.confirmed', {
+      userId: order.userId,
       orderId: order._id.toString(),
       sellerId: order.ownerId,
       confirmedAt: new Date().toISOString(),
@@ -307,6 +323,7 @@ async getAllOrderForUser(userId: string, status?: string) {
     order.status = 'REQUESTED_CANCEL';
     await order.save();
     this.kafka.emit('order.cancel_request.created', {
+      sellerId: order.ownerId,
       orderId: order._id.toString(),
       userId: order.userId,
       requestedAt: new Date().toISOString(),

@@ -258,6 +258,20 @@ services:
     networks:
       - click2buy_net
 
+  noti-service:
+    build:
+      context: ./noti-service
+      dockerfile: Dockerfile
+    container_name: click2buy_noti-service
+    env_file:
+      - ./noti-service/.env
+    depends_on:
+      - kafka
+      - mongo
+    restart: always
+    networks:
+      - click2buy_net
+
   inventory-service:
     build: ./inventory-service
     container_name: click2buy_inventory-service
@@ -371,6 +385,7 @@ volumes:
   inventory_node_modules:
   order_node_modules:
   seller_analytics_node_modules:
+  noti_node_modules:
 
 networks:
   click2buy_net:
