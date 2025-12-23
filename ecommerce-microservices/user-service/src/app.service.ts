@@ -73,6 +73,7 @@ export class AppService  {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.userModel.create({
+      name: dto.username,
       username: dto.username.toLowerCase(),
       email: dto.email.toLowerCase(),
       passwordHash,
@@ -135,7 +136,7 @@ export class AppService  {
     }
     if (dto.email) update.email = dto.email.toLowerCase();
     if (dto.username) update.username = dto.username.toLowerCase();
-
+    if (dto.name) update.name = dto.name;
     try {
       const updated = await this.userModel
         .findByIdAndUpdate(id, { $set: update }, { new: true, runValidators: true })

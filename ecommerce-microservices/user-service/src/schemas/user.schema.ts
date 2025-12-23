@@ -61,6 +61,10 @@ export class Address {
  */
 @Schema({ timestamps: true, collection: 'users' })
 export class User {
+
+  @Prop({ trim: true })
+  name: string;
+
   @Prop({ required: true, unique: true, trim: true, lowercase: true })
   username: string;
 

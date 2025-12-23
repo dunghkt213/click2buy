@@ -69,6 +69,9 @@ export class Order {
 
   @Prop({ required: true })
   address: string;
+
+  @Prop({default: false})
+  review : boolean;
 }
 
 

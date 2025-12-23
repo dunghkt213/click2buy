@@ -3,6 +3,10 @@ from 'class-validator';
 import { UserRole } from '../schemas/user.schema';
 
 export class CreateUserDto {
+
+  @IsString()
+  name : string;
+  
   @IsString() @IsNotEmpty()
   username: string;
 

@@ -33,13 +33,24 @@ export class AppService {
     };
   }
 
-  async findAll(q?: any) {
+async findAll(q?: any) {
+  try {
     const filter: any = {};
+
     if (q?.productId) filter.productId = q.productId;
-    if (q?.userId) filter.userId = q.userId;
-    const data = await this.reviewModel.find(filter).sort({ createdAt: -1 }).lean();
+
+    const data = await this.reviewModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
+
     return { success: true, data };
+  } catch (err) {
+    console.error("❌ LỖI TRONG ReviewService.findAll:", err);
+    throw err;
   }
+}
+
 
   async findOne(id: string) {
     const review = await this.reviewModel.findById(id).lean();

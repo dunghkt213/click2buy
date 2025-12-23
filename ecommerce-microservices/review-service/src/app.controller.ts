@@ -9,17 +9,23 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
   
   @MessagePattern('review.create')
-  //@UseGuards(JwtKafkaAuthGuard)
+  @UseGuards(JwtKafkaAuthGuard)
   create(@Payload() { dto }: any, @CurrentUser() user: any) {
-    // const userId = user?.sub || user?.id;
-    const userId = 'mock-user';
+    const userId = user?.sub || user?.id ;
+    console.log("🚀 Creating review for user:", userId, "with dto:", dto);
     return this.appService.create( dto, userId);
   }
 
-  @MessagePattern('review.findAll')
-  findAll(@Payload() { q }: any) {
-    return this.appService.findAll(q);
+@MessagePattern('review.findAll')
+async handleFindAll(@Payload() payload: any) {
+  try {
+    console.log("🔥 Payload nhận từ gateway:", payload);
+    return await this.appService.findAll(payload.q);
+  } catch (err) {
+    console.error("❌ LỖI TRONG HANDLER review.findAll:", err);
+    throw err;
   }
+}
 
   @MessagePattern('review.findOne')
   findOne(@Payload() { id }: any) {

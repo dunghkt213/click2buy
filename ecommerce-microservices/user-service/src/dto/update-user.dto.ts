@@ -5,6 +5,9 @@ import { IsOptional, IsString, MinLength } from 'class-validator';
 export class UpdateUserDto extends PartialType(CreateUserDto) {
   // Mật khẩu mới (nếu muốn đổi pass thì nhập, không thì thôi)
   @IsOptional() 
+  @IsString()
+  name?: string ;
+  @IsOptional() 
   @IsString() 
   @MinLength(6)
   password?: string;
@@ -13,4 +16,13 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
   @IsString()
   currentPassword?: string;
+
+  @IsOptional() 
+  @IsString()
+  email?: string
+  
+  @IsOptional()
+  @IsString()
+  username?: string ;
+
 }
