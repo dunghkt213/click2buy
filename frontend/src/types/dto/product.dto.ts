@@ -110,6 +110,7 @@ export interface BackendProductDto {
   ratingAvg?: number;
   reviews?: number;
   soldCount?: number;
+  reservedStock?: number; // Số sản phẩm đã bán (từ reservedStock trong JSON)
   isNew?: boolean;
   isSale?: boolean;
   isBestSeller?: boolean;

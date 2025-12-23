@@ -33,6 +33,7 @@ export interface Order {
     phone: string;
     address: string;
   };
+  address?: string; // Địa chỉ nhận hàng (trực tiếp từ order object)
   createdAt: string;
   updatedAt: string;
   estimatedDelivery?: string;
@@ -44,5 +45,19 @@ export interface Order {
     timestamp: string;
     description: string;
   }[];
+  user?: {
+    id?: string;
+    username?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    avatar?: string;
+    role?: string;
+    shopName?: string;
+    shopPhone?: string;
+    shopEmail?: string;
+    shopAddress?: string;
+    shopDescription?: string;
+  };
 }
 

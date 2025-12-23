@@ -9,7 +9,8 @@ export function mapReviewResponse(data: BackendReviewDto): ProductReview {
   return {
     id: data._id || data.id || '',
     userId: data.userId || '',
-    userName: data.user?.name || data.user?.username || 'Người dùng',
+    // Ưu tiên trường "name" trực tiếp từ review, sau đó mới đến user.name hoặc user.username
+    userName: data.name || data.user?.name || data.user?.username || 'Người dùng',
     userAvatar: data.user?.avatar,
     rating: data.rating || 0,
     comment: data.comment || '',

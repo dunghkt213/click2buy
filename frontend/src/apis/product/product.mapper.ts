@@ -33,6 +33,7 @@ export function mapProductResponse(data: BackendProductDto): Product {
     isSale: data.isSale || (data.salePrice && data.salePrice < data.price),
     isBestSeller: data.isBestSeller,
     soldCount: data.soldCount,
+    reservedStock: data.reservedStock, // Số sản phẩm đã bán
     timeLeft: data.timeLeft,
     specifications: data.specifications || data.attributes,
     // Lưu ownerId để dùng làm sellerId
@@ -77,7 +78,8 @@ export function mapBackendProductToStoreProduct(data: BackendProductDto): StoreP
     price: displayPrice, // Giá bán (ưu tiên salePrice)
     originalPrice: salePrice ? originalPrice : undefined, // Giá gốc chỉ hiển thị khi có salePrice
     stock: data.stock || 0,
-    sold: data.soldCount || 0,
+    // Ưu tiên reservedStock (số đã bán từ backend), sau đó mới đến soldCount
+    sold: data.reservedStock ?? data.soldCount ?? 0,
     image: data.images && data.images.length > 0 ? data.images[0] : (data.image || ''),
     images: data.images || (data.image ? [data.image] : []),
     category: categoryStr,

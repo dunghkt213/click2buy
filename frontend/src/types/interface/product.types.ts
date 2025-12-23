@@ -20,6 +20,7 @@ export interface Product {
   isSale?: boolean;
   isBestSeller?: boolean;
   soldCount?: number;
+  reservedStock?: number; // Số sản phẩm đã bán (từ reservedStock trong JSON)
   timeLeft?: string;
   images?: string[];
   specifications?: Record<string, string>;

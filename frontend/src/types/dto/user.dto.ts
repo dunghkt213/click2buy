@@ -20,6 +20,8 @@ export interface UpdateUserDto {
   phone?: string;
   avatar?: string;
   name?: string;
+  password?: string; // Mật khẩu mới (nếu muốn đổi pass thì nhập, không thì thôi)
+  currentPassword?: string; // Mật khẩu hiện tại dùng để xác thực quyền cập nhật
 }
 
 export interface UserQueryDto {
