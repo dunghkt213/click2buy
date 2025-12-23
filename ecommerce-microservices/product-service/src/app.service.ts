@@ -88,6 +88,28 @@ export class AppService {
     }
   }
 
+  async updateRatingStats({ productId, rating }) {
+  const product = await this.productModel.findById(productId);
+
+  if (!product) return { success: false, error: "Product not found" };
+
+  const oldAvg = product.ratingAvg || 0;
+  const oldCount = product.reviewCount || 0;
+
+  // Tính avg mới
+  const newCount = oldCount + 1;
+  const newAvg = (oldAvg * oldCount + rating) / newCount;
+
+  // Update
+  product.ratingAvg = Number(newAvg.toFixed(2));
+  product.reviewCount = newCount;
+  
+  await product.save();
+
+  return { success: true, ratingAvg: product.ratingAvg, reviewCount: newCount };
+}
+
+
   /** Lấy tất cả sản phẩm (có filter, paginate, sort) */
   async findAll(q?: any) {
     const page = Math.max(parseInt(q?.page || '1', 10), 1);
