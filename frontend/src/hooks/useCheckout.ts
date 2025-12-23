@@ -17,6 +17,7 @@ export function useCheckout({
         const orderDto: CreateOrderDto = {
           orderCode: checkoutData.orderCode,
           paymentMethod: checkoutData.paymentMethod,
+          address: checkoutData.address,
 
           carts: checkoutData.carts.map((cart: any) => ({
             sellerId: cart.sellerId,
