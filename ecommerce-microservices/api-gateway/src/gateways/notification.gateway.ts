@@ -10,7 +10,7 @@ import {
 
 import { Server, Socket } from 'socket.io';
 import { Inject, Logger, OnModuleInit } from '@nestjs/common';
-import { ClientKafka, EventPattern, Payload } from '@nestjs/microservices';
+import { ClientKafka } from '@nestjs/microservices';
 
 @WebSocketGateway({
   cors: { origin: '*', credentials: true },
@@ -30,17 +30,18 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
   ) {}
 
   async onModuleInit() {
-    // Các RPC từ noti-service
+    // Các RPC từ noti-service (MessagePattern - Request/Reply)
     this.kafkaClient.subscribeToResponseOf('noti.findByUser');
     this.kafkaClient.subscribeToResponseOf('noti.unreadCount');
     this.kafkaClient.subscribeToResponseOf('noti.markAsRead');
 
-    // Lắng nghe Kafka event realtime
-    // => Đây là event PATTERN, cần EventPattern(), không phải SubscribeMessage
-    this.kafkaClient.subscribeToResponseOf('noti.created');
+    // ❌ KHÔNG CẦN subscribeToResponseOf cho EventPattern
+    // @EventPattern decorator sẽ tự động subscribe event 'noti.created'
+    // subscribeToResponseOf chỉ dùng cho MessagePattern (RPC request/reply)
 
     await this.kafkaClient.connect();
     this.logger.log('✅ NotificationGateway connected to Kafka');
+    this.logger.log('📨 Listening for events: noti.created (via @EventPattern)');
   }
 
   handleConnection(client: Socket) {
@@ -69,15 +70,17 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
 
   /**
    * REALTIME NOTIFICATION (Kafka → Gateway → User)
-   * Đây là event Kafka, nên phải dùng EventPattern
+   * Method này được gọi từ NotificationEventController
+   * (WebSocketGateway không thể dùng @EventPattern trực tiếp)
    */
-  @EventPattern('noti.created')
-  handleNotificationCreated(@Payload() payload: any) {
+  handleNotificationCreated(payload: any) {
     const socketId = this.userSocketMap.get(payload.userId);
 
     if (socketId) {
       this.server.to(socketId).emit('notification', payload);
-      this.logger.log(`📨 Pushed notification to user ${payload.userId}`);
+      this.logger.log(`📨 Pushed notification to user ${payload.userId} via WebSocket`);
+    } else {
+      this.logger.warn(`⚠️ User ${payload.userId} is not connected, notification will be available when they reconnect`);
     }
   }
 

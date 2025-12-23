@@ -3,9 +3,11 @@
  * This wraps all pages that need the full app layout
  */
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { AppLayout } from './AppLayout';
 import { useAppContext } from '../providers/AppProvider';
+import { useNotificationContext } from '../contexts/NotificationContext';
+import { mapBackendNotificationToNotification } from '../utils/notificationMapper';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -13,6 +15,60 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const app = useAppContext();
+  
+  // Ưu tiên sử dụng NotificationContext nếu có (realtime từ WebSocket)
+  // Fallback về app.notifications (legacy) nếu không có context
+  let notificationContext;
+  try {
+    notificationContext = useNotificationContext();
+  } catch {
+    // NotificationContext không có, sử dụng legacy
+    notificationContext = null;
+  }
+
+  // Lắng nghe event để mở notification sidebar từ NotificationLog
+  useEffect(() => {
+    const handleOpenNotifications = () => {
+      app.sidebars.openNotification();
+    };
+    
+    window.addEventListener('openNotifications', handleOpenNotifications);
+    return () => {
+      window.removeEventListener('openNotifications', handleOpenNotifications);
+    };
+  }, [app.sidebars]);
+
+  // Map notifications từ context hoặc legacy
+  const notifications = notificationContext
+    ? notificationContext.notifications.map(mapBackendNotificationToNotification)
+    : app.notifications.notifications;
+  
+  const unreadNotifications = notificationContext
+    ? notificationContext.unreadCount
+    : app.notifications.getUnreadCount();
+
+  const handleMarkAsRead = (id: string) => {
+    if (notificationContext) {
+      notificationContext.markAsRead(id);
+    } else {
+      app.notifications.markAsRead(id);
+    }
+  };
+
+  const handleMarkAllAsRead = () => {
+    if (notificationContext) {
+      notificationContext.markAllAsRead();
+    } else {
+      app.notifications.markAllAsRead();
+    }
+  };
+
+  const handleDeleteNotification = (id: string) => {
+    if (!notificationContext) {
+      app.notifications.deleteNotification(id);
+    }
+    // Note: Backend không có delete, chỉ có thể đánh dấu đã đọc
+  };
 
   return (
     <AppLayout
@@ -37,11 +93,11 @@ export function MainLayout({ children }: MainLayoutProps) {
       selectedItems={app.getSelectedItems()}
       onCheckout={app.handleCheckout}
       onAddToCart={app.addToCart}
-      notifications={app.notifications.notifications}
-      unreadNotifications={app.notifications.getUnreadCount()}
-      onMarkAsRead={app.notifications.markAsRead}
-      onMarkAllAsRead={app.notifications.markAllAsRead}
-      onDeleteNotification={app.notifications.deleteNotification}
+      notifications={notifications}
+      unreadNotifications={unreadNotifications}
+      onMarkAsRead={handleMarkAsRead}
+      onMarkAllAsRead={handleMarkAllAsRead}
+      onDeleteNotification={handleDeleteNotification}
       onFilterClick={() => app.sidebars.openFilter()}
       promotions={app.promotions}
       onPromotionClick={() => app.sidebars.openPromotion()}

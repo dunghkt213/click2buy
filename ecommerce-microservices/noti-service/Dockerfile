@@ -6,7 +6,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Chỉ copy file cần thiết trước
-COPY package.json package-lock.json ./
+COPY package*.json ./
 
 RUN npm install
 
