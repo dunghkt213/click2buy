@@ -222,6 +222,7 @@ async getOrderForUser(
       this.kafka.send('order.getAllOrderForUser', { auth, status }),
     );
 
+    console.log("Orders with full items:", JSON.stringify(orders, null, 2));
     if (!orders?.length) return [];
 
     // ===== PRODUCT BATCH =====
