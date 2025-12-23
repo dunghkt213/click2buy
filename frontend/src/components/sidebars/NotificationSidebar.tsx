@@ -8,32 +8,75 @@ import {
   Star,
   Tag,
   Truck,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { Notification } from 'types';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
+import { useNotificationContext } from '../../contexts/NotificationContext';
+import { mapBackendNotificationToNotification } from '../../utils/notificationMapper';
+import { useMemo } from 'react';
 
 interface NotificationSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  notifications: Notification[];
-  onMarkAsRead: (id: string) => void;
-  onMarkAllAsRead: () => void;
-  onDeleteNotification: (id: string) => void;
+  // Legacy props - giữ lại để tương thích, nhưng sẽ dùng context thay thế
+  notifications?: Notification[];
+  onMarkAsRead?: (id: string) => void;
+  onMarkAllAsRead?: () => void;
+  onDeleteNotification?: (id: string) => void;
 }
 
 export function NotificationSidebar({
   isOpen,
   onClose,
-  notifications,
-  onMarkAsRead,
-  onMarkAllAsRead,
-  onDeleteNotification
+  notifications: legacyNotifications,
+  onMarkAsRead: legacyMarkAsRead,
+  onMarkAllAsRead: legacyMarkAllAsRead,
+  onDeleteNotification: legacyDeleteNotification
 }: NotificationSidebarProps) {
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  // Sử dụng NotificationContext nếu có, fallback về legacy props
+  const notificationContext = useNotificationContext();
+  
+  // Map backend notifications sang frontend format
+  const mappedNotifications = useMemo(() => {
+    if (notificationContext) {
+      return notificationContext.notifications.map(mapBackendNotificationToNotification);
+    }
+    return legacyNotifications || [];
+  }, [notificationContext?.notifications, legacyNotifications]);
+
+  const unreadCount = notificationContext?.unreadCount ?? mappedNotifications.filter(n => !n.isRead).length;
+  const isLoading = notificationContext?.isLoading ?? false;
+
+  const handleMarkAsRead = (id: string) => {
+    if (notificationContext) {
+      notificationContext.markAsRead(id);
+    } else if (legacyMarkAsRead) {
+      legacyMarkAsRead(id);
+    }
+  };
+
+  const handleMarkAllAsRead = () => {
+    if (notificationContext) {
+      notificationContext.markAllAsRead();
+    } else if (legacyMarkAllAsRead) {
+      legacyMarkAllAsRead();
+    }
+  };
+
+  const handleDeleteNotification = (id: string) => {
+    // Note: Backend không có delete notification, chỉ có thể đánh dấu đã đọc
+    // Nếu cần delete, có thể implement sau
+    if (legacyDeleteNotification) {
+      legacyDeleteNotification(id);
+    }
+  };
+
+  const notifications = mappedNotifications;
   const motionEase = [0.4, 0, 0.2, 1] as const;
   const contentVariants = {
     hidden: { opacity: 0, y: 16 },
@@ -115,7 +158,18 @@ export function NotificationSidebar({
             </SheetHeader>
           </div>
 
-          {notifications.length === 0 ? (
+          {isLoading ? (
+            <motion.div
+              className="flex-1 flex flex-col items-center justify-center space-y-6 px-6"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1, transition: { duration: 0.35, ease: motionEase } }}
+            >
+              <Loader2 className="w-16 h-16 text-primary animate-spin" />
+              <div className="text-center space-y-2">
+                <h3 className="text-lg font-semibold">Đang tải thông báo...</h3>
+              </div>
+            </motion.div>
+          ) : notifications.length === 0 ? (
             <motion.div
               className="flex-1 flex flex-col items-center justify-center space-y-6 px-6"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -139,7 +193,7 @@ export function NotificationSidebar({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={onMarkAllAsRead}
+                    onClick={handleMarkAllAsRead}
                     className="w-full"
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
@@ -167,7 +221,7 @@ export function NotificationSidebar({
                         className={`group relative p-4 border border-border rounded-xl transition-all duration-200 hover:shadow-md hover:border-primary/20 cursor-pointer ${
                           !notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'
                         }`}
-                        onClick={() => onMarkAsRead(notification.id)}
+                        onClick={() => handleMarkAsRead(notification.id)}
                       >
                         {/* Unread indicator */}
                         {!notification.isRead && (
@@ -190,7 +244,7 @@ export function NotificationSidebar({
                                 className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onDeleteNotification(notification.id);
+                                  handleDeleteNotification(notification.id);
                                 }}
                               >
                                 <X className="w-3 h-3" />

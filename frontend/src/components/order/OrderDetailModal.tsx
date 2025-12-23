@@ -359,9 +359,9 @@ export function OrderDetailModal({
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Số điện thoại:</p>
                             <p className="text-sm text-foreground flex items-center gap-2">
-                              <Phone className="w-3.5 h-3.5" />
+                      <Phone className="w-3.5 h-3.5" />
                               {recipientPhone}
-                            </p>
+                    </p>
                           </div>
                           
                           {/* Địa chỉ nhận hàng */}

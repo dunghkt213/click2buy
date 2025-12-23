@@ -1,18 +1,22 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Inject,NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { Review } from './schemas/review-schema';
 import { RpcException } from '@nestjs/microservices';
+import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class AppService {
-  constructor(@InjectModel(Review.name) private readonly reviewModel: Model<Review>) {}
+  constructor(
+    @InjectModel(Review.name) private readonly reviewModel: Model<Review>,
+    @Inject('REVIEW_SERVICE') private readonly kafka: ClientKafka,
+  ) {}
 
   async create(dto: CreateReviewDto, userId: string) {
     if (!dto.productId || !dto.rating) {
-      throw new BadRequestException('ProductId and rating are required');
+      throw new BadRequestException('ProductId and rating aređ required');
     }
 
     // 2️⃣ Gắn userId từ token vào review
@@ -21,7 +25,7 @@ export class AppService {
       userId,
       createdAt: new Date(),
     });
-
+    this.kafka.emit('review.created', {productId: dto.productId, rating: dto.rating});
     // 3️⃣ Lưu review vào MongoDB
     const created = await newReview.save();
 
