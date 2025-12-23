@@ -164,4 +164,3 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     </NotificationContext.Provider>
   );
 }
-

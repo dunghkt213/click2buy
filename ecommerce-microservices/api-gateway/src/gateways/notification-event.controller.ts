@@ -18,12 +18,13 @@ export class NotificationEventController {
    * Lắng nghe Kafka event 'noti.created' từ noti-service
    * Sau đó push qua WebSocket đến user tương ứng
    */
-  @EventPattern('noti.created')
-  handleNotificationCreated(@Payload() payload: any) {
-    this.logger.log(`📨 Received noti.created event for user ${payload.userId}`);
-    
-    // Delegate đến NotificationGateway để push qua WebSocket
-    this.notificationGateway.handleNotificationCreated(payload);
-  }
+@EventPattern('noti.created')
+handleNotificationCreated(@Payload() payload: any) {
+  console.log('Received noti.created payload:', payload);
+  this.logger.log(`📨 Received noti.created event for user ${payload.userId}`);
+
+  this.notificationGateway.handleNotificationCreated(payload);
+}
+
 }
 
