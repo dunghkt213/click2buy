@@ -37,6 +37,7 @@ import { orderService } from "../../apis/order";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import { Order, OrderStatus } from "../../types";
 import { formatPrice } from "../../utils/utils";
+import { refreshAccessToken } from "../../apis/client/apiClient";
 
 // ReviewModal removed - now using ReviewPage
 
@@ -112,14 +113,22 @@ export function OrdersPage() {
   useEffect(() => {
     if (!app.isLoggedIn) return;
     
-    // Auto refresh token when entering OrdersPage
+    // Auto refresh token when entering OrdersPage (similar to login flow)
     const autoRefreshToken = async () => {
       try {
-        const { refreshAccessToken } = await import('../../apis/client/apiClient');
-        await refreshAccessToken();
+        // Refresh token proactively to ensure valid token before API calls
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          console.log('✅ [OrdersPage] Token refreshed successfully');
+        } else {
+          console.warn('⚠️ [OrdersPage] Token refresh failed, user may need to login again');
+          // Don't show error to user, let normal flow handle it
+          // If token is invalid, subsequent API calls will handle 401 errors
+        }
       } catch (error) {
-        console.warn('Auto refresh token failed:', error);
+        console.warn('⚠️ [OrdersPage] Auto refresh token failed:', error);
         // Don't show error to user, let normal flow handle it
+        // If token is invalid, subsequent API calls will handle 401 errors via apiClient
       }
     };
     
@@ -136,6 +145,14 @@ export function OrdersPage() {
     // Load all orders (without status filter) to count for all tabs
     const loadAllOrdersForCounting = async () => {
       try {
+        // Refresh token trước khi load orders để tránh 401 errors
+        try {
+          await refreshAccessToken();
+        } catch (error) {
+          console.warn('⚠️ [OrdersPage] Token refresh failed before loading all orders:', error);
+          // Continue anyway, apiClient will handle 401 errors
+        }
+        
         // Import orderService to load directly without affecting context
         const { orderService } = await import('../../apis/order');
         const { mapOrderResponse } = await import('../../apis/order/order.mapper');
@@ -189,10 +206,23 @@ export function OrdersPage() {
     if (!app.isLoggedIn) {
       return;
     }
-    // Load orders for user with current tab status
-    const backendStatus = mapStatusToBackend(selectedTab);
-    app.orders.loadOrdersForUser(backendStatus);
-  }, [selectedTab]); // Load when tab changes
+    
+    // Refresh token trước khi load orders để tránh 401 errors
+    const loadOrdersWithRefresh = async () => {
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        console.warn('⚠️ [OrdersPage] Token refresh failed before loading orders:', error);
+        // Continue anyway, apiClient will handle 401 errors
+      }
+      
+      // Load orders for user with current tab status
+      const backendStatus = mapStatusToBackend(selectedTab);
+      app.orders.loadOrdersForUser(backendStatus);
+    };
+    
+    loadOrdersWithRefresh();
+  }, [selectedTab, app.isLoggedIn]); // Load when tab changes
 
   // Lấy đơn hàng thật từ Context (filtered by selected tab)
   const orders: Order[] = app.orders.orders || [];
@@ -228,6 +258,14 @@ export function OrdersPage() {
 
   const handleCancelOrder = async (orderId: string, orderStatus?: string) => {
     try {
+      // Refresh token trước khi thao tác để tránh 401 errors
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        console.warn('⚠️ [OrdersPage] Token refresh failed before cancel order:', error);
+        // Continue anyway, apiClient will handle 401 errors
+      }
+      
       const { orderService } = await import('../../apis/order');
       const { mapOrderResponse } = await import('../../apis/order/order.mapper');
       
@@ -267,6 +305,14 @@ export function OrdersPage() {
 
   const handleMarkAsReceived = async (orderId: string) => {
     try {
+      // Refresh token trước khi thao tác để tránh 401 errors
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        console.warn('⚠️ [OrdersPage] Token refresh failed before mark as received:', error);
+        // Continue anyway, apiClient will handle 401 errors
+      }
+      
       const { orderService } = await import('../../apis/order');
       const { mapOrderResponse } = await import('../../apis/order/order.mapper');
       
