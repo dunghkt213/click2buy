@@ -22,6 +22,7 @@ export class ReviewGateway {
         this.kafka.subscribeToResponseOf('review.findOne');
         this.kafka.subscribeToResponseOf('review.update');
         this.kafka.subscribeToResponseOf('review.delete');
+        this.kafka.subscribeToResponseOf('user.batch');
         this.kafka.subscribeToResponseOf('product.updateReviewSummary');
         await this.kafka.connect();
     }
@@ -93,53 +94,42 @@ export class ReviewGateway {
         }
     }
 
-    @Get()
+@Get()
     async findAll(@Query() q: any) {
-    console.log("Gateway: Lấy tất cả review");
+        const result = await lastValueFrom(
+            this.kafka.send('review.findAll', { q })
+        );
+  const reviews = result.data || [];
 
-    // 1. Lấy danh sách review từ review-service
-    const reviews = await lastValueFrom(
-        this.kafka.send('review.findAll', { q })
-    );
-
-    // 2. Lấy danh sách userId
-    const userIds = [...new Set(reviews.map(r => r.userId))];
-
-    if (userIds.length === 0) return reviews;
-
-    // 3. Batch lấy thông tin user
-    const users = await lastValueFrom(
-        this.kafka.send('user.batch', { ids: userIds })
-    );
-
-    // 4. Tạo map để lookup nhanh
-    const userMap = new Map(
-        users.map(u => [u._id, u.name]) // 👈 Chỉ lấy name
-    );
-
-    // 5. Chỉ trả thêm "userName"
-    return reviews.map(r => ({
-        ...r,
-        userName: userMap.get(r.userId) ?? null,
-    }));
-    }
+  const userIds = [...new Set(reviews.map(r => r.userId))];
+    console.log("🔥 Review result từ service:", result);
+  const users = await lastValueFrom(
+    this.kafka.send('user.batch', { ids: userIds })
+  );
 
 
+  const userMap = new Map(users.map(u => [u._id, u.name]));
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.kafka.send('review.findOne', { id });
-    }
+  return reviews.map(r => ({
+    ...r,
+    userName: userMap.get(r.userId) ?? null,
+  }));
+}
 
-    @Patch(':id')
-    @UseGuards(AiReviewGuard, AiImageGuard)
-    @AiImageType('REVIEW_IMAGE')
-    update(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
-        return this.kafka.send('review.update', { id, dto, auth });
-    }
+@Get(':id')
+findOne(@Param('id') id: string) {
+    return this.kafka.send('review.findOne', { id });
+}
 
-    @Delete(':id')
-    remove(@Param('id') id: string, @Headers('authorization') auth?: string) {
-        return this.kafka.send('review.delete', { id, auth });
-    }
+@Patch(':id')
+@UseGuards(AiReviewGuard, AiImageGuard)
+@AiImageType('REVIEW_IMAGE')
+update(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
+    return this.kafka.send('review.update', { id, dto, auth });
+}
+
+@Delete(':id')
+remove(@Param('id') id: string, @Headers('authorization') auth?: string) {
+    return this.kafka.send('review.delete', { id, auth });
+}
 }
