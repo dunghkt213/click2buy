@@ -9,10 +9,10 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
   
   @MessagePattern('review.create')
-  //@UseGuards(JwtKafkaAuthGuard)
+  @UseGuards(JwtKafkaAuthGuard)
   create(@Payload() { dto }: any, @CurrentUser() user: any) {
-    // const userId = user?.sub || user?.id;
     const userId = user?.sub || user?.id ;
+    console.log("🚀 Creating review for user:", userId, "with dto:", dto);
     return this.appService.create( dto, userId);
   }
 

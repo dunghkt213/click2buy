@@ -102,12 +102,11 @@ export class ReviewGateway {
   const reviews = result.data || [];
 
   const userIds = [...new Set(reviews.map(r => r.userId))];
-    console.log("🔥 Review result từ service:", result);
   const users = await lastValueFrom(
     this.kafka.send('user.batch', { ids: userIds })
   );
 
-
+    console.log("🔥 Review user từ service:", users);
   const userMap = new Map(users.map(u => [u._id, u.name]));
 
   return reviews.map(r => ({
