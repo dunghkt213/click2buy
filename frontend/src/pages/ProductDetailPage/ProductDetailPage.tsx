@@ -319,11 +319,10 @@ export function ProductDetailPage() {
                   <button
                     key={idx}
                     onClick={() => setSelectedImageIndex(idx)}
-                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                      idx === selectedImageIndex
-                        ? 'border-primary'
-                        : 'border-transparent hover:border-muted-foreground/30'
-                    }`}
+                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${idx === selectedImageIndex
+                      ? 'border-primary'
+                      : 'border-transparent hover:border-muted-foreground/30'
+                      }`}
                   >
                     <ImageWithFallback
                       src={img}
@@ -343,16 +342,17 @@ export function ProductDetailPage() {
             {/* Rating & Sold */}
             <div className="flex items-center gap-4 mb-4 flex-wrap">
               <div className="flex items-center gap-1">
-                <span className="text-lg font-semibold text-primary">{product.rating}</span>
+                <span className="text-lg font-semibold text-primary">
+                  {product.ratingAvg || product.rating || 0}
+                </span>
                 <div className="flex">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className={`w-5 h-5 ${
-                        star <= product.rating
-                          ? 'fill-primary text-primary'
-                          : 'text-muted-foreground/30'
-                      }`}
+                      className={`w-5 h-5 ${star <= (product.ratingAvg || product.rating || 0)
+                        ? 'fill-primary text-primary'
+                        : 'text-muted-foreground/30'
+                        }`}
                     />
                   ))}
                 </div>
@@ -590,16 +590,17 @@ export function ProductDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Overall Rating */}
               <div className="text-center">
-                <div className="text-5xl mb-2">{product.rating}</div>
+                <div className="text-5xl mb-2">
+                  {product.ratingAvg || product.rating || 0}
+                </div>
                 <div className="flex items-center justify-center gap-1 mb-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className={`w-5 h-5 ${
-                        star <= product.rating
-                          ? 'fill-primary text-primary'
-                          : 'text-muted-foreground/30'
-                      }`}
+                      className={`w-5 h-5 ${star <= (product.ratingAvg || product.rating || 0)
+                        ? 'fill-primary text-primary'
+                        : 'text-muted-foreground/30'
+                        }`}
                     />
                   ))}
                 </div>
@@ -617,11 +618,10 @@ export function ProductDetailPage() {
                         setSelectedRating(item.stars === selectedRating ? null : item.stars);
                         setReviewPage(1);
                       }}
-                      className={`flex items-center gap-2 text-sm transition-colors ${
-                        selectedRating === item.stars
-                          ? 'text-primary font-semibold'
-                          : 'text-muted-foreground hover:text-primary'
-                      }`}
+                      className={`flex items-center gap-2 text-sm transition-colors ${selectedRating === item.stars
+                        ? 'text-primary font-semibold'
+                        : 'text-muted-foreground hover:text-primary'
+                        }`}
                     >
                       <span className="w-12">{item.stars} sao</span>
                       <Progress value={item.percentage} className="flex-1 h-2" />
@@ -706,11 +706,10 @@ export function ProductDetailPage() {
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
                               key={star}
-                              className={`w-3 h-3 ${
-                                star <= review.rating
-                                  ? 'fill-primary text-primary'
-                                  : 'text-muted-foreground/30'
-                              }`}
+                              className={`w-3 h-3 ${star <= review.rating
+                                ? 'fill-primary text-primary'
+                                : 'text-muted-foreground/30'
+                                }`}
                             />
                           ))}
                         </div>
@@ -725,10 +724,10 @@ export function ProductDetailPage() {
                             // Convert Google Drive URL to displayable format
                             const convertGoogleDriveUrl = (url: string): string => {
                               if (!url || typeof url !== 'string') return url;
-                              
+
                               const trimmedUrl = url.trim();
                               let fileId: string | null = null;
-                              
+
                               // Handle Google Drive thumbnail URL
                               if (trimmedUrl.includes('drive.google.com/thumbnail')) {
                                 const match = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
@@ -754,16 +753,16 @@ export function ProductDetailPage() {
                               else if (trimmedUrl.includes('lh3.googleusercontent.com')) {
                                 return url;
                               }
-                              
+
                               if (fileId) {
                                 return `https://lh3.googleusercontent.com/d/${fileId}`;
                               }
-                              
+
                               return url;
                             };
-                            
+
                             const convertedUrl = convertGoogleDriveUrl(img);
-                            
+
                             return (
                               <div
                                 key={idx}

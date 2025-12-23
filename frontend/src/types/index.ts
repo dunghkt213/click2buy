@@ -8,6 +8,7 @@ export interface Product {
   image: string;
   category: string;
   rating: number;
+  ratingAvg?: number; // Rating trung bình từ backend
   reviews: number;
   description: string;
   brand: string;
@@ -17,11 +18,13 @@ export interface Product {
   isSale?: boolean;
   isBestSeller?: boolean; // THÊM: Sản phẩm bán chạy
   soldCount?: number; // THÊM: Số lượng đã bán
+  reservedStock?: number; // Số sản phẩm đã bán (từ reservedStock trong JSON)
   timeLeft?: string; // THÊM: Thời gian còn lại của deal
   images?: string[]; // THÊM: Nhiều ảnh sản phẩm
   specifications?: { [key: string]: string }; // THÊM: Thông số kỹ thuật
   ownerId?: string; // ID của người bán (từ backend)
   sellerId?: string; // Alias cho ownerId để dùng trong cart
+  reviewSummary?: string; // AI-generated review summary
 }
 
 // THÊM: Review/Comment types
