@@ -15,48 +15,35 @@ import { Label } from '../../components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { Card } from '../../components/ui/card';
-import { 
+import {
   ArrowLeft,
-  MapPin, 
-  Edit, 
-  CreditCard, 
+  MapPin,
+  CreditCard,
   Truck,
   Tag,
   Plus,
   Shield,
   CheckCircle,
-  Star
+  Star,
+  Save
 } from 'lucide-react';
-import { CartItem, Address, PaymentMethod, ShippingMethod, ShopCheckoutData } from '../../types';
+import { CartItem, PaymentMethod, ShippingMethod, ShopCheckoutData } from '../../types';
 import { formatPrice } from '../../utils/utils';
 import { useAppContext } from '../../providers/AppProvider';
 import { toast } from 'sonner';
+import { getCache, setCache } from '../../utils/cache';
 // import { useSSE, PaymentQR } from '../../hooks/useSSE'; // Temporarily disabled
 // import { QRPaymentModal } from '../../components/payment/QRPaymentModal';
 // import { usePaymentSocket } from '@/hooks/usePaymentSocket';
 
-const defaultAddresses: Address[] = [
-  {
-    id: '1',
-    name: 'Nguyễn Văn A',
-    phone: '0901234567',
-    address: '123 Nguyen Van A',
-    ward: 'Phường Xuân Thủy',
-    district: 'Quận Cầu Giấy',
-    city: 'Hà Nội',
-    isDefault: true
-  },
-  {
-    id: '2',
-    name: 'Nguyễn Văn A',
-    phone: '0901234567',
-    address: '144 Xuan Thuy',
-    ward: 'Phường Dịch Vọng Hậu',
-    district: 'Quận Cầu Giấy',
-    city: 'Hà Nội',
-    isDefault: false
-  }
-];
+// Address input interface for manual entry
+interface AddressInput {
+  name: string;
+  phone: string;
+  ward: string;
+  district: string;
+  city: string;
+}
 
 const paymentMethods: PaymentMethod[] = [
   {
@@ -149,7 +136,13 @@ export function CheckoutPage() {
     return [];
   });
 
-  const [selectedAddress, setSelectedAddress] = useState<Address>(defaultAddresses[0]);
+  const [addressInput, setAddressInput] = useState<AddressInput>({
+    name: '',
+    phone: '',
+    ward: '',
+    district: '',
+    city: ''
+  });
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>(paymentMethods[0]);
   const [shops, setShops] = useState<ShopCheckoutData[]>([]);
   const [systemVoucher, setSystemVoucher] = useState('');
@@ -220,6 +213,14 @@ export function CheckoutPage() {
     if (!items || items.length === 0) {
       toast.error('Vui lòng chọn sản phẩm để thanh toán');
       navigate('/cart');
+    }
+  }, []);
+
+  // Load saved address from cache
+  useEffect(() => {
+    const savedAddress = getCache<AddressInput>('checkout_address');
+    if (savedAddress) {
+      setAddressInput(savedAddress);
     }
   }, []);
 
@@ -298,6 +299,23 @@ export function CheckoutPage() {
     }
   };
 
+  // Save address to cache
+  const saveAddress = () => {
+    const { name, phone, ward, district, city } = addressInput;
+    if (!name.trim() || !phone.trim() || !ward.trim() || !district.trim() || !city.trim()) {
+      toast.error('Vui lòng nhập đầy đủ thông tin địa chỉ');
+      return;
+    }
+    setCache('checkout_address', addressInput, 30 * 24 * 60 * 60 * 1000); // Save for 30 days
+    toast.success('Địa chỉ đã được lưu!');
+  };
+
+  // Validate address input
+  const isAddressValid = () => {
+    const { name, phone, ward, district, city } = addressInput;
+    return name.trim() && phone.trim() && ward.trim() && district.trim() && city.trim();
+  };
+
   // Calculate totals
   const totalItems = shops.reduce((sum: number, shop) => sum + shop.items.reduce((shopSum, item) => shopSum + item.quantity, 0), 0);
   const totalSubtotal = shops.reduce((sum, shop) => sum + shop.subtotal, 0);
@@ -311,6 +329,12 @@ export function CheckoutPage() {
   const handleCheckout = async () => {
     if (!app.isLoggedIn) {
       app.handleLogin();
+      return;
+    }
+
+    // Validate address before checkout
+    if (!isAddressValid()) {
+      toast.error('Vui lòng nhập đầy đủ thông tin địa chỉ giao hàng');
       return;
     }
 
@@ -333,10 +357,9 @@ export function CheckoutPage() {
         orderCode: Date.now().toString(),
         paymentMethod: selectedPayment.id,
         carts,
-        // Thông tin shipping address sẽ được BE lấy từ user profile
-      };
-
-      console.log('🛒 Checkout payload với shops:', checkoutPayload);
+        address: `${addressInput.name} - ${addressInput.phone} - ${addressInput.ward}, ${addressInput.district}, ${addressInput.city}`,
+        note,
+      };      
 
       console.log('🛒 Checkout payload với shops:', checkoutPayload);
 
@@ -421,46 +444,91 @@ export function CheckoutPage() {
                   <MapPin className="w-5 h-5 text-primary" />
                   <h3 className="font-semibold">Địa chỉ giao hàng</h3>
                 </div>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <Edit className="w-4 h-4" />
-                  Thay đổi
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2"
+                  onClick={saveAddress}
+                >
+                  <Save className="w-4 h-4" />
+                  Lưu địa chỉ
                 </Button>
               </div>
 
-              <div className="space-y-3">
-                {defaultAddresses.map((address) => (
-                  <div
-                    key={address.id}
-                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                      selectedAddress.id === address.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => setSelectedAddress(address)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium">{address.name}</span>
-                          <span className="text-muted-foreground">|</span>
-                          <span className="text-muted-foreground">{address.phone}</span>
-                          {address.isDefault && (
-                            <Badge variant="secondary" className="text-xs">
-                              Mặc định
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {address.address}, {address.ward}, {address.district}, {address.city}
-                        </p>
-                      </div>
-                      {selectedAddress.id === address.id && (
-                        <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-sm font-medium">
+                    Họ và tên <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="name"
+                    placeholder="Nhập họ và tên"
+                    value={addressInput.name}
+                    onChange={(e) => setAddressInput(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-sm font-medium">
+                    Số điện thoại <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="phone"
+                    placeholder="Nhập số điện thoại"
+                    value={addressInput.phone}
+                    onChange={(e) => setAddressInput(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ward" className="text-sm font-medium">
+                    Phường/Xã <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="ward"
+                    placeholder="Nhập phường/xã"
+                    value={addressInput.ward}
+                    onChange={(e) => setAddressInput(prev => ({ ...prev, ward: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="district" className="text-sm font-medium">
+                    Quận/Huyện <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="district"
+                    placeholder="Nhập quận/huyện"
+                    value={addressInput.district}
+                    onChange={(e) => setAddressInput(prev => ({ ...prev, district: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="city" className="text-sm font-medium">
+                    Tỉnh/Thành phố <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="city"
+                    placeholder="Nhập tỉnh/thành phố"
+                    value={addressInput.city}
+                    onChange={(e) => setAddressInput(prev => ({ ...prev, city: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
               </div>
+
+              {!isAddressValid() && (
+                <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    Vui lòng nhập đầy đủ thông tin địa chỉ để tiếp tục thanh toán
+                  </p>
+                </div>
+              )}
             </Card>
 
             {/* Payment Method */}
@@ -837,10 +905,10 @@ export function CheckoutPage() {
             </Card>
 
             {/* Action Button */}
-            <Button 
-              className="w-full h-12 text-base font-semibold" 
+            <Button
+              className="w-full h-12 text-base font-semibold"
               onClick={handleCheckout}
-              disabled={isProcessing}
+              disabled={isProcessing || !isAddressValid()}
             >
               {isProcessing ? (
                 <div className="flex items-center gap-2">

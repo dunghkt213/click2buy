@@ -9,6 +9,7 @@
 export interface CreateOrderDto {
   orderCode: string;
   paymentMethod: string;
+  address: string;
 
   carts: Array<{
     sellerId: string;
