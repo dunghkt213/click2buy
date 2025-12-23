@@ -111,7 +111,7 @@ export class ReviewGateway {
 
   return reviews.map(r => ({
     ...r,
-    userName: userMap.get(r.userId) ?? null,
+    name: userMap.get(r.userId) ?? null,
   }));
 }
 
