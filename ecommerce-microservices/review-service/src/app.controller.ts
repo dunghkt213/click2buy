@@ -13,6 +13,7 @@ export class AppController {
   create(@Payload() { dto }: any, @CurrentUser() user: any) {
     const userId = user?.sub || user?.id ;
     console.log("🚀 Creating review for user:", userId, "with dto:", dto);
+    
     return this.appService.create( dto, userId);
   }
 

@@ -28,6 +28,12 @@ export class AppController {
     }
   }
 
+  @MessagePattern("review.created")
+async handleReviewCreated(@Payload() payload: { productId: string; rating: number }) {
+  return this.appService.updateRatingStats(payload);
+}
+
+
   @MessagePattern('product.findAll')
   findAll(@Payload() { q }: any) {
     return this.appService.findAll(q);
