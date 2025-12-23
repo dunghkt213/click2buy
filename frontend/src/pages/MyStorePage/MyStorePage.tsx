@@ -6,9 +6,10 @@
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../providers/AppProvider';
+import { refreshAccessToken } from '../../apis/client/apiClient';
 
 // Import UI Components
 import { sellerService } from '../../apis/seller-analytics/sellerAnalyticsApi';
@@ -31,18 +32,22 @@ import {
   DollarSign,
   Edit,
   Filter,
+  List,
+  Loader2,
   Package,
   Plus,
   RotateCcw,
   Search,
   Trash2,
   TrendingUp,
-  Truck
+  Truck,
+  XCircle
 } from 'lucide-react';
 
 // Types & Utils
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, Area, AreaChart } from 'recharts';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { OrderList } from '../../components/order/OrderList';
 import { Order, StoreProduct } from '../../types';
 import { formatPrice } from '../../utils/utils';
 
@@ -54,7 +59,50 @@ interface ProductFilters {
   status: string; // 'all' | 'in_stock' | 'out_of_stock' | 'inactive'
 }
 
-type OrderTab = 'pending' | 'shipping' | 'completed';
+type OrderTab = 'all' | 'pending' | 'cancel_request' | 'shipping' | 'completed';
+
+// Order tab configuration
+const ORDER_TABS: Array<{
+  value: OrderTab;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  backendStatus?: string;
+  frontendStatus?: Order['status'];
+}> = [
+  {
+    value: 'all',
+    label: 'Tất cả',
+    icon: List,
+  },
+  {
+    value: 'pending',
+    label: 'Chờ xử lý',
+    icon: Clock,
+    backendStatus: 'PENDING_ACCEPT',
+    frontendStatus: 'confirmed', // PENDING_ACCEPT maps to 'confirmed'
+  },
+  {
+    value: 'cancel_request',
+    label: 'Yêu cầu hủy',
+    icon: XCircle,
+    backendStatus: 'REQUESTED_CANCEL',
+    frontendStatus: 'cancel_request',
+  },
+  {
+    value: 'shipping',
+    label: 'Đang giao',
+    icon: Truck,
+    backendStatus: 'CONFIRMED',
+    frontendStatus: 'shipping',
+  },
+  {
+    value: 'completed',
+    label: 'Hoàn thành',
+    icon: CheckCircle,
+    backendStatus: 'DELIVERED',
+    frontendStatus: 'completed',
+  },
+];
 
 // --- MAPPING (VIỆT HÓA) ---
 const STATUS_MAP: Record<string, string> = {
@@ -101,19 +149,24 @@ export function MyStorePage() {
     }
   }, [app.isLoggedIn, app.user?.role, app.store.hasStore, navigate, app.modals]);
 
-  // Scroll lên đầu trang khi component mount để đảm bảo có thể scroll lên trên
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
-    // Force scroll bằng cách set scrollTop trực tiếp
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, []);
+  // Không scroll về đầu trang nữa, để useScrollRestoration xử lý
+  // useEffect(() => {
+  //   window.scrollTo({ top: 0, behavior: 'auto' });
+  //   // Force scroll bằng cách set scrollTop trực tiếp
+  //   document.documentElement.scrollTop = 0;
+  //   document.body.scrollTop = 0;
+  // }, []);
 
   useEffect(() => {
     if (app.isLoggedIn && app.user?.role === 'seller') {
       app.store.setIsMyStorePageOpen(true);
     }
-  }, [app.isLoggedIn, app.user?.role, app.store]);
+    
+    // Cleanup: set false khi component unmount
+    return () => {
+      app.store.setIsMyStorePageOpen(false);
+    };
+  }, [app.isLoggedIn, app.user?.role]); // Loại bỏ app.store khỏi dependencies
 
   // --- 2. XỬ LÝ DỮ LIỆU: MERGE SẢN PHẨM TRÙNG ---
   const rawStoreProducts: StoreProduct[] = app.store.storeProducts || [];
@@ -149,11 +202,79 @@ export function MyStorePage() {
     return Array.from(map.values());
   }, [rawStoreProducts]);
 
-  const storeOrders: Order[] = app.orders.orders.filter((o: Order) => o.status !== 'cancelled');
-
   // --- 3. STATE ---
   const [selectedTab, setSelectedTab] = useState('products');
-  const [orderTab, setOrderTab] = useState<OrderTab>('pending');
+  const [orderTab, setOrderTab] = useState<OrderTab>('all');
+  const [allOrders, setAllOrders] = useState<Order[]>([]); // Store all orders for both counting and filtering
+  const isLoadingOrdersRef = useRef(false); // Prevent duplicate API calls
+
+  // Load all orders when entering orders tab (only once)
+  useEffect(() => {
+    // Chỉ load khi:
+    // 1. User đã đăng nhập và là seller
+    // 2. Đang ở tab orders
+    // 3. Chưa đang load (tránh duplicate calls)
+    if (
+      app.isLoggedIn && 
+      app.user?.role === 'seller' && 
+      selectedTab === 'orders' && 
+      !isLoadingOrdersRef.current
+    ) {
+      isLoadingOrdersRef.current = true;
+      const loadAllOrders = async () => {
+        try {
+          // Refresh token trước khi load orders để tránh 401 errors
+          try {
+            await refreshAccessToken();
+          } catch (error) {
+            console.warn('⚠️ [MyStorePage] Token refresh failed before loading orders:', error);
+            // Continue anyway, apiClient will handle 401 errors
+          }
+          
+          const { orderService } = await import('../../apis/order');
+          const { mapOrderResponse } = await import('../../apis/order/order.mapper');
+          const allOrdersData = await orderService.getAllForSeller(); // Load all orders without status filter
+          const mappedOrders = allOrdersData.map(mapOrderResponse);
+          setAllOrders(mappedOrders);
+          // Also update app.orders for compatibility
+          app.orders.setOrders(mappedOrders);
+        } catch (error) {
+          console.error('Failed to load orders:', error);
+        } finally {
+          isLoadingOrdersRef.current = false;
+        }
+      };
+      loadAllOrders();
+    }
+  }, [app.isLoggedIn, app.user?.role, selectedTab]); // Loại bỏ app.orders khỏi dependency array
+
+  // Filter orders based on selected tab (frontend filtering for better UX)
+  const filteredOrders: Order[] = useMemo(() => {
+    if (orderTab === 'all') {
+      return allOrders.filter((o: Order) => o.status !== 'cancelled');
+    }
+    
+    const tabConfig = ORDER_TABS.find(tab => tab.value === orderTab);
+    if (!tabConfig?.frontendStatus) {
+      return [];
+    }
+    
+    return allOrders.filter((o: Order) => o.status === tabConfig.frontendStatus);
+  }, [allOrders, orderTab]);
+
+  // Get order count for a specific tab
+  const getOrderCount = (tab: OrderTab): number => {
+    if (tab === 'all') {
+      return allOrders.filter((o: Order) => o.status !== 'cancelled').length;
+    }
+    
+    const tabConfig = ORDER_TABS.find(t => t.value === tab);
+    if (!tabConfig?.frontendStatus) {
+      return 0;
+    }
+    
+    return allOrders.filter((o: Order) => o.status === tabConfig.frontendStatus).length;
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isEditProductOpen, setIsEditProductOpen] = useState(false);
@@ -162,6 +283,8 @@ export function MyStorePage() {
   const [revenueData, setRevenueData] = useState<RevenueDataItem[]>([]);
   const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
   const [timeRange, setTimeRange] = useState<'WEEK' | 'MONTH'>('WEEK');
+  const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
+  const [revenueError, setRevenueError] = useState<string | null>(null);
   // Filter state
   const [filters, setFilters] = useState<ProductFilters>({
     productName: '',
@@ -190,7 +313,18 @@ export function MyStorePage() {
   useEffect(() => {
     if (selectedTab === 'revenue') {
       const fetchData = async () => {
-        // ... loading state ...
+        // Refresh token trước khi fetch data để tránh 401 errors
+        if (app.isLoggedIn) {
+          try {
+            await refreshAccessToken();
+          } catch (error) {
+            console.warn('⚠️ [MyStorePage] Token refresh failed before fetching revenue:', error);
+            // Continue anyway, apiClient will handle 401 errors
+          }
+        }
+        
+        setIsLoadingRevenue(true);
+        setRevenueError(null);
         try {
           const [revData, topProdData] = await Promise.all([
             // ✅ Sẽ gọi lại getRevenue khi timeRange thay đổi
@@ -198,13 +332,58 @@ export function MyStorePage() {
             // ⚠️ API getTopProducts không nhận timeRange. Ta vẫn gọi lại.
             sellerService.getTopProducts(10) // Lấy top 10 sản phẩm
           ]);
-          setRevenueData(revData);
-          setTopProducts(topProdData);
-        } catch (error) {
-          console.error(error);
+          setRevenueData(revData || []);
+          
+          // Debug: Log response để kiểm tra
+          console.log('📊 [Revenue] Top products response:', topProdData);
+          
+          // Nếu topProducts không có productName, fetch từ product service
+          const enrichedTopProducts = await Promise.all(
+            (topProdData || []).map(async (item) => {
+              // Debug: Log từng item
+              console.log('📦 [Revenue] Processing item:', { 
+                productId: item.productId, 
+                productName: item.productName,
+                hasProductName: !!item.productName 
+              });
+              
+              // Nếu đã có productName, giữ nguyên
+              if (item.productName) {
+                return item;
+              }
+              
+              // Nếu không có productName, thử fetch từ product service
+              try {
+                console.log(`🔍 [Revenue] Fetching product name for ${item.productId}...`);
+                const { productService } = await import('../../apis/product');
+                const product = await productService.getById(item.productId);
+                console.log(`✅ [Revenue] Fetched product name: ${product.name}`);
+                return {
+                  ...item,
+                  productName: product.name || `Sản phẩm ${item.productId.substring(0, 8)}`
+                };
+              } catch (error) {
+                console.warn(`⚠️ [Revenue] Failed to fetch product name for ${item.productId}:`, error);
+                // Nếu fetch fail, dùng fallback
+                return {
+                  ...item,
+                  productName: `Sản phẩm ${item.productId.substring(0, 8)}`
+                };
+              }
+            })
+          );
+          
+          console.log('✅ [Revenue] Enriched top products:', enrichedTopProducts);
+          setTopProducts(enrichedTopProducts);
+        } catch (error: any) {
+          console.error('Error fetching revenue data:', error);
+          setRevenueError(error.message || 'Không thể tải dữ liệu doanh thu');
+          setRevenueData([]);
+          setTopProducts([]);
+        } finally {
+          setIsLoadingRevenue(false);
         }
       };
-      // ... set loading false ...
     fetchData();
   }
   }, [selectedTab, timeRange]);
@@ -215,9 +394,10 @@ export function MyStorePage() {
 
 const chartData = useMemo(() => {
   return topProducts.map((item) => ({
-    name: item.productName,
+    name: item.productName || `Sản phẩm ${item.productId?.substring(0, 8) || 'N/A'}`,
     value: Number(item.totalSold),       // Ép kiểu số cho chắc chắn
     revenue: Number(item.totalRevenue),
+    productId: item.productId, // Giữ lại productId để có thể fetch sau nếu cần
   }));
 }, [topProducts]);
 
@@ -231,10 +411,23 @@ const apiTotalSold = useMemo(() => {
   return revenueData.reduce((sum, item) => sum + Number(item.totalOrders || 0), 0);
 }, [revenueData]);
 
+// Format revenue data for Line Chart - Doanh thu theo thời gian
+const lineChartData = useMemo(() => {
+  return revenueData.map((item) => ({
+    date: new Date(item.date).toLocaleDateString('vi-VN', { 
+      day: '2-digit', 
+      month: '2-digit' 
+    }),
+    fullDate: item.date,
+    revenue: Number(item.totalRevenue || 0),
+    orders: Number(item.totalOrders || 0),
+  }));
+}, [revenueData]);
+
 // Màu sắc biểu đồ (Giữ nguyên như mẫu)
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B6B', '#4ECDC4', '#45B7D1'];
 
-// Hàm render nhãn biểu đồ (Giữ nguyên như mẫu)
+// Hàm render nhãn biểu đồ - chỉ hiển thị phần trăm, không hiển thị tên sản phẩm
 const renderCustomLabel = (props: any) => {
   const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -336,17 +529,104 @@ const openEditDialog = (product: StoreProduct) => {
   setIsEditProductOpen(true);
 };
 
-const handleUpdateOrderStatus = (orderId: string, status: string) => {
-  app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
-    order.id === orderId
-      ? {
-        ...order,
-        status: status as any,
-        updatedAt: new Date().toISOString(),
-        timeline: [...order.timeline, { status: status as any, timestamp: new Date().toISOString(), description: `Đơn hàng đã chuyển sang trạng thái ${status}` }]
+const handleUpdateOrderStatus = async (orderId: string, action: string) => {
+  try {
+    // Refresh token trước khi thao tác để tránh 401 errors
+    try {
+      await refreshAccessToken();
+    } catch (error) {
+      console.warn('⚠️ [MyStorePage] Token refresh failed before update order status:', error);
+      // Continue anyway, apiClient will handle 401 errors
+    }
+    
+    const { orderService } = await import('../../apis/order');
+    const { mapOrderResponse } = await import('../../apis/order/order.mapper');
+    const { toast } = await import('sonner');
+
+    let updatedOrder;
+    
+    if (action === 'confirm') {
+      // Xác nhận đơn hàng
+      const backendOrder = await orderService.confirmOrder(orderId);
+      updatedOrder = mapOrderResponse(backendOrder);
+      toast.success('Đã xác nhận đơn hàng');
+    } else if (action === 'reject') {
+      // Từ chối đơn hàng
+      const backendOrder = await orderService.rejectOrder(orderId);
+      updatedOrder = mapOrderResponse(backendOrder);
+      toast.success('Đã từ chối đơn hàng');
+    } else if (action === 'accept_cancel') {
+      // Chấp nhận yêu cầu hủy đơn hàng
+      try {
+        const backendOrder = await orderService.acceptCancelRequest(orderId);
+        if (backendOrder && backendOrder._id) {
+          updatedOrder = mapOrderResponse(backendOrder);
+        }
+        toast.success('Đã chấp nhận yêu cầu hủy đơn hàng');
+      } catch (apiError: any) {
+        // Backend có thể không trả về response (undefined), nhưng order đã được update trong DB
+        console.warn('Accept cancel request - backend may not return response:', apiError);
+        if (apiError?.status && apiError.status !== 400) {
+          throw apiError; // Re-throw nếu là lỗi thật
+        }
+        toast.success('Đã chấp nhận yêu cầu hủy đơn hàng');
       }
-      : order
-  ));
+    } else if (action === 'reject_cancel') {
+      // Từ chối yêu cầu hủy đơn hàng
+      try {
+        const backendOrder = await orderService.rejectCancelRequest(orderId);
+        if (backendOrder && backendOrder._id) {
+          updatedOrder = mapOrderResponse(backendOrder);
+        }
+        toast.success('Đã từ chối yêu cầu hủy đơn hàng');
+      } catch (apiError: any) {
+        // Backend có thể không trả về response (undefined), nhưng order đã được update trong DB
+        console.warn('Reject cancel request - backend may not return response:', apiError);
+        if (apiError?.status && apiError.status !== 400) {
+          throw apiError; // Re-throw nếu là lỗi thật
+        }
+        toast.success('Đã từ chối yêu cầu hủy đơn hàng');
+      }
+    } else {
+      // Các action khác (shipping, completed, cancelled)
+      // Giữ nguyên logic cũ nếu cần
+      app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
+        order.id === orderId
+          ? {
+            ...order,
+            status: action as any,
+            updatedAt: new Date().toISOString(),
+            timeline: [...order.timeline, { status: action as any, timestamp: new Date().toISOString(), description: `Đơn hàng đã chuyển sang trạng thái ${action}` }]
+          }
+          : order
+      ));
+      return;
+    }
+
+    // Reload orders từ server để cập nhật danh sách (giống như OrdersPage)
+    // Điều này đảm bảo UI luôn sync với database sau khi thao tác
+    try {
+      const allOrdersData = await orderService.getAllForSeller();
+      const mappedOrders = allOrdersData.map(mapOrderResponse);
+      setAllOrders(mappedOrders);
+      app.orders.setOrders(mappedOrders);
+    } catch (reloadError) {
+      console.error('Failed to reload orders after update:', reloadError);
+      // Nếu reload fail, vẫn cập nhật local state với updatedOrder (nếu có)
+      if (updatedOrder) {
+        setAllOrders((prev: Order[]) => prev.map((order: Order) =>
+          order.id === orderId ? updatedOrder : order
+        ));
+        app.orders.setOrders((prev: Order[]) => prev.map((order: Order) =>
+          order.id === orderId ? updatedOrder : order
+        ));
+      }
+    }
+  } catch (error: any) {
+    console.error('Failed to update order status:', error);
+    const { toast } = await import('sonner');
+    toast.error(error.message || 'Không thể cập nhật trạng thái đơn hàng');
+  }
 };
 
 // --- 5. FILTER LOGIC ---
@@ -392,19 +672,6 @@ const filteredProducts = mergedStoreProducts
     return true;
   });
 
-const filteredOrders = storeOrders.filter((order: Order) => {
-  if (orderTab === 'pending') return order.status === 'pending' || order.status === 'confirmed';
-  if (orderTab === 'shipping') return order.status === 'shipping';
-  if (orderTab === 'completed') return order.status === 'completed';
-  return false;
-});
-
-const getOrderCount = (tab: OrderTab) => {
-  if (tab === 'pending') return storeOrders.filter((o: Order) => o.status === 'pending' || o.status === 'confirmed').length;
-  if (tab === 'shipping') return storeOrders.filter((o: Order) => o.status === 'shipping').length;
-  if (tab === 'completed') return storeOrders.filter((o: Order) => o.status === 'completed').length;
-  return 0;
-};
 
 const salesData = mergedStoreProducts.map((product: StoreProduct) => ({
   name: product.name,
@@ -446,7 +713,7 @@ return (
             className="flex items-center gap-2"
           >
             <Truck className="w-4 h-4" /> 
-            Đơn hàng ({storeOrders.length})
+            Đơn hàng ({allOrders.filter((o: Order) => o.status !== 'cancelled').length})
           </motion.div>
         </TabsTrigger>
         <TabsTrigger 
@@ -633,119 +900,43 @@ return (
             >
               <Tabs value={orderTab} onValueChange={(v) => setOrderTab(v as OrderTab)}>
                 <TabsList>
+                  {ORDER_TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    const count = getOrderCount(tab.value);
+                    return (
                   <TabsTrigger 
-                    value="pending" 
+                        key={tab.value}
+                        value={tab.value}
                     className="gap-2 transition-all duration-200 hover:scale-105"
                   >
                     <motion.div
-                      animate={orderTab === 'pending' ? { scale: 1.1 } : { scale: 1 }}
+                          animate={orderTab === tab.value ? { scale: 1.1 } : { scale: 1 }}
                       transition={{ duration: 0.2 }}
                       className="flex items-center gap-2"
                     >
-                      <Clock className="w-4 h-4" /> 
-                      Chờ xử lý 
-                      {getOrderCount('pending') > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          {getOrderCount('pending')}
+                          <Icon className="w-4 h-4" />
+                          {tab.label}
+                          {count > 0 && (
+                            <Badge className="ml-1 h-5 px-1.5 text-xs bg-red-500 text-white border-0">
+                              {count}
                         </Badge>
                       )}
                     </motion.div>
                   </TabsTrigger>
-                  <TabsTrigger 
-                    value="shipping" 
-                    className="gap-2 transition-all duration-200 hover:scale-105"
-                  >
-                    <motion.div
-                      animate={orderTab === 'shipping' ? { scale: 1.1 } : { scale: 1 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex items-center gap-2"
-                    >
-                      <Truck className="w-4 h-4" /> 
-                      Đang giao 
-                      {getOrderCount('shipping') > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          {getOrderCount('shipping')}
-                        </Badge>
-                      )}
-                    </motion.div>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="completed" 
-                    className="gap-2 transition-all duration-200 hover:scale-105"
-                  >
-                    <motion.div
-                      animate={orderTab === 'completed' ? { scale: 1.1 } : { scale: 1 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex items-center gap-2"
-                    >
-                      <CheckCircle className="w-4 h-4" /> 
-                      Hoàn thành 
-                      {getOrderCount('completed') > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          {getOrderCount('completed')}
-                        </Badge>
-                      )}
-                    </motion.div>
-                  </TabsTrigger>
+                    );
+                  })}
                 </TabsList>
 
-                <AnimatePresence mode="wait">
-                  {['pending', 'shipping', 'completed'].map((tab) => (
-                    orderTab === tab && (
-                      <TabsContent key={tab} value={tab} className="space-y-4">
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                        >
-              {filteredOrders.length === 0 ? (
-                <Card className="p-12"><div className="text-center"><Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" /><h3 className="text-lg mb-2">Chưa có đơn hàng</h3></div></Card>
-              ) : (
-                filteredOrders.map((order: Order) => (
-                  <Card key={order.id} className="overflow-hidden">
-                    <div className="p-4 bg-muted/30 border-b">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{order.orderNumber}</p>
-                          <p className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleString('vi-VN')}</p>
-                        </div>
-                        <Badge>
-                          {order.status === 'pending' && 'Chờ xác nhận'}
-                          {order.status === 'confirmed' && 'Đã xác nhận'}
-                          {order.status === 'shipping' && 'Đang giao'}
-                          {order.status === 'completed' && 'Hoàn thành'}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <div className="space-y-3 mb-4">
-                        {order.items.map((item: any) => (
-                          <div key={item.id} className="flex items-center gap-3">
-                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0"><ImageWithFallback src={item.image} alt={item.name} className="w-full h-full object-cover" /></div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium line-clamp-1 break-words">{item.name}</p>
-                              {item.variant && <p className="text-sm text-muted-foreground">{item.variant}</p>}
-                            </div>
-                            <div className="text-right"><p className="text-sm text-muted-foreground">x{item.quantity}</p><p className="font-medium">{formatPrice(item.price)}</p></div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="pt-3 border-t">
-                        <div className="flex items-center justify-between mb-3"><div><p className="text-sm text-muted-foreground">Khách hàng: {order.shippingAddress.name}</p></div><div className="text-right"><p className="text-sm text-muted-foreground">Tổng tiền:</p><p className="text-xl font-bold text-primary">{formatPrice(order.finalPrice)}</p></div></div>
-                        {order.status === 'pending' && (<div className="flex gap-2"><Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')} className="flex-1">Xác nhận đơn</Button><Button variant="outline" size="sm" onClick={() => { if (confirm('Hủy đơn?')) handleUpdateOrderStatus(order.id, 'cancelled'); }}>Hủy đơn</Button></div>)}
-                        {order.status === 'confirmed' && (<Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'shipping')} className="w-full">Bắt đầu giao hàng</Button>)}
-                        {order.status === 'shipping' && (<Button size="sm" onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="w-full">Hoàn thành đơn hàng</Button>)}
-                      </div>
-                    </div>
-                  </Card>
-                ))
-              )}
-                        </motion.div>
+                {/* Single TabsContent for all tabs - uses dynamic filtering */}
+                {ORDER_TABS.map((tab) => (
+                  <TabsContent key={tab.value} value={tab.value} className="space-y-4">
+                    <OrderList
+                      orders={filteredOrders}
+                      onUpdateStatus={handleUpdateOrderStatus}
+                      showActionButtons={tab.value !== 'all'} // Hide action buttons in "Tất cả" tab
+                    />
                       </TabsContent>
-                    )
                   ))}
-                </AnimatePresence>
               </Tabs>
             </motion.div>
           )}
@@ -779,6 +970,57 @@ return (
           </Button>
         </div>
 
+        {/* Loading State */}
+        {isLoadingRevenue && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Đang tải dữ liệu...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {revenueError && !isLoadingRevenue && (
+          <Card className="p-6 border-destructive">
+            <div className="text-center">
+              <XCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
+              <p className="text-sm text-destructive font-medium">{revenueError}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => {
+                  setRevenueError(null);
+                  if (selectedTab === 'revenue') {
+                    const fetchData = async () => {
+                      setIsLoadingRevenue(true);
+                      try {
+                        const [revData, topProdData] = await Promise.all([
+                          sellerService.getRevenue(timeRange),
+                          sellerService.getTopProducts(10),
+                        ]);
+                        setRevenueData(revData || []);
+                        setTopProducts(topProdData || []);
+                      } catch (error: any) {
+                        setRevenueError(error.message || 'Không thể tải dữ liệu doanh thu');
+                      } finally {
+                        setIsLoadingRevenue(false);
+                      }
+                    };
+                    fetchData();
+                  }
+                }}
+              >
+                Thử lại
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Content khi không có lỗi và không đang load */}
+        {!isLoadingRevenue && !revenueError && (
+          <>
         {/* Các thẻ Card thống kê */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-6">
@@ -786,7 +1028,6 @@ return (
               <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
               <Package className="w-5 h-5 text-primary" />
             </div>
-            {/* 👇 Dùng biến apiTotalSold */}
             <p className="text-3xl font-bold">{apiTotalSold.toLocaleString()}</p>
           </Card>
 
@@ -795,7 +1036,6 @@ return (
               <p className="text-sm text-muted-foreground">Tổng doanh thu</p>
               <DollarSign className="w-5 h-5 text-green-500" />
             </div>
-            {/* 👇 Dùng biến apiTotalRevenue */}
             <p className="text-3xl font-bold text-green-600">{formatPrice(apiTotalRevenue)}</p>
           </Card>
 
@@ -804,12 +1044,49 @@ return (
               <p className="text-sm text-muted-foreground">Bán chạy nhất</p>
               <TrendingUp className="w-5 h-5 text-orange-500" />
             </div>
-            {/* 👇 Dùng topProducts[0] */}
             <p className="text-xl font-bold line-clamp-1">
               {topProducts.length > 0 ? topProducts[0].productName : 'Chưa có dữ liệu'}
             </p>
           </Card>
         </div>
+
+            {/* Biểu đồ doanh thu theo thời gian */}
+            {lineChartData.length > 0 && (
+              <Card>
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Doanh Thu Theo Thời Gian</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={lineChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 12 }}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                      />
+                      <Tooltip 
+                        formatter={(value: any) => formatPrice(value)}
+                        labelFormatter={(label) => `Ngày: ${label}`}
+                      />
+                      <Legend />
+                      <Area 
+                        type="monotone" 
+                        dataKey="revenue" 
+                        stroke="#10b981" 
+                        fill="#10b981" 
+                        fillOpacity={0.6}
+                        name="Doanh thu"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Biểu đồ tròn */}
@@ -834,10 +1111,10 @@ return (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: any, name: any, props: any) => [
-                      `${value} đã bán - ${formatPrice(props.payload.revenue)}`, // Custom tooltip
-                      props.payload.name
-                    ]} />
+                    <Tooltip 
+                      formatter={(value: any) => `${value} đã bán`}
+                      labelFormatter={() => ''}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -876,6 +1153,8 @@ return (
             </div>
           </Card>
         </div>
+          </>
+        )}
             </motion.div>
           )}
         </AnimatePresence>

@@ -51,4 +51,9 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CartDto)
   carts: CartDto[];
+
+  
+  @IsString()
+  @IsNotEmpty()
+  address: string;
 }

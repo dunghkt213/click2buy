@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { Toaster } from "sonner"; // Thư viện thông báo
 import { AppProvider } from "./providers/AppProvider"; // Context toàn cục
+import { useScrollRestoration } from "./hooks/useScrollRestoration";
 
 // Layouts
 import { PaymentProcessPage } from "@/pages/PaymentProcessPage";
@@ -23,15 +24,14 @@ import { OrderDetailPage } from "./pages/OrderDetailPage/OrderDetailPage";
 import { OrdersPage } from "./pages/OrdersPage/OrdersPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage/ProductDetailPage";
 import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
+import { ReviewPage } from "./pages/ReviewPage/ReviewPage";
 import { SearchPage } from "./pages/SearchPage/SearchPage";
 import { ShopPage } from "./pages/ShopPage/ShopPage";
 
-// Component cuộn lên đầu trang khi chuyển route
-function ScrollToTop() {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+// Component để khôi phục scroll position khi quay lại trang
+// Không còn scroll về đầu trang nữa, thay vào đó sẽ khôi phục vị trí scroll trước đó
+function ScrollRestoration() {
+  useScrollRestoration(true, 100);
   return null;
 }
 
@@ -42,8 +42,8 @@ export default function App() {
       {/* 2. Toaster để hiển thị thông báo (toast.success, toast.error) */}
       <Toaster position="top-center" richColors closeButton />
 
-      {/* 3. Xử lý cuộn trang */}
-      <ScrollToTop />
+      {/* 3. Xử lý khôi phục scroll position khi quay lại trang */}
+      <ScrollRestoration />
 
       {/* 4. Định nghĩa các Routes */}
       <Routes>
@@ -65,6 +65,7 @@ export default function App() {
         <Route path="/payment/process/:orderCode" element={<PaymentProcessPage />} />
         <Route path="/orders" element={<MainLayout><OrdersPage /></MainLayout>} />
         <Route path="/orders/:orderId" element={<MainLayout><OrderDetailPage /></MainLayout>} />
+        <Route path="/review/:orderId" element={<MainLayout><ReviewPage /></MainLayout>} />
 
         <Route path="/profile" element={<MainLayout><ProfilePage /></MainLayout>} />
         <Route path="/profile/:userId" element={<MainLayout><ProfilePage /></MainLayout>} />

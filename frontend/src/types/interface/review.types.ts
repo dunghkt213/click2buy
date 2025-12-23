@@ -11,7 +11,14 @@ export interface ProductReview {
   comment: string;
   images?: string[];
   date: string;
+  createdAt?: string;
+  updatedAt?: string;
   helpful: number;
   isVerifiedPurchase?: boolean;
+  user?: {
+    name?: string;
+    username?: string;
+    avatar?: string;
+  };
 }
 

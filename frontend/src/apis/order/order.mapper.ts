@@ -14,9 +14,12 @@ function mapStatus(backendStatus: string | undefined): Order['status'] {
   const statusMap: Record<string, Order['status']> = {
     'PENDING_PAYMENT': 'pending',
     'PENDING_ACCEPT': 'confirmed',
-    'SHIPPING': 'shipping',
-    'REJECTED': 'cancelled',
-    'DELIVERED': 'completed',
+    'CONFIRMED': 'shipping', // CONFIRMED → "Đang giao"
+    'SHIPPING': 'shipping', // Giữ lại để tương thích
+    'DELIVERED': 'completed', // DELIVERED → "Hoàn thành"
+    'CANCELLED': 'cancelled', // CANCELLED → "Đã hủy"
+    'REJECTED': 'cancelled', // Giữ lại để tương thích
+    'REQUESTED_CANCEL': 'cancel_request', // REQUESTED_CANCEL → "Yêu cầu hủy"
   };
   
   return statusMap[backendStatus] || 'pending';

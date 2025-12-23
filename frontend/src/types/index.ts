@@ -34,8 +34,15 @@ export interface ProductReview {
   comment: string;
   images?: string[];
   date: string;
+  createdAt?: string;
+  updatedAt?: string;
   helpful: number;
   isVerifiedPurchase?: boolean;
+  user?: {
+    name?: string;
+    username?: string;
+    avatar?: string;
+  };
 }
 
 export interface CartItem extends Product {
@@ -46,7 +53,7 @@ export interface CartItem extends Product {
 }
 
 // THÊM: Order types
-export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'completed' | 'cancelled' | 'refund';
+export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'completed' | 'cancelled' | 'refund' | 'cancel_request';
 
 export interface OrderItem {
   id: string;

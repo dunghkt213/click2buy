@@ -1,55 +1,63 @@
-// src/services/sellerService.ts
-import { RevenueDataItem, TopProductItem } from '../../types/dto/seller-analytics.dto'; // Import type vừa tạo
-import { authStorage } from '../auth';
-
-const API_URL = 'http://localhost:3000'; // Đổi port nếu cần
-
-const getAuthHeaders = () => {
-  // Lấy token từ authStorage (sử dụng đúng key 'click2buy:accessToken')
-  const token = authStorage.getToken();
-
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-};
+/**
+ * Seller Analytics API Service
+ * Kết nối với Seller Analytics Service thông qua API Gateway
+ * Endpoints:
+ * - GET /seller-analytics/revenue?type=WEEK|MONTH
+ * - GET /seller-analytics/top-products?limit=5
+ */
+import { RevenueDataItem, TopProductItem } from '../../types/dto/seller-analytics.dto';
+import { request } from '../client/apiClient';
 
 export const sellerService = {
-  // API lấy doanh thu
-  getRevenue: async (type: 'WEEK' | 'MONTH') => {
+  /**
+   * Lấy thống kê doanh thu theo ngày
+   * @param type - 'WEEK' hoặc 'MONTH' (mặc định: WEEK)
+   * @returns Promise<RevenueDataItem[]>
+   */
+  getRevenue: async (type: 'WEEK' | 'MONTH' = 'WEEK'): Promise<RevenueDataItem[]> => {
     try {
-      const response = await fetch(`${API_URL}/seller-analytics/revenue?type=${type}`, {
+      // Sử dụng apiClient.request để có auto refresh token
+      const data = await request<RevenueDataItem[]>(`/seller-analytics/revenue?type=${type}`, {
         method: 'GET',
-        headers: getAuthHeaders(),
+        requireAuth: true,
       });
       
-      // Xử lý khi token hết hạn (401)
-      if (response.status === 401) {
-          console.error("⛔ Token hết hạn hoặc không hợp lệ. Hãy đăng nhập lại.");
-          // Tùy chọn: window.location.href = '/login';
-      }
-
-      if (!response.ok) throw new Error('Lỗi tải doanh thu');
-      return await response.json();
-    } catch (error) {
+      return Array.isArray(data) ? data : [];
+    } catch (error: any) {
       console.error("Lỗi getRevenue:", error);
-      return [];
+      
+      // Xử lý lỗi 403 (Forbidden) - chỉ seller mới có quyền
+      if (error?.status === 403) {
+        throw new Error('Bạn không có quyền xem thống kê doanh thu. Chỉ seller mới có thể truy cập.');
+      }
+      
+      throw error; // Re-throw để component có thể xử lý
     }
   },
 
-  // API lấy top sản phẩm
-  getTopProducts: async (limit: number = 5) => {
+  /**
+   * Lấy danh sách sản phẩm bán chạy nhất
+   * @param limit - Số lượng sản phẩm (mặc định: 5)
+   * @returns Promise<TopProductItem[]>
+   */
+  getTopProducts: async (limit: number = 5): Promise<TopProductItem[]> => {
     try {
-      const response = await fetch(`${API_URL}/seller-analytics/top-products?limit=${limit}`, {
+      // Sử dụng apiClient.request để có auto refresh token
+      const data = await request<TopProductItem[]>(`/seller-analytics/top-products?limit=${limit}`, {
         method: 'GET',
-        headers: getAuthHeaders(),
+        requireAuth: true,
       });
       
-      if (!response.ok) throw new Error('Lỗi tải top sản phẩm');
-      return await response.json();
-    } catch (error) {
+      return Array.isArray(data) ? data : [];
+    } catch (error: any) {
       console.error("Lỗi getTopProducts:", error);
-      return [];
+      
+      // Xử lý lỗi 403 (Forbidden) - chỉ seller mới có quyền
+      if (error?.status === 403) {
+        throw new Error('Bạn không có quyền xem thống kê sản phẩm. Chỉ seller mới có thể truy cập.');
+      }
+      
+      throw error; // Re-throw để component có thể xử lý
     }
   }
 };

@@ -32,12 +32,14 @@ import {
 } from "lucide-react";
 
 // Types & Utils
+import { toast } from "sonner";
+import { orderService } from "../../apis/order";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import { Order, OrderStatus } from "../../types";
 import { formatPrice } from "../../utils/utils";
+import { refreshAccessToken } from "../../apis/client/apiClient";
 
-// Import Modals
-import { ReviewData, ReviewModal } from "../../components/review/ReviewModal";
+// ReviewModal removed - now using ReviewPage
 
 // --- CONFIG ---
 type TabValue = OrderStatus;
@@ -75,6 +77,10 @@ const statusConfig: Record<OrderStatus, { label: string; color: string }> = {
     label: "Hoàn tiền",
     color: "bg-orange-500/10 text-orange-700 border-orange-200",
   },
+  cancel_request: {
+    label: "Yêu cầu hủy",
+    color: "bg-orange-500/10 text-orange-700 border-orange-200",
+  },
 };
 
 export function OrdersPage() {
@@ -85,20 +91,140 @@ export function OrdersPage() {
   const [selectedTab, setSelectedTab] = useState<TabValue>("pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [allOrders, setAllOrders] = useState<Order[]>([]); // Store all orders for counting
 
-  // Modal State
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  // ReviewModal removed - now using ReviewPage
 
-  // --- 2. EFFECT (Load Data) ---
+  // Map frontend status to backend status
+  const mapStatusToBackend = (status: TabValue): string | undefined => {
+    const statusMap: Record<TabValue, string | undefined> = {
+      pending: 'PENDING_PAYMENT',
+      confirmed: 'PENDING_ACCEPT',
+      shipping: 'CONFIRMED', // "Đang giao" → CONFIRMED
+      completed: 'DELIVERED', // "Hoàn thành" → DELIVERED
+      cancelled: 'CANCELLED', // "Đã hủy" → CANCELLED
+      refund: undefined, // Handle separately if needed
+      cancel_request: 'REQUESTED_CANCEL', // "Yêu cầu hủy" → REQUESTED_CANCEL
+    };
+    return statusMap[status];
+  };
+
+  // --- 2. EFFECT (Auto Refresh Token) ---
+  useEffect(() => {
+    if (!app.isLoggedIn) return;
+    
+    // Auto refresh token when entering OrdersPage (similar to login flow)
+    const autoRefreshToken = async () => {
+      try {
+        // Refresh token proactively to ensure valid token before API calls
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          console.log('✅ [OrdersPage] Token refreshed successfully');
+        } else {
+          console.warn('⚠️ [OrdersPage] Token refresh failed, user may need to login again');
+          // Don't show error to user, let normal flow handle it
+          // If token is invalid, subsequent API calls will handle 401 errors
+        }
+      } catch (error) {
+        console.warn('⚠️ [OrdersPage] Auto refresh token failed:', error);
+        // Don't show error to user, let normal flow handle it
+        // If token is invalid, subsequent API calls will handle 401 errors via apiClient
+      }
+    };
+    
+    autoRefreshToken();
+  }, [app.isLoggedIn]);
+
+  // --- 3. EFFECT (Load All Orders for Counting) ---
   useEffect(() => {
     if (!app.isLoggedIn) {
       navigate("/login");
       return;
     }
-    app.orders.loadOrders();
-  }, [app.isLoggedIn, navigate]); // Remove app.orders from dependencies
+    
+    // Load all orders (without status filter) to count for all tabs
+    const loadAllOrdersForCounting = async () => {
+      try {
+        // Refresh token trước khi load orders để tránh 401 errors
+        try {
+          await refreshAccessToken();
+        } catch (error) {
+          console.warn('⚠️ [OrdersPage] Token refresh failed before loading all orders:', error);
+          // Continue anyway, apiClient will handle 401 errors
+        }
+        
+        // Import orderService to load directly without affecting context
+        const { orderService } = await import('../../apis/order');
+        const { mapOrderResponse } = await import('../../apis/order/order.mapper');
+        
+        // Load all orders without status filter
+        const response = await orderService.getAllForUser();
+        
+        // Handle different response formats
+        let allOrdersData: any[] = [];
+        if (Array.isArray(response)) {
+          allOrdersData = response;
+        } else if (response && typeof response === 'object') {
+          // Check if it's an error object (has status, message, name)
+          if (response.status && response.message && response.name) {
+            // This is an error object, not a success response
+            throw new Error(response.message || 'Failed to load orders');
+          }
+          
+          // Try common response formats
+          if (Array.isArray(response.data)) {
+            allOrdersData = response.data;
+          } else if (Array.isArray(response.orders)) {
+            allOrdersData = response.orders;
+          } else if (Array.isArray(response.result)) {
+            allOrdersData = response.result;
+          } else {
+            // If no array found, it might be empty or unexpected format
+            console.warn('Unexpected response format, treating as empty:', response);
+            allOrdersData = [];
+          }
+        }
+        
+        const mappedOrders = allOrdersData.map(mapOrderResponse);
+        setAllOrders(mappedOrders);
+      } catch (error: any) {
+        // Don't log error for authentication issues (user might not be logged in)
+        if (error?.status === 401 || error?.status === 403) {
+          console.warn('Authentication error when loading orders for counting:', error?.message);
+        } else {
+          console.error('Failed to load orders for counting:', error);
+        }
+        setAllOrders([]); // Set empty array on error
+      }
+    };
 
-  // Lấy đơn hàng thật từ Context
+    loadAllOrdersForCounting();
+  }, [app.isLoggedIn, navigate]); // Only run once on mount
+
+  // --- 4. EFFECT (Load Orders for Selected Tab) ---
+  useEffect(() => {
+    if (!app.isLoggedIn) {
+      return;
+    }
+    
+    // Refresh token trước khi load orders để tránh 401 errors
+    const loadOrdersWithRefresh = async () => {
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        console.warn('⚠️ [OrdersPage] Token refresh failed before loading orders:', error);
+        // Continue anyway, apiClient will handle 401 errors
+      }
+      
+      // Load orders for user with current tab status
+      const backendStatus = mapStatusToBackend(selectedTab);
+      app.orders.loadOrdersForUser(backendStatus);
+    };
+    
+    loadOrdersWithRefresh();
+  }, [selectedTab, app.isLoggedIn]); // Load when tab changes
+
+  // Lấy đơn hàng thật từ Context (filtered by selected tab)
   const orders: Order[] = app.orders.orders || [];
 
   // --- 3. FILTERING (Fix lỗi 'order' implicitly any) ---
@@ -115,9 +241,9 @@ export function OrdersPage() {
     return matchesTab && matchesSearch;
   });
 
-  // Count orders by status (Fix lỗi 'order' implicitly any)
+  // Count orders by status from allOrders (to show count for all tabs)
   const getStatusCount = (status: TabValue) => {
-    return orders.filter((order: Order) => order.status === status).length;
+    return allOrders.filter((order: Order) => order.status === status).length;
   };
 
   // --- 4. HANDLERS ---
@@ -126,19 +252,90 @@ export function OrdersPage() {
   };
 
   const handleReview = (orderId: string) => {
-    // Fix lỗi 'order' implicitly any trong find
-    setSelectedOrder(
-      orders.find((order: Order) => order.id === orderId) || null
-    );
-    setIsReviewModalOpen(true);
+    // Navigate to review page instead of opening modal
+    navigate(`/review/${orderId}`);
   };
 
-  const handleReviewSubmit = (reviewData: ReviewData) => {
-    if (selectedOrder) {
-      app.handleReview(selectedOrder.id, reviewData);
-      setIsReviewModalOpen(false);
+  const handleCancelOrder = async (orderId: string, orderStatus?: string) => {
+    try {
+      // Refresh token trước khi thao tác để tránh 401 errors
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        console.warn('⚠️ [OrdersPage] Token refresh failed before cancel order:', error);
+        // Continue anyway, apiClient will handle 401 errors
+      }
+      
+      const { orderService } = await import('../../apis/order');
+      const { mapOrderResponse } = await import('../../apis/order/order.mapper');
+      
+      // Nếu order status là "pending" (Đang chờ thanh toán), dùng cancel_order
+      // Nếu order status là "confirmed" (Chờ xác nhận), dùng cancel_request
+      if (orderStatus === 'pending') {
+        await orderService.cancelOrder(orderId);
+        toast.success('Đã hủy đơn hàng thành công');
+      } else {
+        await orderService.cancelRequest(orderId);
+        toast.success('Đã gửi yêu cầu hủy đơn hàng thành công');
+      }
+      
+      // Cập nhật UI: xóa order khỏi danh sách hoặc cập nhật status
+      app.orders.setOrders((prev: Order[]) => 
+        prev.filter((order: Order) => order.id !== orderId)
+      );
+      
+      // Cập nhật allOrders để cập nhật số lượng badge
+      setAllOrders((prev: Order[]) => 
+        prev.filter((order: Order) => order.id !== orderId)
+      );
+      
+      // Reload orders để cập nhật danh sách
+      const backendStatus = mapStatusToBackend(selectedTab);
+      await app.orders.loadOrdersForUser(backendStatus);
+      
+      // Reload all orders để cập nhật badge
+      const allOrdersData = await orderService.getAllForUser();
+      const mappedOrders = allOrdersData.map(mapOrderResponse);
+      setAllOrders(mappedOrders);
+    } catch (error: any) {
+      console.error('Failed to cancel order:', error);
+      toast.error(error.message || 'Không thể hủy đơn hàng. Vui lòng thử lại.');
     }
   };
+
+  const handleMarkAsReceived = async (orderId: string) => {
+    try {
+      // Refresh token trước khi thao tác để tránh 401 errors
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        console.warn('⚠️ [OrdersPage] Token refresh failed before mark as received:', error);
+        // Continue anyway, apiClient will handle 401 errors
+      }
+      
+      const { orderService } = await import('../../apis/order');
+      const { mapOrderResponse } = await import('../../apis/order/order.mapper');
+      
+      // Gọi API để xác nhận đã nhận hàng
+      await orderService.markAsReceived(orderId);
+      
+      toast.success('Đã xác nhận nhận hàng thành công');
+      
+      // Reload orders để cập nhật danh sách
+      const backendStatus = mapStatusToBackend(selectedTab);
+      await app.orders.loadOrdersForUser(backendStatus);
+      
+      // Reload all orders để cập nhật badge
+      const allOrdersData = await orderService.getAllForUser();
+      const mappedOrders = allOrdersData.map(mapOrderResponse);
+      setAllOrders(mappedOrders);
+    } catch (error: any) {
+      console.error('Failed to mark order as received:', error);
+      toast.error(error.message || 'Không thể xác nhận nhận hàng. Vui lòng thử lại.');
+    }
+  };
+
+  // handleReviewSubmit removed - now using ReviewPage
 
   const onBack = () => {
     navigate("/feed");
@@ -200,8 +397,7 @@ export function OrdersPage() {
                   <Icon className="w-4 h-4" /> {tab.label}
                   {count > 0 && (
                     <Badge
-                      variant="secondary"
-                      className="ml-1 h-5 px-1.5 text-xs"
+                      className="ml-1 h-5 px-1.5 text-xs bg-red-500 text-white border-0"
                     >
                       {count}
                     </Badge>
@@ -387,33 +583,56 @@ export function OrdersPage() {
 
                         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                           {order.status === "pending" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              // Fix lỗi 'e' implicitly any
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                if (
-                                  confirm("Bạn có chắc muốn hủy đơn hàng này?")
-                                )
-                                  app.handleCancelOrder(order.id);
-                              }}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              Hủy đơn
-                            </Button>
+                            <>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  // Navigate to payment process page
+                                  navigate(`/payment/process/${order.orderNumber}`, {
+                                    state: {
+                                      orderCode: order.orderNumber,
+                                      totalAmount: order.finalPrice,
+                                    }
+                                  });
+                                }}
+                              >
+                                Tiếp tục thanh toán
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                // Fix lỗi 'e' implicitly any
+                                onClick={async (e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  if (
+                                    confirm("Bạn có chắc muốn hủy đơn hàng này?")
+                                  ) {
+                                    await handleCancelOrder(order.id, order.status);
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                Hủy đơn
+                              </Button>
+                            </>
                           )}
 
                           {order.status === "shipping" && (
                             <Button
-                              variant="outline"
+                              variant="default"
                               size="sm"
-                              onClick={(e: React.MouseEvent) => {
+                              onClick={async (e: React.MouseEvent) => {
                                 e.stopPropagation();
-                                handleViewDetail(order);
+                                if (
+                                  confirm("Bạn đã nhận được hàng?")
+                                ) {
+                                  await handleMarkAsReceived(order.id);
+                                }
                               }}
                             >
-                              Theo dõi
+                              Đã nhận
                             </Button>
                           )}
 
@@ -457,6 +676,23 @@ export function OrdersPage() {
                             </Button>
                           )}
 
+                          {order.status === "confirmed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                if (
+                                  confirm("Bạn có chắc muốn hủy đơn hàng này?")
+                                ) {
+                                  await handleCancelOrder(order.id, order.status);
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              Hủy đơn hàng
+                            </Button>
+                          )}
                           <Button
                             variant="default"
                             size="sm"
@@ -467,18 +703,22 @@ export function OrdersPage() {
                           >
                             Xem chi tiết
                           </Button>
+                          {order.ownerId && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={(e: React.MouseEvent) => {
                               e.stopPropagation();
-                              app.handleContactShop(order.id);
+                                e.preventDefault();
+                                // Navigate directly to chat page with shop ownerId
+                                navigate(`/chat?userId=${order.ownerId}`);
                             }}
                             className="gap-2 px-2"
                             title="Liên hệ Shop"
                           >
                             <MessageSquare className="w-4 h-4" />
                           </Button>
+                          )}
                         </div>
                       </div>
                     </Card>
@@ -490,15 +730,7 @@ export function OrdersPage() {
         </Tabs>
       </div>
 
-      {/* Review Modal */}
-      {isReviewModalOpen && (
-        <ReviewModal
-          isOpen={isReviewModalOpen}
-          onClose={() => setIsReviewModalOpen(false)}
-          order={selectedOrder}
-          onSubmitReview={handleReviewSubmit}
-        />
-      )}
+      {/* ReviewModal removed - now using ReviewPage */}
     </div>
   );
 }

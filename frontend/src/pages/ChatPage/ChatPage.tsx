@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MessageCircle, Send, Search, MoreVertical, Info, Loader2, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { useAppContext } from '../../providers/AppProvider';
@@ -9,53 +9,58 @@ import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
 import { mediaApi } from '../../apis/media/mediaApi';
 
-// Component to handle Google Drive images with multiple fallback URLs
+// Component to handle Google Drive images - similar to how product images are displayed
+// Specifically handles: https://drive.google.com/thumbnail?id=FILE_ID
+// Uses ImageWithFallback for consistent behavior with product images
+// If direct image URL fails, will show clickable placeholder to open in new tab
 const GoogleDriveImage: React.FC<{ url: string; originalUrl: string; className?: string }> = ({ url, originalUrl, className }) => {
-  const [currentUrl, setCurrentUrl] = useState<string>(url);
-  const [errorCount, setErrorCount] = useState(0);
+  const [hasError, setHasError] = useState(false);
   
-  // Extract file ID from Google Drive URL
-  const getFileId = (driveUrl: string): string | null => {
-    const match = driveUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) || driveUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    return match && match[1] ? match[1] : null;
+  // Handle image load error
+  const handleImageError = () => {
+    setHasError(true);
   };
   
-  const isGoogleDrive = originalUrl.includes('drive.google.com');
-  const fileId = isGoogleDrive ? getFileId(originalUrl) : null;
+  // If image fails to load, show clickable placeholder
+  if (hasError) {
+    return (
+      <div 
+        className={`${className} bg-muted/50 flex flex-col items-center justify-center cursor-pointer hover:bg-muted transition-colors rounded-2xl`}
+        onClick={() => window.open(originalUrl, '_blank')}
+        title="Nhấn để mở hình ảnh trong tab mới"
+      >
+        <ImageIcon className="w-12 h-12 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground text-center px-4">
+          Không thể tải hình ảnh
+        </p>
+        <p className="text-xs text-muted-foreground/70 mt-1 px-4">
+          Nhấn để mở trong tab mới
+        </p>
+      </div>
+    );
+  }
   
-  const handleError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    
-    if (isGoogleDrive && fileId && errorCount < 4) {
-      // Try different Google Drive URL formats
-      const formats = [
-        `https://lh3.googleusercontent.com/d/${fileId}`, // Format 1
-        `https://drive.google.com/uc?export=view&id=${fileId}`, // Format 2
-        `https://drive.google.com/uc?export=download&id=${fileId}`, // Format 3
-        `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000-h1000`, // Format 4
-        `https://drive.google.com/file/d/${fileId}/preview`, // Format 5
-      ];
-      
-      const nextFormat = formats[errorCount];
-      if (nextFormat && img.src !== nextFormat) {
-        console.log(`Trying Google Drive format ${errorCount + 1}:`, nextFormat);
-        setCurrentUrl(nextFormat);
-        setErrorCount(errorCount + 1);
-        img.src = nextFormat;
-      }
-    }
-  };
-  
+  // Render image with ImageWithFallback (same as product images)
   return (
-    <img
-      src={currentUrl}
-      alt="Shared image"
-      className={className}
+    <div 
+      className="relative group cursor-pointer"
       onClick={() => window.open(originalUrl, '_blank')}
-      loading="lazy"
-      onError={handleError}
-      crossOrigin="anonymous"
-    />
+      title="Nhấn để mở hình ảnh trong tab mới"
+    >
+      <ImageWithFallback
+        src={url}
+        alt="Shared image"
+        className={className}
+        loading="lazy"
+        onError={handleImageError}
+      />
+      {/* Overlay hint on hover */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+        <div className="bg-black/70 text-white text-xs px-3 py-1.5 rounded-full">
+          Nhấn để mở
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -98,6 +103,7 @@ export function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevConversationIdRef = useRef<string | null>(null);
 
   // Use chat hook
   const {
@@ -117,29 +123,43 @@ export function ChatPage() {
     sendTyping,
   } = useChat({ userId, autoConnect: true });
 
+  // Function to open chat with a specific user - opens immediately
+  const openChatWithUser = useCallback((targetUserId: string) => {
+    if (!targetUserId || !userId) return;
+
+    // Set receiverId immediately so user can see the chat interface
+    setCurrentReceiverId(targetUserId);
+
+    // Check if conversation already exists
+    const existingConv = conversations.find(conv => 
+      conv.participants.includes(targetUserId) && conv.participants.includes(userId)
+    );
+    
+    if (existingConv) {
+      // Normalize conversation ID
+      const convId = existingConv.id || existingConv._id;
+      if (convId) {
+        setCurrentConversationId(convId);
+        loadMessages(convId);
+        // Mark as read
+        markAsRead(convId);
+      } else {
+        console.error('Existing conversation has no ID:', existingConv);
+        // Start new conversation
+        startConversation(targetUserId);
+      }
+    } else {
+      // Start new conversation immediately - receiverId already set above
+      startConversation(targetUserId);
+    }
+  }, [startConversation, userId, conversations, loadMessages, setCurrentConversationId, markAsRead]);
+
   // Handle openChat event from other pages
   useEffect(() => {
     const handleOpenChat = (event: CustomEvent<{ targetUserId: string }>) => {
       const { targetUserId } = event.detail;
-      if (!targetUserId) return;
-
-      // Check if conversation already exists
-      const existingConv = conversations.find(conv => 
-        conv.participants.includes(targetUserId) && conv.participants.includes(userId || '')
-      );
-      
-      if (existingConv) {
-        // Normalize conversation ID
-        const convId = existingConv.id || existingConv._id;
-        if (convId) {
-          setCurrentConversationId(convId);
-          loadMessages(convId);
-        } else {
-          console.error('Existing conversation has no ID:', existingConv);
-          startConversation(targetUserId);
-        }
-      } else {
-        startConversation(targetUserId);
+      if (targetUserId) {
+        openChatWithUser(targetUserId);
       }
     };
 
@@ -147,7 +167,115 @@ export function ChatPage() {
     return () => {
       window.removeEventListener('openChat', handleOpenChat as EventListener);
     };
-  }, [startConversation, userId, conversations, loadMessages, setCurrentConversationId]);
+  }, [openChatWithUser]);
+
+  // Track pending userId from URL to open when ready
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+
+  // Handle userId from URL query params (when navigating from other pages)
+  // Open immediately without waiting for conversations to load
+  useEffect(() => {
+    const userIdFromUrl = searchParams.get('userId');
+    if (userIdFromUrl && userId) {
+      // Set receiverId immediately for instant UI feedback
+      setCurrentReceiverId(userIdFromUrl);
+      setPendingUserId(userIdFromUrl);
+      
+      // Clean up URL param immediately
+      navigate('/chat', { replace: true });
+    }
+  }, [searchParams, userId, navigate]);
+
+  // Process pending userId when connected - open conversation immediately
+  useEffect(() => {
+    if (!pendingUserId || !userId || !isConnected) return;
+
+    // Wait a bit for conversations to load if they haven't loaded yet
+    // But don't wait too long - if conversations are empty after a short delay, start new conversation
+    const checkAndOpen = () => {
+      // Check if conversation already exists
+      const existingConv = conversations.find(conv => 
+        conv.participants.includes(pendingUserId) && conv.participants.includes(userId)
+      );
+      
+      if (existingConv) {
+        const convId = existingConv.id || existingConv._id;
+        if (convId && convId !== currentConversationId) {
+          setCurrentConversationId(convId);
+          setCurrentReceiverId(pendingUserId);
+          loadMessages(convId);
+          markAsRead(convId);
+        }
+        setPendingUserId(null); // Clear pending
+      } else {
+        // If conversations list has been loaded (even if empty), start new conversation
+        // We check if we've had time to load conversations (500ms delay)
+        // If still no conversation found, start a new one
+        startConversation(pendingUserId);
+        // pendingUserId will be cleared when conversation is created and selected
+      }
+    };
+
+    // Small delay to allow conversations to load, but not too long
+    const timeoutId = setTimeout(checkAndOpen, 300);
+    return () => clearTimeout(timeoutId);
+  }, [pendingUserId, userId, isConnected, conversations, currentConversationId, startConversation, loadMessages, markAsRead, setCurrentConversationId]);
+
+  // Set receiverId when conversation is created/selected
+  useEffect(() => {
+    if (currentConversationId && userId) {
+      const conv = conversations.find(c => {
+        const cId = c.id || c._id;
+        return cId === currentConversationId;
+      });
+      
+      if (conv) {
+        // Find the other participant (not current user)
+        const otherParticipant = conv.participants.find(p => p !== userId);
+        if (otherParticipant && otherParticipant !== currentReceiverId) {
+          setCurrentReceiverId(otherParticipant);
+        }
+        
+        // Clear pending if this is the conversation we were waiting for
+        if (pendingUserId && conv.participants.includes(pendingUserId)) {
+          setPendingUserId(null);
+        }
+      }
+    } else if (pendingUserId && !currentConversationId) {
+      // If we have pendingUserId but no conversation yet, ensure receiverId is set
+      if (currentReceiverId !== pendingUserId) {
+        setCurrentReceiverId(pendingUserId);
+      }
+    }
+  }, [currentConversationId, conversations, userId, currentReceiverId, pendingUserId]);
+
+  // Ensure receiverId is set when pendingUserId changes
+  useEffect(() => {
+    if (pendingUserId && currentReceiverId !== pendingUserId) {
+      setCurrentReceiverId(pendingUserId);
+    }
+  }, [pendingUserId, currentReceiverId]);
+
+  // Load user info for currentReceiverId when it changes
+  useEffect(() => {
+    if (currentReceiverId && !userInfoCache[currentReceiverId]) {
+      const loadUserInfo = async () => {
+        try {
+          const userInfo = await userApi.findOne(currentReceiverId);
+          setUserInfoCache(prev => ({
+            ...prev,
+            [currentReceiverId]: {
+              name: userInfo.shopName || userInfo.name || 'Người dùng',
+              avatar: userInfo.avatar,
+            },
+          }));
+        } catch (error) {
+          console.error('Failed to load user info:', error);
+        }
+      };
+      loadUserInfo();
+    }
+  }, [currentReceiverId, userInfoCache]);
 
   // Load user info for conversations
   useEffect(() => {
@@ -180,7 +308,10 @@ export function ChatPage() {
 
   // Update messages by conversation when messages change
   useEffect(() => {
-    console.log('📦 Updating messagesByConversation, total messages:', messages.length);
+    // Only log in development mode and when messages actually change
+    if (process.env.NODE_ENV === 'development' && messages.length > 0) {
+      console.log('📦 Updating messagesByConversation, total messages:', messages.length);
+    }
     const grouped: Record<string, ChatMessage[]> = {};
     messages.forEach(msg => {
       if (msg.conversationId) {
@@ -189,10 +320,16 @@ export function ChatPage() {
         }
         grouped[msg.conversationId].push(msg);
       } else {
-        console.warn('Message without conversationId:', msg);
+        // Only warn in development
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Message without conversationId:', msg);
+        }
       }
     });
-    console.log('📦 Grouped messages by conversation:', grouped);
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📦 Grouped messages by conversation:', grouped);
+    }
     setMessagesByConversation(grouped);
   }, [messages]);
 
@@ -233,13 +370,14 @@ export function ChatPage() {
             const convMessages = messagesByConversation[conversationId] || 
                                 messagesByConversation[conv._id || ''] || 
                                 [];
-            console.log(`📦 Messages for conversation ${conversationId}:`, {
-              conversationId,
-              _id: conv._id,
-              messagesByConvId: messagesByConversation[conversationId]?.length || 0,
-              messagesBy_id: messagesByConversation[conv._id || '']?.length || 0,
-              finalMessages: convMessages.length,
-            });
+            // Removed console.log to prevent spam - only log in development if needed
+            // console.log(`📦 Messages for conversation ${conversationId}:`, {
+            //   conversationId,
+            //   _id: conv._id,
+            //   messagesByConvId: messagesByConversation[conversationId]?.length || 0,
+            //   messagesBy_id: messagesByConversation[conv._id || '']?.length || 0,
+            //   finalMessages: convMessages.length,
+            // });
             return convMessages;
           })(),
         };
@@ -252,27 +390,55 @@ export function ChatPage() {
     return cId === currentConversationId;
   });
 
-  // Debug: Log selected conversation messages
+  // Create virtual conversation when we have receiverId but no conversation yet
+  const virtualConversation = useMemo(() => {
+    if (!currentReceiverId || selectedConversation) return null;
+    
+    const receiverInfo = userInfoCache[currentReceiverId];
+    
+    // Create virtual conversation even if we don't have user info yet
+    // It will be updated when user info loads
+    return {
+      id: null,
+      sellerId: currentReceiverId,
+      sellerName: receiverInfo?.name || 'Người dùng',
+      sellerAvatar: receiverInfo?.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=User',
+      sellerStatus: 'online' as const,
+      lastMessage: '',
+      lastMessageTime: '',
+      unreadCount: 0,
+      messages: [],
+    };
+  }, [currentReceiverId, selectedConversation, userInfoCache]);
+
+  // Use virtual conversation if no selected conversation but we have receiverId
+  const activeConversation = selectedConversation || virtualConversation;
+
+  // Debug: Log active conversation messages (only in development, and only when conversation actually changes)
   useEffect(() => {
-    if (selectedConversation) {
-      console.log('📋 Selected conversation messages:', {
-        conversationId: selectedConversation.id,
-        messageCount: selectedConversation.messages.length,
-        messages: selectedConversation.messages,
-        messagesByConversation: messagesByConversation[selectedConversation.id || ''],
-      });
+    if (process.env.NODE_ENV === 'development' && activeConversation) {
+      const conversationId = activeConversation.id;
+      // Only log when conversation ID changes, not on every render
+      if (prevConversationIdRef.current !== conversationId) {
+        console.log('📋 Active conversation changed:', {
+          conversationId: activeConversation.id,
+          messageCount: activeConversation.messages.length,
+        });
+        prevConversationIdRef.current = conversationId || null;
+      }
     }
-  }, [selectedConversation, messagesByConversation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation?.id]);
 
   // Auto-scroll to bottom when messages change or conversation changes
   useEffect(() => {
-    if (messagesEndRef.current && selectedConversation) {
+    if (messagesEndRef.current && activeConversation) {
       // Small delay to ensure DOM is updated
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     }
-  }, [selectedConversation?.messages.length, currentConversationId]);
+  }, [activeConversation?.messages.length, currentConversationId]);
   
   const totalUnreadCount = unreadCount || enhancedConversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
 
@@ -352,10 +518,10 @@ export function ChatPage() {
       return; // Will auto-send after conversation is created
     }
 
-    // If we have selected conversation, use its data
-    if (selectedConversation) {
-      receiverId = selectedConversation.sellerId;
-      conversationId = selectedConversation.id;
+    // If we have active conversation, use its data
+    if (activeConversation) {
+      receiverId = activeConversation.sellerId;
+      conversationId = activeConversation.id || null;
     }
 
     if (!receiverId) {
@@ -363,14 +529,25 @@ export function ChatPage() {
       return;
     }
 
+    // If no conversationId but we have receiverId, start conversation first
+    if (!conversationId && receiverId) {
+      console.log('No conversation ID, starting new conversation with:', receiverId);
+      // Save message to send after conversation is created
+      setPendingMessage({ content, receiverId });
+      startConversation(receiverId);
+      setMessage(''); // Clear input
+      toast.info('Đang tạo cuộc trò chuyện...');
+      return; // Will auto-send after conversation is created
+    }
+
     // conversationId is REQUIRED by backend
     if (!conversationId) {
       console.error('❌ Cannot send message: conversationId is missing', {
         currentConversationId,
-        selectedConversation,
+        activeConversation,
         receiverId,
       });
-      toast.error('Vui lòng chọn cuộc trò chuyện hoặc đợi cuộc trò chuyện được tạo');
+      toast.error('Vui lòng đợi cuộc trò chuyện được tạo');
       return;
     }
 
@@ -613,7 +790,9 @@ export function ChatPage() {
     let fileId: string | null = null;
     
     // Handle Google Drive thumbnail URL: https://drive.google.com/thumbnail?id=FILE_ID&sz=w1000
+    // This is the most common format from backend
     if (trimmedUrl.includes('drive.google.com/thumbnail')) {
+      // Match: ?id=FILE_ID or &id=FILE_ID
       const match = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
         fileId = match[1];
@@ -635,11 +814,10 @@ export function ChatPage() {
     }
     
     // If we found a file ID, convert to direct image URL
-    // Try multiple formats for better compatibility
     if (fileId) {
-      // Method 1: Use Google's direct image serving (lh3.googleusercontent.com)
-      // This is the most reliable method for displaying images from Google Drive
+      // Use Google's direct image serving (lh3.googleusercontent.com)
       // Format: https://lh3.googleusercontent.com/d/FILE_ID
+      // This format works best for embedding in img tags
       return `https://lh3.googleusercontent.com/d/${fileId}`;
     }
     
@@ -648,6 +826,7 @@ export function ChatPage() {
   };
 
   // Check if content is an image URL
+  // Specifically handles Google Drive thumbnail URLs: https://drive.google.com/thumbnail?id=
   const isImageUrl = (content: string): boolean => {
     if (!content || typeof content !== 'string') {
       return false;
@@ -662,12 +841,14 @@ export function ChatPage() {
     
     const lowerContent = trimmedContent.toLowerCase();
     
-    // Check for Google Drive URLs (thumbnail, file, uc)
-    const isGoogleDrive = lowerContent.includes('drive.google.com/thumbnail') ||
-                         lowerContent.includes('drive.google.com/file/d/') ||
-                         (lowerContent.includes('drive.google.com/uc') && lowerContent.includes('id='));
+    // Priority 1: Check for Google Drive URLs (most common in this app)
+    // Specifically check for thumbnail format: drive.google.com/thumbnail?id=
+    const isGoogleDriveThumbnail = lowerContent.includes('drive.google.com/thumbnail') && lowerContent.includes('id=');
+    const isGoogleDriveFile = lowerContent.includes('drive.google.com/file/d/');
+    const isGoogleDriveUc = lowerContent.includes('drive.google.com/uc') && lowerContent.includes('id=');
+    const isGoogleDrive = isGoogleDriveThumbnail || isGoogleDriveFile || isGoogleDriveUc;
     
-    // Check if it's an image file extension (even with query params)
+    // Priority 2: Check if it's an image file extension (even with query params)
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico'];
     const hasImageExtension = imageExtensions.some(ext => {
       // Check if extension exists in URL (before query params or at the end)
@@ -675,13 +856,14 @@ export function ChatPage() {
       return urlWithoutQuery.endsWith(ext);
     });
     
-    // Check for common image hosting patterns
+    // Priority 3: Check for common image hosting patterns
     const hasImagePattern = lowerContent.includes('/image/') ||
                             lowerContent.includes('cloudinary') ||
                             lowerContent.includes('imgur') ||
                             lowerContent.includes('i.imgur') ||
                             lowerContent.includes('res.cloudinary.com') ||
                             lowerContent.includes('images.unsplash.com') ||
+                            lowerContent.includes('lh3.googleusercontent.com') ||
                             lowerContent.includes('media/') ||
                             lowerContent.includes('/upload/');
     
@@ -806,26 +988,26 @@ export function ChatPage() {
       </div>
 
       {/* Chat Content - Right Side */}
-      {selectedConversation ? (
+      {activeConversation ? (
         <div className="flex-1 flex flex-col bg-background">
           {/* Chat Header */}
           <div className="flex items-center justify-between border-b border-border p-4 bg-white shadow-sm">
-            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
               <div className="relative">
                 <ImageWithFallback
-                  src={selectedConversation.sellerAvatar}
-                  alt={selectedConversation.sellerName}
+                  src={activeConversation.sellerAvatar}
+                  alt={activeConversation.sellerName}
                   className="h-12 w-12 rounded-full object-cover border-2 border-border"
                 />
                 <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                  selectedConversation.sellerStatus === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                  activeConversation.sellerStatus === 'online' ? 'bg-green-500' : 'bg-gray-400'
                 }`}></span>
               </div>
               
               <div>
-                <h4 className="font-semibold">{selectedConversation.sellerName}</h4>
+                <h4 className="font-semibold">{activeConversation.sellerName}</h4>
                 <p className="text-xs text-muted-foreground">
-                  {selectedConversation.sellerStatus === 'online' ? 'Đang hoạt động' : 'Không hoạt động'}
+                  {activeConversation.sellerStatus === 'online' ? 'Đang hoạt động' : 'Không hoạt động'}
                 </p>
               </div>
             </div>
@@ -842,20 +1024,20 @@ export function ChatPage() {
 
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-background to-muted/20">
-            {loading && selectedConversation.messages.length === 0 ? (
+            {loading && activeConversation.messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
-            ) : selectedConversation.messages.length === 0 ? (
+            ) : activeConversation.messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Chưa có tin nhắn nào</p>
+                  <p className="text-sm text-muted-foreground">Chưa có tin nhắn nào. Bắt đầu trò chuyện!</p>
                 </div>
               </div>
             ) : (
               <>
-                {selectedConversation.messages
+                {activeConversation.messages
                   .sort((a, b) => {
                     try {
                       const timeA = new Date(a.timestamp).getTime();
@@ -885,15 +1067,82 @@ export function ChatPage() {
                     
                     <div className={`flex flex-col gap-1.5 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
                       {(() => {
+                        // Check for images array first (multiple images in one message)
+                        const messageImages = (msg as any).images;
+                        const hasImagesArray = Array.isArray(messageImages) && messageImages.length > 0;
+                        
                         // Determine if this is an image message
-                        const rawImageUrl = msg.imageUrl || msg.content;
-                        const isImage = msg.type === 'image' || isImageUrl(msg.content);
+                        // Check multiple conditions:
+                        // 1. msg.type === 'image'
+                        // 2. msg.imageUrl exists
+                        // 3. msg.images array exists
+                        // 4. msg.content is an image URL
+                        const rawImageUrl = (msg as any).imageUrl || msg.content;
+                        const hasImageUrlField = !!(msg as any).imageUrl;
+                        const isTypeImage = msg.type === 'image';
+                        const contentIsImage = isImageUrl(msg.content || '');
+                        const isImage = isTypeImage || hasImageUrlField || contentIsImage || hasImagesArray;
                         
-                        // Convert Google Drive URLs to direct image URLs
-                        const imageUrl = isImage ? convertGoogleDriveUrl(rawImageUrl) : rawImageUrl;
+                        // Debug log in development
+                        if (process.env.NODE_ENV === 'development') {
+                          console.log('🖼️ Message check:', {
+                            id: msg.id,
+                            type: msg.type,
+                            hasImageUrlField,
+                            hasImagesArray,
+                            imagesCount: hasImagesArray ? messageImages.length : 0,
+                            contentIsImage,
+                            isImage,
+                            content: msg.content?.substring(0, 100),
+                            rawImageUrl: rawImageUrl?.substring(0, 100),
+                          });
+                        }
                         
-                        if (isImage) {
+                        // Render multiple images if images array exists
+                        if (hasImagesArray) {
+                          return (
+                            <div className="flex flex-col gap-2">
+                              {messageImages.map((img: string, idx: number) => {
+                                const imageUrl = convertGoogleDriveUrl(img);
+                                const isGoogleDrive = img.includes('drive.google.com');
+                                
+                                return (
+                                  <div key={idx} className="rounded-2xl overflow-hidden max-w-[400px] shadow-md hover:shadow-lg transition-shadow bg-muted/50">
+                                    {isGoogleDrive ? (
+                                      <GoogleDriveImage
+                                        url={imageUrl}
+                                        originalUrl={img}
+                                        className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
+                                      />
+                                    ) : (
+                                      <ImageWithFallback
+                                        src={imageUrl}
+                                        alt={`Shared image ${idx + 1}`}
+                                        className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
+                                        onClick={() => window.open(img, '_blank')}
+                                        loading="lazy"
+                                      />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+                        
+                        // Only render single image if we have a valid URL
+                        if (isImage && rawImageUrl && typeof rawImageUrl === 'string' && rawImageUrl.trim()) {
+                          // Convert Google Drive URLs to direct image URLs
+                          const imageUrl = convertGoogleDriveUrl(rawImageUrl);
                           const isGoogleDrive = rawImageUrl.includes('drive.google.com');
+                          
+                          if (process.env.NODE_ENV === 'development') {
+                            console.log('🖼️ Rendering image:', {
+                              rawImageUrl: rawImageUrl.substring(0, 100),
+                              imageUrl: imageUrl.substring(0, 100),
+                              isGoogleDrive,
+                            });
+                          }
                           
                           return (
                             <div className="rounded-2xl overflow-hidden max-w-[400px] shadow-md hover:shadow-lg transition-shadow bg-muted/50">
@@ -916,17 +1165,23 @@ export function ChatPage() {
                           );
                         }
                         
-                        return (
-                          <div
-                            className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                              isUser
-                                ? 'bg-primary text-primary-foreground rounded-br-sm'
-                                : 'bg-white text-foreground rounded-bl-sm border border-border'
-                            }`}
-                          >
-                            <p className="break-words text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p> 
-                          </div>
-                        );
+                        // Regular text message - only show if content exists and is not an image URL
+                        if (msg.content && !contentIsImage) {
+                          return (
+                            <div
+                              className={`rounded-2xl px-4 py-2.5 shadow-sm ${
+                                isUser
+                                  ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                  : 'bg-white text-foreground rounded-bl-sm border border-border'
+                              }`}
+                            >
+                              <p className="break-words text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p> 
+                            </div>
+                          );
+                        }
+                        
+                        // Fallback: if content is empty or only image URL, show nothing or placeholder
+                        return null;
                       })()}
                       {msg.timestamp && (
                         <span className="text-xs text-muted-foreground px-1.5">
@@ -970,7 +1225,7 @@ export function ChatPage() {
               {/* Image upload button */}
               <button
                 onClick={handleImageButtonClick}
-                disabled={uploadingImage || !isConnected || !currentConversationId || !currentReceiverId}
+                disabled={uploadingImage || !isConnected || !currentReceiverId}
                 className="p-2.5 hover:bg-accent rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 title="Gửi hình ảnh"
               >
@@ -1004,13 +1259,13 @@ export function ChatPage() {
                     maxHeight: '120px',
                     lineHeight: '1.5',
                   }}
-                  disabled={!isConnected || !currentConversationId || !currentReceiverId}
+                  disabled={!isConnected || !currentReceiverId}
                 />
               </div>
 
               <button
                 onClick={() => handleSendMessage()}
-                disabled={!message.trim() || !isConnected || uploadingImage || !currentConversationId || !currentReceiverId}
+                disabled={!message.trim() || !isConnected || uploadingImage || !currentReceiverId}
                 className="p-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-md hover:shadow-lg flex items-center justify-center h-[44px] w-[44px]"
               >
                 <Send className="h-5 w-5" />

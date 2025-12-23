@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Res,Post, Put, Query, Headers, HttpException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Res,Post, Put, Query, Headers, HttpException, Patch } from '@nestjs/common';
 import  {ClientKafka}from '@nestjs/microservices';
 import {Inject} from '@nestjs/common/decorators/core/inject.decorator';
 import type { Response, Request } from 'express';
@@ -38,7 +38,7 @@ export class UserGateway {
     return this.kafka.send('user.findOne', { id, auth });
   }
 
-  @Put(':id')
+  @Patch(':id')
   update(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
     return this.kafka.send('user.update', { id, dto, auth });
   }
