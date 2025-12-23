@@ -20,7 +20,7 @@ import { AiReviewGuard } from './guards/ai-review.guard';
 import { AiImageGuard } from './guards/ai-image.guard';
 import { ChatGateway } from './gateways/chat.gateway';
 import { PaymentWsGateway } from './gateways/payment-ws.gateway';
-
+import { NotificationGateway } from './gateways/notification.gateway';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -75,6 +75,7 @@ import { PaymentWsGateway } from './gateways/payment-ws.gateway';
     AiImageGuard,
     ChatGateway,
     PaymentWsGateway,
+    NotificationGateway,
   ],
 })
 export class AppModule implements NestModule {
