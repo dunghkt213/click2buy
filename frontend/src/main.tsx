@@ -5,6 +5,7 @@ import App from './App.tsx'
 import './styles/globals.css'
 import { Toaster } from 'sonner'
 import { AppProvider } from './providers/AppProvider'
+import { NotificationProvider } from './contexts/NotificationContext'
 import { cleanupExpiredCache } from './utils/cache'
 
 // Cleanup expired cache khi app start
@@ -14,8 +15,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AppProvider>
-        <App />
-        <Toaster position="top-right" richColors />
+        <NotificationProvider>
+          <App />
+          <Toaster position="top-right" richColors />
+        </NotificationProvider>
       </AppProvider>
     </BrowserRouter>
   </React.StrictMode>,

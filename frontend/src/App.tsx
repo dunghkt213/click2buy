@@ -11,6 +11,7 @@ import { MainLayout } from "./layouts/MainLayout";
 
 // Pages (Đảm bảo đường dẫn import đúng với cấu trúc dự án của bạn)
 import { ChatFloatingButton } from './components/chat/ChatFloatingButton';
+import { NotificationLog } from './components/notifications/NotificationLog';
 import { AddProductPage } from "./pages/AddProductPage/AddProductPage";
 import LoginPage from "./pages/AuthPage/LoginPage/LoginPage";
 import RegisterPage from "./pages/AuthPage/RegisterPage/RegisterPage";
@@ -89,6 +90,7 @@ export default function App() {
         <Route path="*" element={<MainLayout><FeedPage /></MainLayout>} />
       </Routes>
       <ChatFloatingButton/>
+      <NotificationLog />
     </AppProvider>
   );
 }

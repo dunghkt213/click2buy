@@ -121,8 +121,8 @@ export function OrderDetailPage() {
         }
 
         if (!foundOrder) {
-          toast.error('Không tìm thấy đơn hàng');
-          navigate('/orders');
+            toast.error('Không tìm thấy đơn hàng');
+            navigate('/orders');
           return;
         }
 
@@ -161,10 +161,10 @@ export function OrderDetailPage() {
       } catch (error: any) {
         console.error('Failed to load order:', error);
         toast.error('Không thể tải thông tin đơn hàng');
-        navigate('/orders');
+      navigate('/orders');
       } finally {
         setLoading(false);
-      }
+    }
     };
 
     loadOrderWithProducts();
@@ -473,9 +473,9 @@ export function OrderDetailPage() {
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">Số điện thoại:</p>
                           <p className="text-sm text-foreground flex items-center gap-2">
-                            <Phone className="w-3.5 h-3.5" />
+                    <Phone className="w-3.5 h-3.5" />
                             {recipientPhone}
-                          </p>
+                  </p>
                         </div>
                         
                         {/* Địa chỉ nhận hàng */}
