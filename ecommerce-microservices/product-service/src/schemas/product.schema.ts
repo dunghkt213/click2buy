@@ -107,6 +107,9 @@ export class Product {
     default: ProductStatus.ACTIVE
   })
   status: ProductStatus;
+
+  @Prop({ default: 0 })
+  reviewCount?: number;
 }
 
 /**
