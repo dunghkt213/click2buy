@@ -1,0 +1,49 @@
+/**
+ * Auth Storage - Local storage utilities for authentication
+ */
+const AUTH_USER_KEY = 'click2buy:authUser';
+const AUTH_TOKEN_KEY = 'click2buy:accessToken';
+export const authStorage = {
+    save(user, token) {
+        if (typeof window === 'undefined')
+            return;
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+        // Save token to localStorage
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+        // Save token to cookie for SSE access
+        document.cookie = `${AUTH_TOKEN_KEY}=${token}; path=/; max-age=86400; samesite=strict`;
+    },
+    clear() {
+        if (typeof window === 'undefined')
+            return;
+        // Clear user và token từ localStorage
+        localStorage.removeItem(AUTH_USER_KEY);
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        // Clear token cookie
+        document.cookie = `${AUTH_TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    },
+    getUser() {
+        if (typeof window === 'undefined')
+            return undefined;
+        const raw = localStorage.getItem(AUTH_USER_KEY);
+        if (!raw)
+            return undefined;
+        try {
+            return JSON.parse(raw);
+        }
+        catch {
+            return undefined;
+        }
+    },
+    getToken() {
+        if (typeof window === 'undefined')
+            return undefined;
+        // Try cookie first for SSE, fallback to localStorage
+        const cookies = document.cookie.split(';');
+        const tokenCookie = cookies.find(cookie => cookie.trim().startsWith(`${AUTH_TOKEN_KEY}=`));
+        if (tokenCookie) {
+            return tokenCookie.split('=')[1];
+        }
+        return localStorage.getItem(AUTH_TOKEN_KEY) || undefined;
+    },
+};
