@@ -361,7 +361,7 @@ export class AppService {
         })
         .sort({ createdAt: -1 })
         .limit(limit)
-        .select('_id name description brand tags specifications categoryIds')
+        .select('_id name description brand tags specifications categoryIds images') // Thêm images cho duplicate detection
         .lean();
 
       return { success: true, data: products };

@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Headers, UseGuards, BadRequestException, Logger } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common/decorators/core/inject.decorator';
+import { ConfigService } from '@nestjs/config';
 import { AiImageGuard } from '../guards/ai-image.guard';
 import { AiImageType } from '../decorators/ai-image-type.decorator';
 import { AiService } from '../modules/ai-guard/ai.service';
@@ -10,12 +11,12 @@ import * as jwt from 'jsonwebtoken';
 @Controller('products')
 export class ProductGateway {
   private readonly logger = new Logger(ProductGateway.name);
-  private readonly SIMILARITY_THRESHOLD = 80;
   private readonly MAX_PRODUCTS_TO_CHECK = 20;
 
   constructor(
     @Inject('KAFKA_SERVICE') private readonly kafka: ClientKafka,
     private readonly aiService: AiService,
+    private readonly configService: ConfigService,
   ) {}
 
   async onModuleInit() {
@@ -128,6 +129,11 @@ console.log("Product in gateway: ", product);
   @AiImageType('PRODUCT_IMAGE')
   async create(@Body() dto: any, @Headers('authorization') auth?: string) {
     // Kiểm tra trùng nội dung trước khi tạo sản phẩm
+    // Test: POST /products với body chứa:
+    // - name, description (để test text similarity)
+    // - images: ["url1", "url2"] (để test image similarity)
+    // - Cần JWT token của seller trong Authorization header
+    // Threshold: TEXT_DUPLICATE_THRESHOLD_PERCENT=50, IMAGE_DUPLICATE_THRESHOLD_PERCENT=70
     await this.checkDuplicateContent(dto, auth);
     
     return this.kafka.send('product.create', { dto, auth });
@@ -135,6 +141,7 @@ console.log("Product in gateway: ", product);
 
   /**
    * Kiểm tra trùng nội dung sản phẩm với các sản phẩm cũ của cùng seller
+   * Bao gồm: Text similarity + Image similarity
    * Fail-safe: Nếu lỗi, cho phép tạo sản phẩm
    */
   private async checkDuplicateContent(dto: any, auth?: string): Promise<void> {
@@ -146,16 +153,9 @@ console.log("Product in gateway: ", product);
         return;
       }
 
-      // 2. Chuẩn hóa text của sản phẩm mới
-      const newProductText = this.aiService.normalizeTextForComparison(dto);
-      if (newProductText.length < 30) {
-        this.logger.debug('[Duplicate Check] Mô tả sản phẩm mới quá ngắn, bỏ qua kiểm tra');
-        return;
-      }
-
       this.logger.log(`[Duplicate Check] Kiểm tra trùng nội dung cho seller: ${sellerId}`);
 
-      // 3. Lấy sản phẩm cũ của seller
+      // 2. Lấy sản phẩm cũ của seller
       const existingProductsResult = await firstValueFrom(
         this.kafka.send('product.findBySeller', { 
           sellerId, 
@@ -171,48 +171,95 @@ console.log("Product in gateway: ", product);
       const existingProducts = existingProductsResult.data;
       this.logger.debug(`[Duplicate Check] Tìm thấy ${existingProducts.length} sản phẩm cũ`);
 
-      // 4. Chuẩn bị danh sách sản phẩm cũ để so sánh batch
-      const oldProductsForComparison = existingProducts
-        .map(oldProduct => {
-          const text = this.aiService.normalizeTextForComparison(oldProduct);
-          return {
-            productId: oldProduct._id,
-            text,
-          };
-        })
-        .filter(p => p.text.length >= 30); // Chỉ lấy sản phẩm có mô tả đủ dài
+      // 3. Kiểm tra Text Similarity
+      let textSimilarity = 0;
+      let textProductId: string | undefined;
 
-      if (oldProductsForComparison.length === 0) {
-        this.logger.debug('[Duplicate Check] Không có sản phẩm cũ nào có mô tả đủ dài để so sánh');
-        return;
+      const newProductText = this.aiService.normalizeTextForComparison(dto);
+      if (newProductText.length >= 30) {
+        const oldProductsForComparison = existingProducts
+          .map(oldProduct => {
+            const text = this.aiService.normalizeTextForComparison(oldProduct);
+            return {
+              productId: oldProduct._id,
+              text,
+            };
+          })
+          .filter(p => p.text.length >= 30);
+
+        if (oldProductsForComparison.length > 0) {
+          this.logger.log(`[Duplicate Check] Text: So sánh với ${oldProductsForComparison.length} sản phẩm cũ`);
+          
+          const textBatchResult = await this.aiService.compareSimilarityBatch(newProductText, oldProductsForComparison);
+          if (textBatchResult) {
+            textSimilarity = textBatchResult.maxSimilarity;
+            textProductId = textBatchResult.productId;
+            this.logger.log(`[Duplicate Check] Text similarity: ${textSimilarity}%, productId: ${textProductId}`);
+          }
+        }
       }
 
-      this.logger.log(`[Duplicate Check] Sử dụng 1 AI request để so sánh với ${oldProductsForComparison.length} sản phẩm cũ`);
+      // 4. Kiểm tra Image Similarity
+      let imageSimilarity = 0;
+      let imageProductId: string | undefined;
 
-      // 5. Gọi AI batch comparison (CHỈ 1 REQUEST DUY NHẤT)
-      const batchResult = await this.aiService.compareSimilarityBatch(newProductText, oldProductsForComparison);
+      const newProductImages = dto.images;
+      if (Array.isArray(newProductImages) && newProductImages.length > 0) {
+        // Lấy ảnh đại diện từ sản phẩm cũ (ảnh đầu tiên nếu có)
+        const oldProductImages = existingProducts
+          .map(oldProduct => {
+            const hasValidImages = Array.isArray(oldProduct.images) && oldProduct.images.length > 0;
+            const firstImage = hasValidImages ? oldProduct.images[0] : null;
+            
+            return {
+              productId: oldProduct._id,
+              image: firstImage
+            };
+          })
+          .filter(p => p.image && typeof p.image === 'string' && p.image.trim().length > 0); // Chỉ lấy sản phẩm có ảnh hợp lệ
 
-      if (batchResult === null) {
-        // Fail-safe: AI lỗi, cho qua
-        this.logger.warn('[Duplicate Check] AI batch comparison không trả về kết quả, cho phép tạo sản phẩm');
-        return;
+        if (oldProductImages.length > 0) {
+          this.logger.log(`[Duplicate Check] Image: So sánh với ${oldProductImages.length} sản phẩm cũ có ảnh`);
+          
+          const imageBatchResult = await this.aiService.compareImageSimilarityBatch(
+            newProductImages, 
+            oldProductImages
+          );
+          
+          if (imageBatchResult) {
+            imageSimilarity = imageBatchResult.maxSimilarity;
+            imageProductId = imageBatchResult.productId;
+            this.logger.log(`[Duplicate Check] Image similarity: ${imageSimilarity}%, productId: ${imageProductId}, reason: ${imageBatchResult.reason}`);
+          } else {
+            this.logger.warn('[Duplicate Check] AI Image comparison trả về null');
+          }
+        } else {
+          this.logger.debug('[Duplicate Check] Không có sản phẩm cũ nào có ảnh hợp lệ để so sánh');
+        }
+      } else {
+        this.logger.debug('[Duplicate Check] Sản phẩm mới không có ảnh');
       }
 
-      const { maxSimilarity, productId } = batchResult;
+      // 5. Kiểm tra ngưỡng chặn
+      const textThreshold = this.configService.get<number>('TEXT_DUPLICATE_THRESHOLD_PERCENT', 50);
+      const imageThreshold = this.configService.get<number>('IMAGE_DUPLICATE_THRESHOLD_PERCENT', 70);
 
-      this.logger.log(`[Duplicate Check] Kết quả batch: maxSimilarity=${maxSimilarity}%, productId=${productId}`);
+      const isTextDuplicate = textSimilarity >= textThreshold;
+      const isImageDuplicate = imageSimilarity >= imageThreshold;
 
-      // 6. Kiểm tra ngưỡng chặn
-      if (maxSimilarity >= this.SIMILARITY_THRESHOLD) {
+      if (isTextDuplicate || isImageDuplicate) {
+        const duplicateProductId = isTextDuplicate ? textProductId : imageProductId;
+        
         this.logger.warn(
-          `[Duplicate Check] CHẶN! Seller: ${sellerId}, Product cũ: ${productId}, Similarity: ${maxSimilarity}%`
+          `[Duplicate Check] CHẶN! Seller: ${sellerId}, Text: ${textSimilarity}%/${textThreshold}%, Image: ${imageSimilarity}%/${imageThreshold}%, ProductId: ${duplicateProductId}`
         );
+        
         throw new BadRequestException(
-          `Sản phẩm có nội dung rất giống với sản phẩm đã tồn tại (độ tương đồng: ${maxSimilarity}%). Vui lòng tạo mô tả khác biệt hơn.`
+          `Sản phẩm bị trùng với sản phẩm đã tồn tại (text: ${textSimilarity}%, image: ${imageSimilarity}%). Vui lòng tạo sản phẩm khác biệt hơn.`
         );
       }
 
-      this.logger.log('[Duplicate Check] Sản phẩm hợp lệ, không trùng nội dung');
+      this.logger.log(`[Duplicate Check] Sản phẩm hợp lệ - Text: ${textSimilarity}%/${textThreshold}%, Image: ${imageSimilarity}%/${imageThreshold}%`);
     } catch (error) {
       // Nếu là BadRequestException từ duplicate check, ném lại
       if (error instanceof BadRequestException) {

@@ -370,6 +370,150 @@ hoặc
   }
 
   /**
+   * So sánh độ tương đồng ảnh giữa sản phẩm mới và NHIỀU sản phẩm cũ bằng 1 AI request multimodal
+   * @param newProductImages - Mảng ảnh sản phẩm mới (tối đa 2 ảnh đầu tiên)
+   * @param oldProductImages - Danh sách { productId, image } của sản phẩm cũ (1 ảnh đại diện mỗi sản phẩm)
+   * @returns { maxSimilarity: number, productId?: string, reason: string } hoặc null nếu lỗi
+   */
+  async compareImageSimilarityBatch(
+    newProductImages: string[],
+    oldProductImages: { productId: string; image: string }[]
+  ): Promise<{ maxSimilarity: number; productId?: string; reason: string } | null> {
+    // Fail-safe: Nếu không có API key, trả về null (cho phép)
+    if (!this.configService.get<string>('GEMINI_API_KEY')) {
+      this.logger.warn('[AI Image Batch Similarity] Bỏ qua do thiếu GEMINI_API_KEY');
+      return null;
+    }
+
+    // Nếu không có ảnh để so sánh
+    if (!newProductImages?.length || !oldProductImages?.length) {
+      this.logger.debug('[AI Image Batch Similarity] Không có ảnh để so sánh');
+      return null;
+    }
+
+    try {
+      // Chuẩn bị ảnh mới (tối đa 2 ảnh)
+      const newImages = newProductImages.slice(0, 2);
+      const newImageParts: any[] = [];
+      
+      for (let i = 0; i < newImages.length; i++) {
+        const imagePart = await this.prepareImagePart(newImages[i]);
+        if (imagePart) {
+          newImageParts.push(imagePart);
+        }
+      }
+
+      if (newImageParts.length === 0) {
+        this.logger.warn('[AI Image Batch Similarity] Không thể xử lý ảnh mới');
+        return null;
+      }
+
+      // Chuẩn bị ảnh cũ (1 ảnh đại diện mỗi sản phẩm)
+      const oldImageParts: any[] = [];
+      const validOldProducts: { productId: string; image: string }[] = [];
+
+      for (const oldProduct of oldProductImages) {
+        const imagePart = await this.prepareImagePart(oldProduct.image);
+        if (imagePart) {
+          oldImageParts.push(imagePart);
+          validOldProducts.push(oldProduct);
+        }
+      }
+
+      if (oldImageParts.length === 0) {
+        this.logger.debug('[AI Image Batch Similarity] Không có ảnh cũ hợp lệ để so sánh');
+        return null;
+      }
+
+      // Tạo prompt multimodal
+      const prompt = `Bạn là hệ thống phát hiện ảnh trùng lặp cho sàn thương mại điện tử.
+Nhiệm vụ: So sánh ảnh SẢN PHẨM MỚI với TẤT CẢ ảnh sản phẩm cũ và tìm độ tương đồng CAO NHẤT.
+
+CÁCH THỨC:
+- ${newImageParts.length} ảnh đầu tiên là ảnh SẢN PHẨM MỚI
+- ${oldImageParts.length} ảnh tiếp theo là ảnh các sản phẩm cũ (theo thứ tự): ${validOldProducts.map((p, i) => `${i + 1}. ${p.productId}`).join(', ')}
+
+Tiêu chí đánh giá độ tương đồng ảnh:
+- 0-30: Hoàn toàn khác nhau (sản phẩm khác loại, góc chụp khác, màu sắc khác)
+- 31-50: Có điểm tương đồng nhỏ (cùng danh mục nhưng khác sản phẩm)
+- 51-70: Tương đồng trung bình (cùng loại sản phẩm, có điểm giống nhau)
+- 71-85: Tương đồng cao (sản phẩm giống, góc chụp/ánh sáng khác)
+- 86-100: Gần như trùng lặp hoàn toàn (cùng sản phẩm, có thể chỉnh sửa nhẹ)
+
+CHỈ TRẢ VỀ JSON THEO FORMAT SAU (không giải thích, không text thừa):
+{
+  "maxSimilarity": <số nguyên 0-100>,
+  "productId": "<ID của sản phẩm cũ tương đồng nhất, hoặc null nếu maxSimilarity < 70>",
+  "reason": "IMAGE_DUPLICATE" hoặc "NOT_DUPLICATE"
+}
+
+Ví dụ:
+{"maxSimilarity": 85, "productId": "64fa123...", "reason": "IMAGE_DUPLICATE"}
+hoặc
+{"maxSimilarity": 45, "productId": null, "reason": "NOT_DUPLICATE"}`;
+
+      // Tạo content array với prompt + tất cả ảnh
+      const content = [prompt, ...newImageParts, ...oldImageParts];
+
+      this.logger.log(`[AI Image Batch Similarity] Gửi 1 multimodal request: ${newImageParts.length} ảnh mới + ${oldImageParts.length} ảnh cũ`);
+
+      const result = await this.model.generateContent(content);
+      const response = result.response.text().trim();
+
+      this.logger.debug(`[AI Image Batch Similarity] Raw response: ${response}`);
+
+      // Parse JSON response
+      const parsed = this.parseImageSimilarityResponse(response);
+      if (!parsed) {
+        this.logger.warn('[AI Image Batch Similarity] Không parse được JSON response');
+        return null;
+      }
+
+      const { maxSimilarity, productId, reason } = parsed;
+
+      // Validate maxSimilarity
+      if (typeof maxSimilarity !== 'number' || maxSimilarity < 0 || maxSimilarity > 100) {
+        this.logger.warn(`[AI Image Batch Similarity] maxSimilarity không hợp lệ: ${maxSimilarity}`);
+        return null;
+      }
+
+      this.logger.log(`[AI Image Batch Similarity] Kết quả: maxSimilarity=${maxSimilarity}%, productId=${productId}, reason=${reason}`);
+
+      return {
+        maxSimilarity,
+        productId: productId || undefined,
+        reason: reason || 'NOT_DUPLICATE',
+      };
+    } catch (error) {
+      // Fail-safe: Nếu AI lỗi/timeout, trả về null (cho phép)
+      this.logger.warn(`[AI Image Batch Similarity] Lỗi: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Parse JSON response từ AI image similarity một cách an toàn
+   */
+  private parseImageSimilarityResponse(response: string): { maxSimilarity: number; productId: string | null; reason: string } | null {
+    try {
+      // Tìm JSON object trong response
+      const jsonMatch = response.match(/\{[^}]*\}/);
+      if (!jsonMatch) {
+        return null;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        maxSimilarity: parsed.maxSimilarity,
+        productId: parsed.productId,
+        reason: parsed.reason || 'NOT_DUPLICATE',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Parse JSON response từ AI một cách an toàn
    */
   private parseJsonResponse(response: string): { maxSimilarity: number; productId: string | null } | null {
