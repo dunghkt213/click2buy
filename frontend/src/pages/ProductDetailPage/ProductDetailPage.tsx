@@ -1000,4 +1000,3 @@ export function ProductDetailPage() {
     </div>
   );
 }
-
