@@ -2,40 +2,40 @@
  * OrdersPage - Trang đơn hàng (Đã fix lỗi Implicit Any TypeScript)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../providers/AppProvider';
 
 // Import UI Components
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
 import { Input } from '../../components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 
 // Icons
 import {
   ArrowLeft,
-  Search,
-  Package,
-  Clock,
-  Truck,
   CheckCircle,
-  XCircle,
+  Clock,
+  MessageSquare,
+  Package,
   RotateCcw,
+  Search,
   ShoppingBag,
   Star,
-  MessageSquare
+  Truck,
+  XCircle
 } from 'lucide-react';
 
 // Types & Utils
+import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { Order, OrderStatus } from '../../types';
 import { formatPrice } from '../../utils/utils';
-import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
 // Import Modals
-import { OrderDetailModal } from '../../components/order/OrderDetailModal'; 
-import { ReviewModal, ReviewData } from '../../components/review/ReviewModal';
+import { OrderDetailModal } from '../../components/order/OrderDetailModal';
+import { ReviewData, ReviewModal } from '../../components/review/ReviewModal';
 
 // --- CONFIG ---
 type TabValue = 'all' | OrderStatus;
@@ -56,18 +56,19 @@ const statusConfig: Record<OrderStatus, { label: string; color: string }> = {
   shipping: { label: 'Đang giao hàng', color: 'bg-purple-500/10 text-purple-700 border-purple-200' },
   completed: { label: 'Hoàn thành', color: 'bg-green-500/10 text-green-700 border-green-200' },
   cancelled: { label: 'Đã hủy', color: 'bg-red-500/10 text-red-700 border-red-200' },
+  cancel_request: { label: 'Yêu cầu hủy', color: 'bg-amber-500/10 text-amber-700 border-amber-200' },
   refund: { label: 'Hoàn tiền', color: 'bg-orange-500/10 text-orange-700 border-orange-200' },
 };
 
 export function OrdersPage() {
   const navigate = useNavigate();
-  const app = useAppContext(); 
+  const app = useAppContext();
 
   // --- 1. STATE & LOGIC ---
   const [selectedTab, setSelectedTab] = useState<TabValue>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  
+
   // Modal State
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -87,10 +88,10 @@ export function OrdersPage() {
   const filteredOrders = orders.filter((order: Order) => {
     const matchesTab = selectedTab === 'all' || order.status === selectedTab;
     // Fix lỗi 'item' implicitly any bên trong some
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.items.some((item: any) => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+
     return matchesTab && matchesSearch;
   });
 
@@ -105,7 +106,7 @@ export function OrdersPage() {
     setSelectedOrder(order);
     setIsDetailModalOpen(true);
     if (app.handleViewOrderDetail) {
-        app.handleViewOrderDetail(order);
+      app.handleViewOrderDetail(order);
     }
   };
 
@@ -123,7 +124,7 @@ export function OrdersPage() {
   };
 
   const onBack = () => {
-      navigate('/feed');
+    navigate('/feed');
   };
 
   // --- 5. RENDER ---
@@ -177,9 +178,9 @@ export function OrdersPage() {
                     {searchQuery
                       ? 'Không tìm thấy đơn hàng phù hợp'
                       : selectedTab === 'all'
-                      ? 'Bạn chưa có đơn hàng nào'
-                      // Fix lỗi 't' implicitly any
-                      : `Bạn chưa có đơn hàng ${statusTabs.find((t: any) => t.value === selectedTab)?.label.toLowerCase()}`}
+                        ? 'Bạn chưa có đơn hàng nào'
+                        // Fix lỗi 't' implicitly any
+                        : `Bạn chưa có đơn hàng ${statusTabs.find((t: any) => t.value === selectedTab)?.label.toLowerCase()}`}
                   </p>
                   <Button onClick={() => navigate('/feed')} className="bg-primary hover:bg-primary/90">Tiếp tục mua sắm</Button>
                 </div>
@@ -189,7 +190,7 @@ export function OrdersPage() {
                 {/* Fix lỗi 'order' implicitly any trong map */}
                 {filteredOrders.map((order: Order) => {
                   const statusInfo = statusConfig[order.status] || { label: order.status, color: 'bg-gray-100' };
-                  
+
                   return (
                     <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
                       {/* Order Header */}
@@ -267,16 +268,16 @@ export function OrdersPage() {
 
                           <Button variant="default" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleViewDetail(order); }}>Xem chi tiết</Button>
                           {order.ownerId && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={(e: React.MouseEvent) => { 
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e: React.MouseEvent) => {
                                 e.stopPropagation();
                                 e.preventDefault();
                                 // Navigate directly to chat page with shop ownerId
                                 navigate(`/chat?userId=${order.ownerId}`);
-                              }} 
-                              className="gap-2 px-2" 
+                              }}
+                              className="gap-2 px-2"
                               title="Liên hệ Shop"
                             >
                               <MessageSquare className="w-4 h-4" />
@@ -296,23 +297,23 @@ export function OrdersPage() {
       {/* Order Detail Modal */}
       {isDetailModalOpen && (
         <OrderDetailModal
-            isOpen={isDetailModalOpen}
-            onClose={() => setIsDetailModalOpen(false)}
-            order={selectedOrder}
-            onCancelOrder={app.handleCancelOrder}
-            onReorder={app.handleReorder}
-            onReview={(id) => handleReview(id)}
-            onContactShop={app.handleContactShop}
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          order={selectedOrder}
+          onCancelOrder={app.handleCancelOrder}
+          onReorder={app.handleReorder}
+          onReview={(id) => handleReview(id)}
+          onContactShop={app.handleContactShop}
         />
       )}
 
       {/* Review Modal */}
       {isReviewModalOpen && (
         <ReviewModal
-            isOpen={isReviewModalOpen}
-            onClose={() => setIsReviewModalOpen(false)}
-            order={selectedOrder}
-            onSubmitReview={handleReviewSubmit}
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          order={selectedOrder}
+          onSubmitReview={handleReviewSubmit}
         />
       )}
     </div>

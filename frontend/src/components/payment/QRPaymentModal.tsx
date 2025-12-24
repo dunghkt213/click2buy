@@ -1,22 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
 import {
-  Clock,
-  CreditCard,
-  Smartphone,
   AlertCircle,
-  CheckCircle,
+  Clock,
   Copy,
+  CreditCard,
   ExternalLink,
+  Smartphone,
   X
 } from 'lucide-react';
-import { formatPrice } from '../../utils/utils';
-import { PaymentQR } from '../../hooks/useSSE';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { PaymentQR } from '../../hooks/useSSE';
+import { formatPrice } from '../../utils/utils';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { Button } from '../ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Separator } from '../ui/separator';
 
 interface QRPaymentModalProps {
   isOpen: boolean;
@@ -31,7 +29,6 @@ export function QRPaymentModal({
   onClose,
   payments,
   totalAmount,
-  onPaymentSuccess
 }: QRPaymentModalProps) {
   const [timeLeft, setTimeLeft] = useState(900); // 15 minutes in seconds
   const [isExpired, setIsExpired] = useState(false);
@@ -97,13 +94,12 @@ export function QRPaymentModal({
         <div className="space-y-6">
           {/* Timer */}
           <div className="text-center">
-            <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg ${
-              timeLeft < 60
-                ? 'bg-red-50 text-red-700 border border-red-200'
-                : timeLeft < 300
+            <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg ${timeLeft < 60
+              ? 'bg-red-50 text-red-700 border border-red-200'
+              : timeLeft < 300
                 ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
                 : 'bg-green-50 text-green-700 border border-green-200'
-            }`}>
+              }`}>
               <Clock className="w-4 h-4" />
               <span className="font-mono font-semibold">
                 {isExpired ? '00:00' : formatTime(timeLeft)}
@@ -124,9 +120,8 @@ export function QRPaymentModal({
           {/* QR Code */}
           <div className="text-center">
             <div className="relative inline-block">
-              <div className={`p-4 bg-white rounded-lg border-2 ${
-                isExpired ? 'border-red-200' : 'border-gray-200'
-              }`}>
+              <div className={`p-4 bg-white rounded-lg border-2 ${isExpired ? 'border-red-200' : 'border-gray-200'
+                }`}>
                 {isExpired ? (
                   <div className="w-48 h-48 flex items-center justify-center bg-gray-50 rounded">
                     <div className="text-center">
@@ -139,11 +134,6 @@ export function QRPaymentModal({
                     src={firstPayment.qrCode}
                     alt="QR Code"
                     className="w-48 h-48"
-                    fallback={
-                      <div className="w-48 h-48 flex items-center justify-center bg-gray-50 rounded">
-                        <p className="text-sm text-gray-600">Không thể tải QR</p>
-                      </div>
-                    }
                   />
                 )}
               </div>

@@ -33,11 +33,10 @@ import {
 
 // Types & Utils
 import { toast } from "sonner";
-import { orderService } from "../../apis/order";
+import { refreshAccessToken } from "../../apis/client/apiClient";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import { Order, OrderStatus } from "../../types";
 import { formatPrice } from "../../utils/utils";
-import { refreshAccessToken } from "../../apis/client/apiClient";
 
 // ReviewModal removed - now using ReviewPage
 
@@ -112,7 +111,7 @@ export function OrdersPage() {
   // --- 2. EFFECT (Auto Refresh Token) ---
   useEffect(() => {
     if (!app.isLoggedIn) return;
-    
+
     // Auto refresh token when entering OrdersPage (similar to login flow)
     const autoRefreshToken = async () => {
       try {
@@ -131,7 +130,7 @@ export function OrdersPage() {
         // If token is invalid, subsequent API calls will handle 401 errors via apiClient
       }
     };
-    
+
     autoRefreshToken();
   }, [app.isLoggedIn]);
 
@@ -141,7 +140,7 @@ export function OrdersPage() {
       navigate("/login");
       return;
     }
-    
+
     // Load all orders (without status filter) to count for all tabs
     const loadAllOrdersForCounting = async () => {
       try {
@@ -152,39 +151,40 @@ export function OrdersPage() {
           console.warn('⚠️ [OrdersPage] Token refresh failed before loading all orders:', error);
           // Continue anyway, apiClient will handle 401 errors
         }
-        
+
         // Import orderService to load directly without affecting context
         const { orderService } = await import('../../apis/order');
         const { mapOrderResponse } = await import('../../apis/order/order.mapper');
-        
+
         // Load all orders without status filter
-        const response = await orderService.getAllForUser();
-        
+        const response: unknown = await orderService.getAllForUser();
+
         // Handle different response formats
         let allOrdersData: any[] = [];
         if (Array.isArray(response)) {
           allOrdersData = response;
         } else if (response && typeof response === 'object') {
+          const resp = response as any;
           // Check if it's an error object (has status, message, name)
-          if (response.status && response.message && response.name) {
+          if (resp.status && resp.message && resp.name) {
             // This is an error object, not a success response
-            throw new Error(response.message || 'Failed to load orders');
+            throw new Error(resp.message || 'Failed to load orders');
           }
-          
+
           // Try common response formats
-          if (Array.isArray(response.data)) {
-            allOrdersData = response.data;
-          } else if (Array.isArray(response.orders)) {
-            allOrdersData = response.orders;
-          } else if (Array.isArray(response.result)) {
-            allOrdersData = response.result;
+          if (Array.isArray(resp.data)) {
+            allOrdersData = resp.data;
+          } else if (Array.isArray(resp.orders)) {
+            allOrdersData = resp.orders;
+          } else if (Array.isArray(resp.result)) {
+            allOrdersData = resp.result;
           } else {
             // If no array found, it might be empty or unexpected format
             console.warn('Unexpected response format, treating as empty:', response);
             allOrdersData = [];
           }
         }
-        
+
         const mappedOrders = allOrdersData.map(mapOrderResponse);
         setAllOrders(mappedOrders);
       } catch (error: any) {
@@ -206,7 +206,7 @@ export function OrdersPage() {
     if (!app.isLoggedIn) {
       return;
     }
-    
+
     // Refresh token trước khi load orders để tránh 401 errors
     const loadOrdersWithRefresh = async () => {
       try {
@@ -215,12 +215,12 @@ export function OrdersPage() {
         console.warn('⚠️ [OrdersPage] Token refresh failed before loading orders:', error);
         // Continue anyway, apiClient will handle 401 errors
       }
-      
+
       // Load orders for user with current tab status
       const backendStatus = mapStatusToBackend(selectedTab);
       app.orders.loadOrdersForUser(backendStatus);
     };
-    
+
     loadOrdersWithRefresh();
   }, [selectedTab, app.isLoggedIn]); // Load when tab changes
 
@@ -265,10 +265,10 @@ export function OrdersPage() {
         console.warn('⚠️ [OrdersPage] Token refresh failed before cancel order:', error);
         // Continue anyway, apiClient will handle 401 errors
       }
-      
+
       const { orderService } = await import('../../apis/order');
       const { mapOrderResponse } = await import('../../apis/order/order.mapper');
-      
+
       // Nếu order status là "pending" (Đang chờ thanh toán), dùng cancel_order
       // Nếu order status là "confirmed" (Chờ xác nhận), dùng cancel_request
       if (orderStatus === 'pending') {
@@ -278,21 +278,21 @@ export function OrdersPage() {
         await orderService.cancelRequest(orderId);
         toast.success('Đã gửi yêu cầu hủy đơn hàng thành công');
       }
-      
+
       // Cập nhật UI: xóa order khỏi danh sách hoặc cập nhật status
-      app.orders.setOrders((prev: Order[]) => 
+      app.orders.setOrders((prev: Order[]) =>
         prev.filter((order: Order) => order.id !== orderId)
       );
-      
+
       // Cập nhật allOrders để cập nhật số lượng badge
-      setAllOrders((prev: Order[]) => 
+      setAllOrders((prev: Order[]) =>
         prev.filter((order: Order) => order.id !== orderId)
       );
-      
+
       // Reload orders để cập nhật danh sách
       const backendStatus = mapStatusToBackend(selectedTab);
       await app.orders.loadOrdersForUser(backendStatus);
-      
+
       // Reload all orders để cập nhật badge
       const allOrdersData = await orderService.getAllForUser();
       const mappedOrders = allOrdersData.map(mapOrderResponse);
@@ -312,19 +312,19 @@ export function OrdersPage() {
         console.warn('⚠️ [OrdersPage] Token refresh failed before mark as received:', error);
         // Continue anyway, apiClient will handle 401 errors
       }
-      
+
       const { orderService } = await import('../../apis/order');
       const { mapOrderResponse } = await import('../../apis/order/order.mapper');
-      
+
       // Gọi API để xác nhận đã nhận hàng
       await orderService.markAsReceived(orderId);
-      
+
       toast.success('Đã xác nhận nhận hàng thành công');
-      
+
       // Reload orders để cập nhật danh sách
       const backendStatus = mapStatusToBackend(selectedTab);
       await app.orders.loadOrdersForUser(backendStatus);
-      
+
       // Reload all orders để cập nhật badge
       const allOrdersData = await orderService.getAllForUser();
       const mappedOrders = allOrdersData.map(mapOrderResponse);
@@ -417,9 +417,9 @@ export function OrdersPage() {
                     {searchQuery
                       ? "Không tìm thấy đơn hàng phù hợp"
                       : // Fix lỗi 't' implicitly any
-                        `Bạn chưa có đơn hàng ${statusTabs
-                          .find((t: any) => t.value === selectedTab)
-                          ?.label.toLowerCase()}`}
+                      `Bạn chưa có đơn hàng ${statusTabs
+                        .find((t: any) => t.value === selectedTab)
+                        ?.label.toLowerCase()}`}
                   </p>
                   <Button
                     onClick={() => navigate("/feed")}
@@ -664,17 +664,17 @@ export function OrdersPage() {
 
                           {(order.status === "cancelled" ||
                             order.status === "refund") && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                app.handleReorder(order.id);
-                              }}
-                            >
-                              Mua lại
-                            </Button>
-                          )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  app.handleReorder(order.id);
+                                }}
+                              >
+                                Mua lại
+                              </Button>
+                            )}
 
                           {order.status === "confirmed" && (
                             <Button
@@ -704,20 +704,20 @@ export function OrdersPage() {
                             Xem chi tiết
                           </Button>
                           {order.ownerId && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
                                 e.preventDefault();
                                 // Navigate directly to chat page with shop ownerId
                                 navigate(`/chat?userId=${order.ownerId}`);
-                            }}
-                            className="gap-2 px-2"
-                            title="Liên hệ Shop"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </Button>
+                              }}
+                              className="gap-2 px-2"
+                              title="Liên hệ Shop"
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </Button>
                           )}
                         </div>
                       </div>

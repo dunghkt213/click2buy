@@ -5,3 +5,5 @@
 // User types are already defined in auth.types.ts
 // This file is for any additional user-related types
 
+export { };
+

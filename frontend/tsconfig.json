@@ -3,17 +3,37 @@
     "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "types": ["node"],   // 👈 thêm dòng này
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ], // 👈 thêm dòng này
     "strict": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "src/*"
+      ],
+      "types": [
+        "src/types/index.ts"
+      ],
+      "types/*": [
+        "src/types/*"
+      ]
     },
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "postcss.config.cjs"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "postcss.config.cjs"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

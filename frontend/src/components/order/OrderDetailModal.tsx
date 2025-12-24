@@ -40,50 +40,56 @@ interface OrderDetailModalProps {
 }
 
 const statusConfig: Record<OrderStatus, { label: string; color: string; bgColor: string; icon: any }> = {
-  pending: { 
-    label: 'Đang chờ thanh toán', 
-    color: 'text-yellow-700 dark:text-yellow-400', 
+  pending: {
+    label: 'Đang chờ thanh toán',
+    color: 'text-yellow-700 dark:text-yellow-400',
     bgColor: 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800',
-    icon: Clock 
+    icon: Clock
   },
-  confirmed: { 
-    label: 'Chờ xác nhận', 
-    color: 'text-blue-700 dark:text-blue-400', 
+  confirmed: {
+    label: 'Chờ xác nhận',
+    color: 'text-blue-700 dark:text-blue-400',
     bgColor: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800',
-    icon: CheckCircle 
+    icon: CheckCircle
   },
-  shipping: { 
-    label: 'Đang giao hàng', 
-    color: 'text-purple-700 dark:text-purple-400', 
+  shipping: {
+    label: 'Đang giao hàng',
+    color: 'text-purple-700 dark:text-purple-400',
     bgColor: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800',
-    icon: Truck 
+    icon: Truck
   },
-  completed: { 
-    label: 'Hoàn thành', 
-    color: 'text-green-700 dark:text-green-400', 
+  completed: {
+    label: 'Hoàn thành',
+    color: 'text-green-700 dark:text-green-400',
     bgColor: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800',
-    icon: CheckCircle 
+    icon: CheckCircle
   },
-  cancelled: { 
-    label: 'Đã hủy', 
-    color: 'text-red-700 dark:text-red-400', 
+  cancelled: {
+    label: 'Đã hủy',
+    color: 'text-red-700 dark:text-red-400',
     bgColor: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800',
-    icon: XCircle 
+    icon: XCircle
   },
-  refund: { 
-    label: 'Hoàn tiền', 
-    color: 'text-orange-700 dark:text-orange-400', 
+  cancel_request: {
+    label: 'Yêu cầu hủy',
+    color: 'text-amber-700 dark:text-amber-400',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
+    icon: AlertCircle
+  },
+  refund: {
+    label: 'Hoàn tiền',
+    color: 'text-orange-700 dark:text-orange-400',
     bgColor: 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800',
-    icon: RotateCcw 
+    icon: RotateCcw
   },
 };
 
 // Default status config for unknown statuses
-const defaultStatusConfig = { 
-  label: 'Không xác định', 
-  color: 'text-gray-700 dark:text-gray-400', 
+const defaultStatusConfig = {
+  label: 'Không xác định',
+  color: 'text-gray-700 dark:text-gray-400',
   bgColor: 'bg-gray-50 dark:bg-gray-950/30 border-gray-200 dark:border-gray-800',
-  icon: Package 
+  icon: Package
 };
 
 // Helper function to get status config safely
@@ -174,7 +180,7 @@ export function OrderDetailModal({
                     </div>
                   </div>
                 </div>
-                <Badge 
+                <Badge
                   className={`${statusInfo.bgColor} ${statusInfo.color} border px-4 py-2 text-sm font-semibold`}
                 >
                   <StatusIcon className="w-4 h-4 mr-2" />
@@ -270,8 +276,8 @@ export function OrderDetailModal({
                 </h3>
                 <div className="space-y-3">
                   {order.items.map((item) => (
-                    <div 
-                      key={item.id} 
+                    <div
+                      key={item.id}
                       className="flex gap-4 p-4 bg-muted/50 rounded-xl border hover:bg-muted/70 transition-colors"
                     >
                       <div className="w-24 h-24 rounded-xl overflow-hidden bg-background border-2 flex-shrink-0 shadow-sm">
@@ -320,7 +326,7 @@ export function OrderDetailModal({
                       let recipientName = '';
                       let recipientPhone = '';
                       let recipientAddress = '';
-                      
+
                       if (order.address) {
                         const parts = order.address.split(' - ');
                         if (parts.length >= 3) {
@@ -335,7 +341,7 @@ export function OrderDetailModal({
                           recipientAddress = order.address.trim();
                         }
                       }
-                      
+
                       // Fallback to individual fields if address is not parsed
                       if (!recipientName) {
                         recipientName = order.shippingAddress?.name || order.user?.name || order.user?.username || 'N/A';
@@ -346,7 +352,7 @@ export function OrderDetailModal({
                       if (!recipientAddress) {
                         recipientAddress = order.shippingAddress?.address || 'N/A';
                       }
-                      
+
                       return (
                         <>
                           {/* Tên người nhận */}
@@ -354,16 +360,16 @@ export function OrderDetailModal({
                             <p className="text-xs text-muted-foreground mb-1">Tên người nhận:</p>
                             <p className="font-semibold text-base">{recipientName}</p>
                           </div>
-                          
+
                           {/* Số điện thoại */}
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Số điện thoại:</p>
                             <p className="text-sm text-foreground flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5" />
+                              <Phone className="w-3.5 h-3.5" />
                               {recipientPhone}
-                    </p>
+                            </p>
                           </div>
-                          
+
                           {/* Địa chỉ nhận hàng */}
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Địa chỉ nhận hàng:</p>

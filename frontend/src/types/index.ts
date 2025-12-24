@@ -25,6 +25,7 @@ export interface Product {
   ownerId?: string; // ID của người bán (từ backend)
   sellerId?: string; // Alias cho ownerId để dùng trong cart
   reviewSummary?: string; // AI-generated review summary
+  variants?: Record<string, any>;
 }
 
 // THÊM: Review/Comment types
@@ -87,6 +88,7 @@ export interface Order {
     phone: string;
     address: string;
   };
+  address?: string;
   createdAt: string;
   updatedAt: string;
   estimatedDelivery?: string;
@@ -98,6 +100,14 @@ export interface Order {
     timestamp: string;
     description: string;
   }[];
+  user?: {
+    id?: string;
+    username?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    avatar?: string;
+  };
 }
 
 // THÊM: Store types

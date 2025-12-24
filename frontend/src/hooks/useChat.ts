@@ -2,10 +2,10 @@
  * useChat - Custom hook for managing chat state and WebSocket connection
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { chatService } from '../services/chat/chatService';
-import { ChatMessage, Conversation, TypingStatus, ChatError } from '../types/interface/chat.types';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { chatService } from '../services/chat/chatService';
+import { ChatError, ChatMessage, Conversation, TypingStatus } from '../types/interface/chat.types';
 
 interface UseChatOptions {
   userId: string | null;
@@ -54,14 +54,14 @@ export function useChat({ userId, autoConnect = true }: UseChatOptions) {
 
     const unsubscribeMessage = chatService.onMessage((message: ChatMessage) => {
       console.log('📨 Received message in useChat:', message);
-      
+
       setMessages((prev) => {
         // Avoid duplicates by ID
         if (prev.some((m) => m.id === message.id)) {
           console.log('Message already exists, skipping:', message.id);
           return prev;
         }
-        const newMessages = [...prev, message].sort((a, b) => 
+        const newMessages = [...prev, message].sort((a, b) =>
           new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         );
         console.log('Added message, total messages:', newMessages.length);
@@ -74,11 +74,17 @@ export function useChat({ userId, autoConnect = true }: UseChatOptions) {
           prev.map((conv) => {
             const convId = conv.id || conv._id;
             if (convId === message.conversationId) {
+              const currentUnread =
+                typeof conv.unreadCount === 'number'
+                  ? conv.unreadCount
+                  : userId
+                    ? (conv.unreadCount?.[userId] ?? 0)
+                    : 0;
               return {
                 ...conv,
                 lastMessage: message,
                 lastMessageTime: message.timestamp,
-                unreadCount: convId === currentConversationId ? 0 : (conv.unreadCount || 0) + 1,
+                unreadCount: convId === currentConversationId ? 0 : Number(currentUnread) + 1,
               };
             }
             return conv;
@@ -94,7 +100,7 @@ export function useChat({ userId, autoConnect = true }: UseChatOptions) {
     // Handle conversation_started event
     const socket = (chatService as any).socket;
     let conversationStartedCleanup: (() => void) | undefined;
-    
+
     if (socket) {
       const handleConversationStarted = (result: { success: boolean; data: Conversation }) => {
         console.log('✅ Conversation started event received:', result);
@@ -130,7 +136,7 @@ export function useChat({ userId, autoConnect = true }: UseChatOptions) {
             console.log('Adding new conversation to list');
             return [...prev, normalizedConv];
           });
-          
+
           // Set current conversation ID so user can send messages
           console.log('✅ Setting currentConversationId to:', conversationId);
           setCurrentConversationId(conversationId);
@@ -138,7 +144,7 @@ export function useChat({ userId, autoConnect = true }: UseChatOptions) {
           console.error('❌ Conversation started but result is not successful:', result);
         }
       };
-      
+
       socket.on('conversation_started', handleConversationStarted);
       conversationStartedCleanup = () => {
         socket.off('conversation_started', handleConversationStarted);
@@ -203,7 +209,7 @@ export function useChat({ userId, autoConnect = true }: UseChatOptions) {
         // Merge with existing messages, avoiding duplicates
         const existingIds = new Set(prev.map(m => m.id));
         const newMessages = normalizedMessages.filter(m => !existingIds.has(m.id));
-        const merged = [...prev, ...newMessages].sort((a, b) => 
+        const merged = [...prev, ...newMessages].sort((a, b) =>
           new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         );
         console.log('📜 Merged messages history:', {
@@ -216,16 +222,16 @@ export function useChat({ userId, autoConnect = true }: UseChatOptions) {
       });
     });
 
-      return () => {
-        unsubscribeMessage();
-        unsubscribeConversations();
-        unsubscribeTyping();
-        unsubscribeError();
-        unsubscribeBlocked();
-        unsubscribeUnreadCount();
-        unsubscribeMessagesHistory();
-        conversationStartedCleanup?.();
-      };
+    return () => {
+      unsubscribeMessage();
+      unsubscribeConversations();
+      unsubscribeTyping();
+      unsubscribeError();
+      unsubscribeBlocked();
+      unsubscribeUnreadCount();
+      unsubscribeMessagesHistory();
+      conversationStartedCleanup?.();
+    };
   }, [isConnected, currentConversationId, setCurrentConversationId]);
 
   // Load messages when conversation changes
