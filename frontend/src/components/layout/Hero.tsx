@@ -3,7 +3,11 @@ import { ArrowRight, Shield, ShoppingBag, Sparkles, Star, Truck, Zap } from 'luc
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 
-export function Hero() {
+interface HeroProps {
+  onShopNowClick?: () => void;
+}
+
+export function Hero({ onShopNowClick }: HeroProps) {
   const features = [
     { icon: Zap, text: 'Giao hàng nhanh', color: 'text-yellow-500' },
     { icon: Shield, text: 'Bảo hành chính hãng', color: 'text-blue-500' },
@@ -47,7 +51,7 @@ export function Hero() {
         {/* Gradient Orbs */}
         <div className="absolute top-0 -left-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-0 -right-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse delay-1000" />
-        
+
         {/* Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
       </div>
@@ -62,8 +66,8 @@ export function Hero() {
           {/* Left: Main Content */}
           <div className="space-y-6 z-10">
             <motion.div variants={itemVariants}>
-              <Badge 
-                variant="secondary" 
+              <Badge
+                variant="secondary"
                 className="w-fit mb-4 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 transition-colors"
               >
                 <Sparkles className="w-3 h-3 mr-2" />
@@ -71,7 +75,7 @@ export function Hero() {
               </Badge>
             </motion.div>
 
-            <motion.h1 
+            <motion.h1
               variants={itemVariants}
               className="text-5xl lg:text-7xl font-extrabold leading-tight tracking-tight"
             >
@@ -82,7 +86,7 @@ export function Hero() {
               <span className="block text-foreground">Giá tốt nhất</span>
             </motion.h1>
 
-            <motion.p 
+            <motion.p
               variants={itemVariants}
               className="text-lg lg:text-xl text-muted-foreground max-w-xl leading-relaxed"
             >
@@ -90,29 +94,23 @@ export function Hero() {
             </motion.p>
 
             {/* CTA Buttons */}
-            <motion.div 
+            <motion.div
               variants={itemVariants}
               className="flex flex-col sm:flex-row gap-4 pt-2"
             >
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="group text-base px-8 py-6 h-auto font-semibold shadow-lg hover:shadow-xl transition-all"
+                onClick={onShopNowClick}
               >
                 <ShoppingBag className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
                 Mua sắm ngay
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="text-base px-8 py-6 h-auto font-semibold border-2 hover:bg-primary/5"
-              >
-                Xem thêm
-              </Button>
             </motion.div>
 
             {/* Features Grid */}
-            <motion.div 
+            <motion.div
               variants={itemVariants}
               className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4"
             >
@@ -134,7 +132,7 @@ export function Hero() {
           </div>
 
           {/* Right: Visual Element */}
-          <motion.div 
+          <motion.div
             variants={itemVariants}
             className="relative hidden lg:block"
           >
@@ -142,7 +140,7 @@ export function Hero() {
               {/* Main Card */}
               <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background rounded-3xl p-8 border border-primary/20 shadow-2xl backdrop-blur-sm">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-3xl" />
-                
+
                 {/* Floating Elements */}
                 <motion.div
                   animate={{
@@ -179,7 +177,7 @@ export function Hero() {
                     <div className="text-4xl font-bold text-primary">50%</div>
                     <div className="text-sm text-muted-foreground">Giảm giá hôm nay</div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     {stats.slice(0, 4).map((stat, index) => (
                       <div
@@ -200,7 +198,7 @@ export function Hero() {
       </div>
 
       {/* Stats Bar */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8, duration: 0.5 }}

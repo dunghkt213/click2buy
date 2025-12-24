@@ -5,7 +5,7 @@
 
 import { ArrowLeft, ChevronLeft, ChevronRight, MessageCircle, Package, Share2, Shield, ShoppingCart, Sparkles, Star, Store, ThumbsUp, TruckIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { CartItem, Product, ProductReview } from 'types';
 import { productApi } from '../../apis/product';
@@ -25,6 +25,7 @@ const REVIEWS_PER_PAGE = 5;
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const app = useAppContext();
 
@@ -43,11 +44,31 @@ export function ProductDetailPage() {
   const [reviewPage, setReviewPage] = useState(1);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
+  function clearSavedScrollPositionForPath(pathname: string) {
+    try {
+      const stored = sessionStorage.getItem('scrollPositions');
+      if (!stored) return;
+      const positions = JSON.parse(stored) as Record<string, number>;
+      if (positions && typeof positions === 'object') {
+        delete positions[pathname];
+        sessionStorage.setItem('scrollPositions', JSON.stringify(positions));
+      }
+    } catch {
+      return;
+    }
+  }
+
   // Load product khi page mount
   // Không scroll về đầu trang nữa, để useScrollRestoration xử lý
   useEffect(() => {
     if (id) {
+      clearSavedScrollPositionForPath(location.pathname);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      const timeoutId = setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }, 150);
       loadProduct();
+      return () => clearTimeout(timeoutId);
     } else {
       toast.error('Không tìm thấy sản phẩm');
       navigate('/feed');
@@ -545,6 +566,10 @@ export function ProductDetailPage() {
                     if (shopId) {
                       // Navigate to chat page with shopId as query param
                       // ChatPage will handle opening the conversation
+                      const productIdToChat = product?.id || id;
+                      if (productIdToChat) {
+                        sessionStorage.setItem('chat:selectedProductId', productIdToChat);
+                      }
                       navigate(`/chat?userId=${shopId}`);
                     } else {
                       toast.error('Không tìm thấy thông tin shop');
@@ -841,7 +866,11 @@ export function ProductDetailPage() {
                   key={shopProduct.id}
                   product={shopProduct}
                   onAddToCart={app.addToCart}
-                  onViewDetail={(p) => navigate(`/product/${p.id}`)}
+                  onViewDetail={(p) => {
+                    const nextPath = `/product/${p.id}`;
+                    clearSavedScrollPositionForPath(nextPath);
+                    navigate(nextPath);
+                  }}
                   onTriggerFlyingIcon={app.handleTriggerFlyingIcon}
                   isLoggedIn={app.isLoggedIn}
                   onLogin={app.handleLogin}

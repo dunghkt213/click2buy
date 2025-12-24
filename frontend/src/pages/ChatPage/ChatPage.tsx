@@ -3,10 +3,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { mediaApi } from '../../apis/media/mediaApi';
+import { productApi } from '../../apis/product';
 import { userApi } from '../../apis/user';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { useChat } from '../../hooks/useChat';
 import { useAppContext } from '../../providers/AppProvider';
+import { Product } from '../../types';
 import { ChatMessage } from '../../types/interface/chat.types';
 
 // If direct image URL fails, will show clickable placeholder to open in new tab
@@ -67,6 +69,27 @@ export function ChatPage() {
   const app = useAppContext();
   const userId = app.user?.id || null;
 
+  const chatSelectedProductKey = 'chat:selectedProductId';
+  const chatSelectedProductSentKey = 'chat:selectedProductIdSent';
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [loadingSelectedProduct, setLoadingSelectedProduct] = useState(false);
+
+  const clearSelectedProductContext = useCallback(() => {
+    sessionStorage.removeItem(chatSelectedProductKey);
+    setSelectedProductId(null);
+    setSelectedProduct(null);
+  }, []);
+
+  const [productMessageCache, setProductMessageCache] = useState<Record<string, { status: 'loading' | 'loaded' | 'error'; product?: Product }>>({});
+  const requestedProductMessageIdsRef = useRef<Set<string>>(new Set());
+
+  const parseProductIdFromMessage = useCallback((content?: string | null): string | null => {
+    if (!content || typeof content !== 'string') return null;
+    const match = content.trim().match(/^ProductID:([A-Za-z0-9_-]+)$/);
+    return match?.[1] || null;
+  }, []);
+
   const [message, setMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentReceiverId, setCurrentReceiverId] = useState<string | null>(null);
@@ -77,6 +100,42 @@ export function ChatPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevConversationIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const storedId = sessionStorage.getItem(chatSelectedProductKey);
+    setSelectedProductId(storedId);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProductId) {
+      setSelectedProduct(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingSelectedProduct(true);
+    productApi
+      .getById(selectedProductId)
+      .then((p: Product) => {
+        if (cancelled) return;
+        setSelectedProduct(p);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        sessionStorage.removeItem(chatSelectedProductKey);
+        sessionStorage.removeItem(chatSelectedProductSentKey);
+        setSelectedProductId(null);
+        setSelectedProduct(null);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingSelectedProduct(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProductId]);
 
   // Use chat hook
   const {
@@ -444,6 +503,44 @@ export function ChatPage() {
   // Use virtual conversation if no selected conversation but we have receiverId
   const activeConversation = selectedConversation || virtualConversation;
 
+  useEffect(() => {
+    if (!activeConversation) return;
+
+    const ids = new Set<string>();
+    for (const m of activeConversation.messages || []) {
+      const id = parseProductIdFromMessage((m as any)?.content);
+      if (id) ids.add(id);
+    }
+
+    ids.forEach((id) => {
+      if (requestedProductMessageIdsRef.current.has(id)) return;
+      requestedProductMessageIdsRef.current.add(id);
+
+      setProductMessageCache((prev) => {
+        if (prev[id]) return prev;
+        return {
+          ...prev,
+          [id]: { status: 'loading' },
+        };
+      });
+
+      productApi
+        .getById(id)
+        .then((p: Product) => {
+          setProductMessageCache((prev) => ({
+            ...prev,
+            [id]: { status: 'loaded', product: p },
+          }));
+        })
+        .catch(() => {
+          setProductMessageCache((prev) => ({
+            ...prev,
+            [id]: { status: 'error' },
+          }));
+        });
+    });
+  }, [activeConversation, parseProductIdFromMessage]);
+
   // Debug: Log active conversation messages (only in development, and only when conversation actually changes)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && activeConversation) {
@@ -498,23 +595,41 @@ export function ChatPage() {
 
     // Small delay to ensure conversation is fully set up
     const timeoutId = setTimeout(() => {
-      // Re-validate conversationId after timeout
-      const finalConversationId = currentConversationId?.trim();
-      if (finalConversationId && finalConversationId !== '') {
-        console.log('📤 Executing auto-send with conversationId:', finalConversationId);
-        sendMessage(pendingMessage.content, pendingMessage.receiverId, finalConversationId);
-        setPendingMessage(null);
-      } else {
-        console.error('❌ ConversationId became invalid during timeout:', {
-          currentConversationId,
-          finalConversationId,
-        });
-        setPendingMessage(null); // Clear pending to avoid infinite loop
-      }
+      void (async () => {
+        // Re-validate conversationId after timeout
+        const finalConversationId = currentConversationId?.trim();
+        if (finalConversationId && finalConversationId !== '') {
+          console.log('📤 Executing auto-send with conversationId:', finalConversationId);
+          if (selectedProductId && sessionStorage.getItem(chatSelectedProductSentKey) !== '1') {
+            sendMessage(`ProductID:${selectedProductId}`, pendingMessage.receiverId, finalConversationId);
+            sessionStorage.setItem(chatSelectedProductSentKey, '1');
+            clearSelectedProductContext();
+            await new Promise<void>((resolve) => setTimeout(resolve, 150));
+          }
+          sendMessage(pendingMessage.content, pendingMessage.receiverId, finalConversationId);
+          setPendingMessage(null);
+        } else {
+          console.error('❌ ConversationId became invalid during timeout:', {
+            currentConversationId,
+            finalConversationId,
+          });
+          setPendingMessage(null); // Clear pending to avoid infinite loop
+        }
+      })();
     }, 500); // Increased delay to ensure conversation is fully set up
 
     return () => clearTimeout(timeoutId);
-  }, [currentConversationId, pendingMessage, sendMessage]);
+  }, [currentConversationId, pendingMessage, sendMessage, selectedProductId, clearSelectedProductContext]);
+
+  const sendSelectedProductIdTagIfNeeded = useCallback((receiverId: string, conversationId: string): boolean => {
+    if (!selectedProductId) return false;
+    if (sessionStorage.getItem(chatSelectedProductSentKey) === '1') return false;
+
+    sendMessage(`ProductID:${selectedProductId}`, receiverId, conversationId);
+    sessionStorage.setItem(chatSelectedProductSentKey, '1');
+    clearSelectedProductContext();
+    return true;
+  }, [selectedProductId, sendMessage, clearSelectedProductContext]);
 
   const handleSendMessage = async (imageUrl?: string) => {
     const content = imageUrl || message.trim();
@@ -570,7 +685,7 @@ export function ChatPage() {
 
     // conversationId is REQUIRED by backend
     if (!conversationId) {
-      console.error('❌ Cannot send message: conversationId is missing', {
+      console.error(' Cannot send message: conversationId is missing', {
         currentConversationId,
         activeConversation,
         receiverId,
@@ -579,7 +694,7 @@ export function ChatPage() {
       return;
     }
 
-    console.log('📤 Sending message from UI:', {
+    console.log(' Sending message from UI:', {
       content,
       receiverId,
       conversationId,
@@ -589,6 +704,10 @@ export function ChatPage() {
     });
 
     try {
+      const didSendTag = sendSelectedProductIdTagIfNeeded(receiverId, conversationId);
+      if (didSendTag) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 150));
+      }
       // Send message with image URL if provided
       // Note: Backend expects content field, we'll send image URL as content
       // and type will be set by backend based on content or we need to handle it
@@ -903,7 +1022,13 @@ export function ChatPage() {
         {/* Header */}
         <div className="p-4 border-b border-border flex items-center gap-3 bg-white">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              sessionStorage.removeItem(chatSelectedProductKey);
+              sessionStorage.removeItem(chatSelectedProductSentKey);
+              setSelectedProductId(null);
+              setSelectedProduct(null);
+              navigate(-1);
+            }}
             className="p-2 hover:bg-accent rounded-md transition-colors flex-shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -1073,6 +1198,65 @@ export function ChatPage() {
 
                         <div className={`flex flex-col gap-1.5 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
                           {(() => {
+                            const productIdFromTag = parseProductIdFromMessage(msg.content);
+                            if (productIdFromTag) {
+                              const entry = productMessageCache[productIdFromTag];
+                              const bubbleBaseClass = `rounded-2xl overflow-hidden border border-border shadow-sm bg-white ${isUser ? 'rounded-br-sm' : 'rounded-bl-sm'}`;
+
+                              if (!entry || entry.status === 'loading') {
+                                return (
+                                  <div className={bubbleBaseClass}>
+                                    <div className="flex items-center gap-3 p-3">
+                                      <div className="h-12 w-12 rounded-md border border-border bg-background flex items-center justify-center">
+                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-sm text-muted-foreground">Đang tải sản phẩm...</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              if (entry.status === 'error' || !entry.product) {
+                                return (
+                                  <div className={bubbleBaseClass}>
+                                    <div className="flex items-center gap-3 p-3">
+                                      <div className="h-12 w-12 rounded-md border border-border bg-background flex items-center justify-center">
+                                        <span className="text-xs text-muted-foreground">N/A</span>
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-sm text-muted-foreground">Không thể tải sản phẩm</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <button
+                                  onClick={() => navigate(`/product/${productIdFromTag}`)}
+                                  className={`${bubbleBaseClass} text-left hover:shadow-md transition-shadow`}
+                                  type="button"
+                                >
+                                  <div className="flex items-center gap-3 p-3">
+                                    <div className="h-12 w-12 flex-shrink-0 rounded-md border border-border bg-background overflow-hidden">
+                                      <ImageWithFallback
+                                        src={entry.product.image}
+                                        alt={entry.product.name}
+                                        className="h-12 w-12 object-cover"
+                                        loading="lazy"
+                                      />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs text-muted-foreground">Sản phẩm</p>
+                                      <p className="text-sm font-medium truncate">{entry.product.name}</p>
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            }
+
                             // Check for images array first (multiple images in one message)
                             const messageImages = (msg as any).images;
                             const hasImagesArray = Array.isArray(messageImages) && messageImages.length > 0;
@@ -1217,6 +1401,28 @@ export function ChatPage() {
 
           {/* Input Area */}
           <div className="border-t border-border p-4 bg-white shadow-lg">
+            {selectedProductId ? (
+              <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-accent/30 p-3">
+                <div className="h-12 w-12 flex-shrink-0 rounded-md border border-border bg-background overflow-hidden">
+                  {loadingSelectedProduct || !selectedProduct ? (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <ImageWithFallback
+                      src={selectedProduct.image}
+                      alt={selectedProduct.name}
+                      className="h-12 w-12 object-cover"
+                      loading="lazy"
+                    />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">Sản phẩm</p>
+                  <p className="text-sm font-medium truncate">{selectedProduct?.name || ''}</p>
+                </div>
+              </div>
+            ) : null}
             <div className="flex items-center gap-3">
               {/* Hidden file input */}
               <input
