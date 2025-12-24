@@ -146,7 +146,15 @@ export function ProductDetailPage() {
     try {
       setLoadingReviews(true);
       const data = await reviewApi.findAll({ productId: product.id });
-      const mappedReviews = data.map(mapReviewResponse);
+      const rawList = Array.isArray(data)
+        ? data
+        : (data as any)?.data
+          ? (Array.isArray((data as any).data) ? (data as any).data : [(data as any).data])
+          : data
+            ? [data]
+            : [];
+
+      const mappedReviews = rawList.map(mapReviewResponse);
       setReviews(mappedReviews);
     } catch (error) {
       console.error('Failed to load reviews:', error);
@@ -203,6 +211,14 @@ export function ProductDetailPage() {
 
   const isProductOwner = !!app.user?.id && product.ownerId === app.user.id;
 
+  const getSellerReplyForReview = (review: ProductReview) => {
+    const localReply = sellerRepliesByReviewId[review.id];
+    if (localReply && localReply.trim()) return localReply;
+    const backendReply = review.replyBySeller;
+    if (backendReply && backendReply.trim()) return backendReply;
+    return '';
+  };
+
   const toggleSellerReply = (reviewId: string) => {
     setExpandedSellerReplyByReviewId((prev) => ({
       ...prev,
@@ -211,10 +227,11 @@ export function ProductDetailPage() {
   };
 
   const openReplyEditor = (reviewId: string) => {
+    const review = reviews.find((r) => r.id === reviewId);
     setReplyEditorReviewId(reviewId);
     setReplyDraftsByReviewId((prev) => ({
       ...prev,
-      [reviewId]: prev[reviewId] ?? sellerRepliesByReviewId[reviewId] ?? '',
+      [reviewId]: prev[reviewId] ?? sellerRepliesByReviewId[reviewId] ?? review?.replyBySeller ?? '',
     }));
   };
 
@@ -882,7 +899,7 @@ export function ProductDetailPage() {
 
                             {expandedSellerReplyByReviewId[review.id] && (
                               <div className="text-sm text-foreground/90 whitespace-pre-wrap">
-                                {sellerRepliesByReviewId[review.id] || 'Shop chưa phản hồi.'}
+                                {getSellerReplyForReview(review) || 'Shop chưa phản hồi.'}
                               </div>
                             )}
 

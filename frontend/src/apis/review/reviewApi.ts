@@ -1,4 +1,3 @@
-import { ProductReview } from '../../types';
 import { request } from '../client/apiClient';
 
 export interface CreateReviewDto {
@@ -31,6 +30,7 @@ export interface BackendReview {
   updatedAt?: string;
   helpful?: number;
   isVerifiedPurchase?: boolean;
+  replyBySeller?: string;
 }
 
 // mapReviewResponse is exported from review.mapper.ts - do not duplicate here
@@ -54,7 +54,7 @@ export const reviewApi = {
     if (query?.productId) params.append('productId', query.productId);
     if (query?.page) params.append('page', query.page.toString());
     if (query?.limit) params.append('limit', query.limit.toString());
-    
+
     const queryString = params.toString();
     return request<BackendReview[]>(`/reviews${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
