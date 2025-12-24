@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 
@@ -80,7 +80,7 @@ export function useNotificationSocket({
     socket.on('connect', () => {
       console.log('🔌 Notification WS connected');
       setIsConnected(true);
-      
+
       // Request notifications list và unread count khi kết nối
       socket.emit('get_notifications', { userId });
       socket.emit('get_unread', { userId });
@@ -99,11 +99,13 @@ export function useNotificationSocket({
     socket.on('notification', (notification: BackendNotification) => {
       console.log('📨 New notification received:', notification);
       callbacksRef.current.onNotification?.(notification);
-      
+
       // Hiển thị toast cho notification mới
-      toast.info(notification.title, {
-        description: notification.content,
-        duration: 5000,
+      const title = (notification?.title || 'Thông báo mới').trim();
+      const description = (notification?.content || '').trim();
+      toast.info(title, {
+        ...(description ? { description } : {}),
+        duration: 6000,
       });
     });
 
@@ -164,4 +166,3 @@ export function useNotificationSocket({
     markAsRead,
   };
 }
-

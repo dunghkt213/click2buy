@@ -1,11 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import App from './App.tsx'
-import './styles/globals.css'
 import { Toaster } from 'sonner'
-import { AppProvider } from './providers/AppProvider'
+import App from './App.tsx'
 import { NotificationProvider } from './contexts/NotificationContext'
+import { AppProvider } from './providers/AppProvider'
+import './styles/globals.css'
 import { cleanupExpiredCache } from './utils/cache'
 
 // Cleanup expired cache khi app start
@@ -17,7 +17,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AppProvider>
         <NotificationProvider>
           <App />
-          <Toaster position="top-right" richColors />
+          <Toaster position="bottom-left" richColors />
         </NotificationProvider>
       </AppProvider>
     </BrowserRouter>

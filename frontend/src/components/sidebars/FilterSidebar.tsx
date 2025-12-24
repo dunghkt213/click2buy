@@ -1,26 +1,25 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Checkbox } from '../ui/checkbox';
-import { Slider } from '../ui/slider';
-import { Label } from '../ui/label';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../ui/sheet';
-import { FilterState } from '../../types';
-import { 
-  X, 
-  Star, 
-  Check,
-  Shirt,
-  Zap,
-  Home,
-  BookOpen,
-  Dumbbell,
-  Sparkles,
+import {
   Baby,
-  Car
+  BookOpen,
+  Car,
+  Check,
+  Dumbbell,
+  Home,
+  Shirt,
+  Sparkles,
+  Star,
+  X,
+  Zap
 } from 'lucide-react';
+import { FilterState } from '../../types';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
+import { Separator } from '../ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
+import { Slider } from '../ui/slider';
 
 interface FilterSidebarProps {
   isOpen: boolean;
@@ -74,7 +73,7 @@ export function FilterSidebar({ isOpen, onClose, filters, onFiltersChange }: Fil
   };
 
   const handleRatingChange = (rating: number) => {
-    onFiltersChange({ ...filters, rating });
+    onFiltersChange({ ...filters, rating: filters.rating === rating ? 0 : rating });
   };
 
   const clearFilters = () => {
@@ -118,11 +117,10 @@ export function FilterSidebar({ isOpen, onClose, filters, onFiltersChange }: Fil
           {categories.map((category) => (
             <div
               key={category.id}
-              className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                filters.category === category.id
+              className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${filters.category === category.id
                   ? 'bg-primary/10 text-primary'
                   : 'hover:bg-muted/50'
-              }`}
+                }`}
               onClick={() => handleCategoryChange(category.id)}
             >
               {category.icon && <category.icon className="w-4 h-4" />}
@@ -155,7 +153,7 @@ export function FilterSidebar({ isOpen, onClose, filters, onFiltersChange }: Fil
               <span>{formatPrice(filters.priceRange[1])}</span>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-2">
             {priceRanges.map((range, index) => (
               <Button
@@ -212,22 +210,20 @@ export function FilterSidebar({ isOpen, onClose, filters, onFiltersChange }: Fil
           {[5, 4, 3, 2, 1].map((rating) => (
             <div
               key={rating}
-              className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                filters.rating === rating
+              className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${filters.rating === rating
                   ? 'bg-primary/10 text-primary'
                   : 'hover:bg-muted/50'
-              }`}
+                }`}
               onClick={() => handleRatingChange(rating)}
             >
               <div className="flex items-center gap-1">
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
-                    className={`w-4 h-4 ${
-                      i < rating
+                    className={`w-4 h-4 ${i < rating
                         ? 'text-yellow-500 fill-current'
                         : 'text-muted-foreground'
-                    }`}
+                      }`}
                   />
                 ))}
               </div>

@@ -24,23 +24,26 @@ export const productService = {
     if (query?.category) params.append('category', query.category);
     if (query?.minPrice) params.append('minPrice', query.minPrice.toString());
     if (query?.maxPrice) params.append('maxPrice', query.maxPrice.toString());
+    if (query?.rating) params.append('rating', query.rating.toString());
+    if (query?.brands?.length) params.append('brands', query.brands.join(','));
+    if (query?.inStock !== undefined) params.append('inStock', query.inStock ? 'true' : 'false');
     if (query?.search) params.append('search', query.search);
     if (query?.page) params.append('page', query.page.toString());
     if (query?.limit) params.append('limit', query.limit.toString());
-    
+
     const queryString = params.toString();
     const response = await request<any>(`/products${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
       requireAuth: false,
     });
-    
+
     // Backend có thể trả về { success: true, data: [...] } hoặc array trực tiếp
     const products = response?.data || response;
-    
+
     if (!products || !Array.isArray(products)) {
       throw new Error('Dữ liệu sản phẩm không hợp lệ');
     }
-    
+
     return products.map(mapProductResponse);
   },
 
@@ -74,14 +77,14 @@ export const productService = {
       }),
       requireAuth: false,
     });
-    
+
     // Backend có thể trả về { success: true, data: [...] } hoặc array trực tiếp
     const products = response?.data || response;
-    
+
     if (!products || !Array.isArray(products)) {
       throw new Error('Dữ liệu tìm kiếm không hợp lệ');
     }
-    
+
     return products.map(mapProductResponse);
   },
 
@@ -116,19 +119,19 @@ export const productService = {
    */
   remove: async (id: string): Promise<DeleteProductResponseDto> => {
     console.log(`🗑️ [ProductService] Gọi API DELETE /products/${id}`);
-    
+
     const response = await request<any>(`/products/${id}`, {
       method: 'DELETE',
       requireAuth: true,
     });
-    
+
     console.log('✅ [ProductService] Xóa sản phẩm thành công:', response);
-    
+
     // Backend trả về { success: true, message: '...' } hoặc chỉ message
     if (typeof response === 'object' && response.success !== undefined) {
       return response as DeleteProductResponseDto;
     }
-    
+
     return {
       success: true,
       message: response?.message || 'Sản phẩm đã được xóa thành công',
@@ -146,13 +149,13 @@ export const productService = {
     }
 
     console.log(`🔍 [ProductService] Lấy products cho seller ID: ${sellerId}`);
-    
+
     try {
       // Load tất cả products và filter theo ownerId
       const result = await productApi.getAll({ limit: 1000 });
-      
+
       // Filter products theo ownerId (seller ID)
-      const sellerProducts = result.products.filter(p => 
+      const sellerProducts = result.products.filter(p =>
         (p.ownerId === sellerId || p.sellerId === sellerId)
       );
 
@@ -160,10 +163,10 @@ export const productService = {
 
       // Apply additional filters nếu có
       let filtered = sellerProducts;
-      
+
       if (query?.keyword) {
         const keyword = query.keyword.toLowerCase();
-        filtered = filtered.filter(p => 
+        filtered = filtered.filter(p =>
           p.name.toLowerCase().includes(keyword) ||
           p.description?.toLowerCase().includes(keyword) ||
           p.brand?.toLowerCase().includes(keyword)
@@ -173,7 +176,7 @@ export const productService = {
       // Convert từ Product sang StoreProduct
       const storeProducts = filtered.map(mapBackendProductToStoreProduct);
       console.log('✅ [ProductService] Đã convert sang StoreProduct:', storeProducts.length);
-      
+
       return storeProducts;
     } catch (error: any) {
       console.error('❌ [ProductService] Lỗi khi lấy products của seller:', error);

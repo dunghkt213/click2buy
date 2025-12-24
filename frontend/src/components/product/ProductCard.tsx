@@ -1,7 +1,7 @@
 import {
-    ShoppingCart,
-    Star,
-    Zap
+  ShoppingCart,
+  Star,
+  Zap
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { Product } from 'types';
@@ -21,36 +21,36 @@ interface ProductCardProps {
   onLogin?: () => void; // THÊM: Callback để mở modal đăng nhập
 }
 
-export function ProductCard({ 
-  product, 
-  onAddToCart, 
-  viewMode = 'grid', 
-  onViewDetail, 
+export function ProductCard({
+  product,
+  onAddToCart,
+  viewMode = 'grid',
+  onViewDetail,
   onTriggerFlyingIcon,
   isLoggedIn = false,
   onLogin
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  const discountPercent = product.originalPrice 
+  const discountPercent = product.originalPrice
     ? calculateDiscount(product.originalPrice, product.price)
     : 0;
 
   // THÊM: Handler cho add to cart
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation(); // Ngăn không cho trigger xem chi tiết
-    
+
     if (!isLoggedIn) {
       e.preventDefault();
       onLogin?.();
       return;
     }
-    
+
     // Trigger flying animation
     if (onTriggerFlyingIcon) {
       onTriggerFlyingIcon('cart', e.currentTarget);
     }
-    
+
     onAddToCart(product);
   };
 
@@ -63,7 +63,7 @@ export function ProductCard({
 
   if (viewMode === 'list') {
     return (
-      <Card 
+      <Card
         className="group hover:shadow-lg transition-all duration-300 cursor-pointer"
         onClick={handleCardClick}
       >
@@ -76,7 +76,7 @@ export function ProductCard({
                 alt={product.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              
+
               {/* Badges */}
               <div className="absolute top-3 left-3 flex flex-col gap-2">
                 {product.isNew && (
@@ -109,7 +109,7 @@ export function ProductCard({
                   <div className="flex items-center gap-1">
                     <Star className="w-4 h-4 text-yellow-500 fill-current" />
                     <span className="text-sm text-muted-foreground">
-                      {product.rating} ({product.reviews})
+                      {product.ratingAvg || product.rating} ({product.reviews})
                     </span>
                   </div>
                 </div>
@@ -152,7 +152,7 @@ export function ProductCard({
   }
 
   return (
-    <Card 
+    <Card
       className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 overflow-hidden cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -166,7 +166,7 @@ export function ProductCard({
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />
-          
+
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1.5">
             {product.isNew && (
@@ -193,9 +193,8 @@ export function ProductCard({
           )}
 
           {/* Quick add button */}
-          <div className={`absolute bottom-3 left-3 right-3 transition-all duration-300 ${
-            isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-          }`}>
+          <div className={`absolute bottom-3 left-3 right-3 transition-all duration-300 ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+            }`}>
             <Button
               className="w-full gap-1.5 bg-white/90 backdrop-blur-sm text-black hover:bg-white hover:text-black [&>svg]:text-black text-xs h-8"
               onClick={handleAddToCart}
@@ -216,7 +215,7 @@ export function ProductCard({
             <div className="flex items-center gap-0.5">
               <Star className="w-3 h-3 text-yellow-500 fill-current" />
               <span className="text-xs text-muted-foreground">
-                {product.rating}
+                {product.ratingAvg || product.rating}
               </span>
             </div>
           </div>
@@ -236,7 +235,7 @@ export function ProductCard({
                 </span>
               )}
             </div>
-            
+
             <div className="text-[10px] text-muted-foreground">
               {product.reviews} đánh giá
             </div>
