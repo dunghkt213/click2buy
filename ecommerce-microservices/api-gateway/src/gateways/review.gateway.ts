@@ -22,6 +22,7 @@ export class ReviewGateway {
         this.kafka.subscribeToResponseOf('review.findOne');
         this.kafka.subscribeToResponseOf('review.update');
         this.kafka.subscribeToResponseOf('review.delete');
+        this.kafka.subscribeToResponseOf('review.SellerReply');
         this.kafka.subscribeToResponseOf('user.batch');
         this.kafka.subscribeToResponseOf('product.updateReviewSummary');
         await this.kafka.connect();
@@ -125,6 +126,13 @@ findOne(@Param('id') id: string) {
 @AiImageType('REVIEW_IMAGE')
 update(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
     return this.kafka.send('review.update', { id, dto, auth });
+}
+
+@Patch('Seller/:id')
+@UseGuards(AiReviewGuard, AiImageGuard)
+@AiImageType('REVIEW_IMAGE')
+SellerReply(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
+    return this.kafka.send('review.SellerReply', { id, dto, auth });
 }
 
 @Delete(':id')

@@ -34,18 +34,23 @@ async handleFindAll(@Payload() payload: any) {
   }
 
   @MessagePattern('review.update')
-  //@UseGuards(JwtKafkaAuthGuard)
+  @UseGuards(JwtKafkaAuthGuard)
   update(@Payload() { id, dto }: any, @CurrentUser() user: any) {
-    //const userId = user?.sub || user?.id;
-    const userId = 'mock-user';
+    const userId = user?.sub || user?.id;
     return this.appService.update(id, dto, userId);
+  }
+s
+  @MessagePattern('review.SellerReply')
+  @UseGuards(JwtKafkaAuthGuard)
+  SellerReply(@Payload() { id, dto }: any, @CurrentUser() user: any) {
+    const userId = user?.sub || user?.id;
+    return this.appService.SellerReply(id, dto, userId);
   }
 
   @MessagePattern('review.delete')
-  //@UseGuards(JwtKafkaAuthGuard)
+  @UseGuards(JwtKafkaAuthGuard)
   remove(@Payload() { id }: any, @CurrentUser() user: any) {
-    //const userId = user?.sub || user?.id;
-    const userId = 'mock-user';
+    const userId = user?.sub || user?.id;
     return this.appService.remove({ id, userId});
   }
 }

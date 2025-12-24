@@ -3,9 +3,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
+import { SellerReplyDto} from './dto/Seller-reply.dto';
 import { Review } from './schemas/review-schema';
 import { RpcException } from '@nestjs/microservices';
 import { ClientKafka } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class AppService {
@@ -13,19 +15,25 @@ export class AppService {
     @InjectModel(Review.name) private readonly reviewModel: Model<Review>,
     @Inject('REVIEW_SERVICE') private readonly kafka: ClientKafka,
   ) {}
+   async onModuleInit() {
+    this.kafka.subscribeToResponseOf('product.findOne');
+    await this.kafka.connect();
+  }
 
   async create(dto: CreateReviewDto, userId: string) {
     if (!dto.productId || !dto.rating) {
       throw new BadRequestException('ProductId and rating aređ required');
     }
-
+    const product = await firstValueFrom(
+      this.kafka.send('product.findOne', { id: dto.productId }),
+    );
     // 2️⃣ Gắn userId từ token vào review
     const newReview = new this.reviewModel({
       ...dto,
       userId,
       createdAt: new Date(),
     });
-    this.kafka.emit('review.created', {productId: dto.productId, rating: dto.rating});
+    this.kafka.emit('review.created', {productId: dto.productId, rating: dto.rating, ownerId: product.ownerId});
     // 3️⃣ Lưu review vào MongoDB
     const created = await newReview.save();
 
@@ -77,6 +85,28 @@ async findAll(q?: any) {
     Object.assign(review, dto);
     const updated = await review.save();
 
+    return {
+      success: true,
+      message: 'Review updated successfully',
+      data: updated,
+    };
+  }
+
+   async SellerReply(id: string, dto: SellerReplyDto, userId: string) {
+    const review = await this.reviewModel.findById(id);
+    if (!review) {
+      console.log('🧩 Throwing RpcException: { statusCode: 404, message: "Review not found" }');
+      throw new RpcException({ statusCode: 404, message: 'Review not found' });
+    }
+    
+    if (review.userId.toString() !== userId) {
+      console.log('🧩 Throwing RpcException: { statusCode: 403, message: "You are not allowed to edit this review" }');
+      throw new RpcException({ statusCode: 403, message: 'You are not allowed to edit this review' });
+    }
+    
+    Object.assign(review, dto);
+    const updated = await review.save();
+    this.kafka.emit('review.sellerReplied', {userId: review.userId, productId: review.productId, reviewId: review._id});
     return {
       success: true,
       message: 'Review updated successfully',
