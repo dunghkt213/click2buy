@@ -13,6 +13,7 @@ export default defineConfig({
         alias: {
             '@': path.resolve(__dirname, './src'), // Thường trỏ đến ./src thay vì ./
         },
+        extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json'],
     },
     server: {
         port: 5173,
