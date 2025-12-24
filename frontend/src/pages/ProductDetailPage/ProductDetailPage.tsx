@@ -35,6 +35,7 @@ export function ProductDetailPage() {
   const hasAutoScrolledToReviewSectionRef = useRef(false);
   const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasAutoOpenedReplyEditorRef = useRef(false);
+  const hasAutoExpandedSellerReplyRef = useRef(false);
   const replyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -118,6 +119,8 @@ export function ProductDetailPage() {
     return value === '1' || value === 'true';
   }, [location.search]);
 
+  const isFocusReviewMode = !!focusReview && !!targetReviewId;
+
   const isProductOwner = !!app.user?.id && !!product?.ownerId && product.ownerId === app.user.id;
 
   const scrollToElementWithOffset = (el: HTMLElement, align: 'start' | 'center') => {
@@ -136,6 +139,7 @@ export function ProductDetailPage() {
     pendingScrollReviewIdRef.current = targetReviewId;
     hasAutoScrolledToReviewSectionRef.current = false;
     hasAutoOpenedReplyEditorRef.current = false;
+    hasAutoExpandedSellerReplyRef.current = false;
   }, [id, targetReviewId]);
 
   useEffect(() => {
@@ -358,6 +362,32 @@ export function ProductDetailPage() {
     openReplyEditor(targetReviewId);
   }, [targetReviewId, shouldAutoOpenReplyEditor, product?.id, isProductOwner, loadingReviews, reviews]);
 
+  useEffect(() => {
+    if (!isFocusReviewMode) return;
+    if (!targetReviewId) return;
+    if (loadingReviews) return;
+    if (!reviews || reviews.length === 0) return;
+    if (hasAutoExpandedSellerReplyRef.current) return;
+
+    const target = reviews.find((r) => r.id === targetReviewId);
+    if (!target) return;
+
+    const localReply = sellerRepliesByReviewId[targetReviewId];
+    const replyText = (localReply && localReply.trim())
+      ? localReply.trim()
+      : (target.replyBySeller && target.replyBySeller.trim())
+        ? target.replyBySeller.trim()
+        : '';
+
+    if (!replyText) return;
+
+    hasAutoExpandedSellerReplyRef.current = true;
+    setExpandedSellerReplyByReviewId((prev) => ({
+      ...prev,
+      [targetReviewId]: true,
+    }));
+  }, [isFocusReviewMode, targetReviewId, loadingReviews, reviews, sellerRepliesByReviewId]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background pt-16 flex items-center justify-center">
@@ -402,8 +432,6 @@ export function ProductDetailPage() {
     (reviewPage - 1) * REVIEWS_PER_PAGE,
     reviewPage * REVIEWS_PER_PAGE
   );
-
-  const isFocusReviewMode = !!focusReview && !!targetReviewId;
   const focusReviews = isFocusReviewMode
     ? filteredReviews.filter((r) => r.id === targetReviewId)
     : [];
@@ -1121,9 +1149,11 @@ export function ProductDetailPage() {
                               <div className="text-xs font-medium text-muted-foreground mb-2">Phản hồi từ shop</div>
 
                               {expandedSellerReplyByReviewId[review.id] && (
-                                <div className="text-sm text-foreground/90 whitespace-pre-wrap">
-                                  {getSellerReplyForReview(review) || 'Shop chưa phản hồi.'}
-                                </div>
+                                (getSellerReplyForReview(review) ? (
+                                  <div className="text-sm text-foreground/90 whitespace-pre-wrap">
+                                    {getSellerReplyForReview(review)}
+                                  </div>
+                                ) : null)
                               )}
 
                               {replyEditorReviewId === review.id && isProductOwner && (
