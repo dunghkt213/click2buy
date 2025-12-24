@@ -3,30 +3,27 @@
  * Hiển thị loading → QR code → Payment confirmation
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { paymentApi } from '@/apis/payment/payment';
+import { usePaymentSocket } from '@/hooks/usePaymentSocket';
 import {
-  ArrowLeft,
-  Clock,
-  CreditCard,
-  Smartphone,
   AlertCircle,
   CheckCircle,
+  Clock,
   Copy,
+  CreditCard,
   ExternalLink,
+  Home,
   Loader2,
-  Home
+  Smartphone
 } from 'lucide-react';
-import { formatPrice } from '../utils/utils';
-import { useSSE } from '../hooks/useSSE';
-import { useAppContext } from '../providers/AppProvider';
+import { QRCodeCanvas } from 'qrcode.react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { usePaymentSocket } from '@/hooks/usePaymentSocket';
-import QRCode, { QRCodeCanvas } from 'qrcode.react';
-import { paymentApi } from '@/apis/payment/payment';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { useAppContext } from '../providers/AppProvider';
+import { formatPrice } from '../utils/utils';
 
 interface PaymentProcessState {
   orderCode: string;
@@ -161,36 +158,36 @@ export function PaymentProcessPage() {
           return;
         }
         console.log('💳 Payment status:', payment.status);
-        
+
         if (payment.status === 'EXPIRED') {
           setIsExpired(true);
           setPayments([]);
           setCurrentStep('qr');
           return;
         }
-        
+
         if (payment.status === 'SUCCESS') {
           setCurrentStep('success');
           return;
         }
-        
+
         if (payment.status === 'PENDING') {
           if (!payment.qrCode || !payment.checkoutUrl) {
             setCurrentStep('loading');
             return;
           }
-        
+
           setPayments([{
             orderCode: payment.orderCode!,
             qrCode: payment.qrCode,
             checkoutUrl: payment.checkoutUrl,
             expireIn: payment.expireIn ?? 0,
           }]);
-        
+
           if (payment.expiredAt) {
             setExpiredAt(new Date(payment.expiredAt));
           }
-        
+
           setTimeLeft(payment.expireIn ?? 0);
           setIsExpired(false);
           setCurrentStep('qr');
@@ -321,7 +318,7 @@ export function PaymentProcessPage() {
                   Vui lòng tạo mã QR mới để tiếp tục thanh toán.
                 </p>
               </div>
-      
+
               <Button
                 className="w-full bg-primary hover:bg-primary/90"
                 onClick={handleRegenerateQR}
@@ -329,7 +326,7 @@ export function PaymentProcessPage() {
                 <CreditCard className="w-4 h-4 mr-2" />
                 Tạo mã QR mới
               </Button>
-      
+
               <p className="text-xs text-muted-foreground">
                 Mã QR mới sẽ có hiệu lực trong 15 phút
               </p>
@@ -419,7 +416,7 @@ export function PaymentProcessPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Số tiền:</span>
                     <span className="font-semibold text-lg text-primary">
-                    {formatPrice(state?.totalAmount ?? 0)}
+                      {formatPrice(state?.totalAmount ?? 0)}
                     </span>
                   </div>
 

@@ -11,8 +11,8 @@ import {
   Twitter,
   Youtube
 } from 'lucide-react';
-import { Button } from '../ui/button.tsx';
-import { Input } from '../ui/input.tsx';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 
 export function Footer() {
   const footerSections = [
@@ -113,9 +113,9 @@ export function Footer() {
               </div>
               <span className="text-xl font-semibold">Click2buy</span>
             </div>
-            
+
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Sàn thương mại điện tử hàng đầu Việt Nam với hơn 10 năm kinh nghiệm. 
+              Sàn thương mại điện tử hàng đầu Việt Nam với hơn 10 năm kinh nghiệm.
               Cung cấp đa dạng sản phẩm chất lượng với giá cả cạnh tranh nhất.
             </p>
 
@@ -182,8 +182,8 @@ export function Footer() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Input 
-                placeholder="Nhập email của bạn..." 
+              <Input
+                placeholder="Nhập email của bạn..."
                 className="flex-1"
               />
               <Button>
@@ -201,7 +201,7 @@ export function Footer() {
             <div className="flex items-center gap-4">
               <span>© 2024 Click2buy. Tất cả quyền được bảo lưu.</span>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <span>Phương thức thanh toán:</span>
               <div className="flex items-center gap-2">

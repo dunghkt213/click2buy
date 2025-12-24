@@ -6,10 +6,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useAppContext } from '../../providers/AppProvider';
+import { mediaApi } from '../../apis/media';
 import { productService } from '../../apis/product/product.service';
 import { productApi } from '../../apis/product/productApi';
-import { mediaApi } from '../../apis/media';
+import { useAppContext } from '../../providers/AppProvider';
 
 // UI Components
 import { Button } from '../../components/ui/button';
@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../../components/ui/textarea';
 
 // Icons
-import { ArrowLeft, DollarSign, Image as ImageIcon, Layers, Package, Plus, Save, Tag, Upload, Warehouse, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, DollarSign, Image as ImageIcon, Layers, Loader2, Package, Plus, Save, Tag, Warehouse, X } from 'lucide-react';
 
 export function EditProductPage() {
   const navigate = useNavigate();
@@ -58,7 +58,7 @@ export function EditProductPage() {
   // State cho attributes và variants (mảng các cặp key-value)
   const [attributes, setAttributes] = useState<Array<{ key: string; value: string }>>([]);
   const [variants, setVariants] = useState<Array<{ key: string; value: string }>>([]);
-  
+
   // State cho uploaded images
   const [uploadedImages, setUploadedImages] = useState<Array<{ url: string; loading?: boolean }>>([]);
   const [uploading, setUploading] = useState(false);
@@ -84,28 +84,28 @@ export function EditProductPage() {
 
       try {
         setLoading(true);
-        
+
         // Get raw product data từ API để có đầy đủ thông tin (warehouseAddress, categoryIds, tags, variants)
         const { request } = await import('../../apis/client/apiClient');
         const productData = await request<any>(`/products/${id}`, {
           method: 'GET',
           requireAuth: true,
         });
-        
+
         // Kiểm tra xem user có phải owner không
         if (productData.ownerId && app.user?.id && productData.ownerId !== app.user.id) {
           toast.error('Bạn không có quyền chỉnh sửa sản phẩm này');
           navigate('/my-store');
           return;
         }
-        
+
         // Điền form với dữ liệu sản phẩm từ productData
         const salePrice = productData.salePrice || productData.sale_price;
         const originalPrice = productData.price;
-        
+
         const stockValue = productData.stock || 0;
         setCurrentStock(stockValue);
-        
+
         setFormData({
           name: productData.name || '',
           description: productData.description || '',
@@ -114,11 +114,11 @@ export function EditProductPage() {
           stock: stockValue.toString(),
           brand: productData.brand || '',
           condition: (productData.condition as 'new' | 'used') || 'new',
-          categoryIds: Array.isArray(productData.categoryIds) 
-            ? productData.categoryIds.join(', ') 
+          categoryIds: Array.isArray(productData.categoryIds)
+            ? productData.categoryIds.join(', ')
             : '',
-          tags: Array.isArray(productData.tags) 
-            ? productData.tags.join(', ') 
+          tags: Array.isArray(productData.tags)
+            ? productData.tags.join(', ')
             : '',
           images: '', // Không cần lưu vào formData nữa, sẽ dùng uploadedImages
           warehouseAddress: productData.warehouseAddress || {
@@ -159,11 +159,11 @@ export function EditProductPage() {
         const existingImages = Array.isArray(productData.images) && productData.images.length > 0
           ? productData.images
           : (productData.image ? [productData.image] : []);
-        
+
         if (existingImages.length > 0) {
-          setUploadedImages(existingImages.map(url => ({ url, loading: false })));
+          setUploadedImages(existingImages.map((url: string) => ({ url, loading: false })));
         }
-        
+
       } catch (error) {
         console.error('Error loading product:', error);
         toast.error('Không thể tải thông tin sản phẩm');
@@ -263,7 +263,7 @@ export function EditProductPage() {
     const images = uploadedImages
       .filter(img => !img.loading && img.url.length > 0)
       .map(img => img.url);
-    
+
     if (images.length === 0) {
       toast.error('Vui lòng tải lên ít nhất một hình ảnh cho sản phẩm');
       return;
@@ -295,11 +295,11 @@ export function EditProductPage() {
       };
 
       console.log('📦 [EditProductPage] Updating product with data:', updateData);
-      
+
       await productService.update(id, updateData);
-      
+
       toast.success('Cập nhật sản phẩm thành công!');
-      
+
       // Reload store products - trigger reload bằng cách gọi lại API
       // The store will reload automatically when navigating back
       navigate('/my-store');
@@ -326,11 +326,11 @@ export function EditProductPage() {
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files);
-    
+
     // Validate file types
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     const invalidFiles = fileArray.filter(file => !validTypes.includes(file.type));
-    
+
     if (invalidFiles.length > 0) {
       toast.error('Chỉ chấp nhận file ảnh (JPEG, PNG, WEBP, GIF)');
       return;
@@ -339,7 +339,7 @@ export function EditProductPage() {
     // Validate file size (max 10MB per file)
     const maxSize = 10 * 1024 * 1024; // 10MB
     const oversizedFiles = fileArray.filter(file => file.size > maxSize);
-    
+
     if (oversizedFiles.length > 0) {
       toast.error('Kích thước file không được vượt quá 10MB');
       return;
@@ -349,7 +349,7 @@ export function EditProductPage() {
 
     // Get current length to track new placeholders
     const currentLength = uploadedImages.length;
-    
+
     // Add loading placeholders
     const loadingPlaceholders = fileArray.map(() => ({ url: '', loading: true }));
     setUploadedImages(prev => [...prev, ...loadingPlaceholders]);
@@ -357,17 +357,17 @@ export function EditProductPage() {
     try {
       // Upload all files sequentially
       const results: Array<string> = [];
-      
+
       for (let i = 0; i < fileArray.length; i++) {
         try {
           const response = await mediaApi.upload(fileArray[i]);
-          
+
           // Extract thumbnailUrl from response
           const imageUrl = response?.url?.thumbnailUrl || '';
-          
+
           if (imageUrl) {
             results.push(imageUrl);
-            
+
             // Update the specific placeholder with the result
             setUploadedImages(prev => {
               const newImages = [...prev];
@@ -383,7 +383,7 @@ export function EditProductPage() {
         } catch (error: any) {
           console.error(`Error uploading file ${i + 1}:`, error);
           toast.error(`Lỗi khi tải ảnh ${i + 1}: ${error?.message || 'Không xác định'}`);
-          
+
           // Remove the failed placeholder
           setUploadedImages(prev => {
             const newImages = [...prev];
@@ -404,7 +404,7 @@ export function EditProductPage() {
     } catch (error: any) {
       console.error('Error uploading images:', error);
       toast.error(error?.message || 'Có lỗi xảy ra khi tải ảnh lên');
-      
+
       // Remove all loading placeholders on error
       setUploadedImages(prev => prev.filter(img => !img.loading || img.url));
     } finally {
@@ -432,19 +432,19 @@ export function EditProductPage() {
 
     try {
       setUpdatingStock(true);
-      
+
       const result = await productApi.updateStock(id, amount);
-      
+
       if (result.success) {
         toast.success(result.message || 'Cập nhật số lượng thành công');
-        
+
         // Reload lại product data để cập nhật số lượng hiện tại
         const { request } = await import('../../apis/client/apiClient');
         const productData = await request<any>(`/products/${id}`, {
           method: 'GET',
           requireAuth: true,
         });
-        
+
         const newStock = productData.stock || 0;
         setCurrentStock(newStock);
         setFormData({ ...formData, stock: newStock.toString() });

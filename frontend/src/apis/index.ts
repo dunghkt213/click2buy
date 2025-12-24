@@ -6,19 +6,19 @@
 export * from './client';
 
 // Auth API
-export * from './auth';
+export { authApi, authService, authStorage, mapAuthResponse } from './auth';
 
 // User API
-export * from './user';
+export { userApi, userService } from './user';
 
 // Product API
 export * from './product';
 
 // Cart API
-export * from './cart';
+export { cartApi, cartService } from './cart';
 
 // Order API
-export * from './order';
+export { orderApi, orderService } from './order';
 
 // Review API
 export * from './review';

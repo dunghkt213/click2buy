@@ -19,7 +19,7 @@ import { FAQItem, Product, Promotion, SupportTicket, User } from '../types/inter
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  
+
   // Auth
   user?: User;
   isLoggedIn: boolean;
@@ -30,7 +30,7 @@ interface AppLayoutProps {
   onRegisterSuccess: (payload: AuthSuccessPayload) => Promise<void>;
   onAuthCallbackSuccess: (userData: User, token: string) => Promise<void>;
   showAuthCallback: boolean;
-  
+
   // Cart
   cartItems: any[];
   cartItemsCount: number;
@@ -43,42 +43,42 @@ interface AppLayoutProps {
   selectedTotalPrice: number;
   selectedItems: any[];
   onCheckout: (checkoutData: any) => Promise<void>;
-  
+
   // Notifications
   notifications: any[];
   unreadNotifications: number;
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead: () => void;
   onDeleteNotification: (id: string) => void;
-  
+
   // Filters
   onFilterClick: () => void;
-  
+
   // Promotions
   promotions: Promotion[];
   onPromotionClick: () => void;
   onClaimPromotion: (id: string) => void;
   onUsePromotion: (id: string) => void;
-  
+
   // Support
   faqs: FAQItem[];
   supportTickets: SupportTicket[];
   onSupportClick: () => void;
   onSubmitTicket: (subject: string, message: string, category: string) => void;
-  
+
   // Store
   onStoreClick: () => void;
   onLogoClick: () => void;
-  
+
   // Search
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onSearchClick: () => void;
-  
+
   // Profile & Orders
   onProfileClick: () => void;
   onOrdersClick: () => void;
-  
+
   // Sidebars
   isCartOpen: boolean;
   onCartClick?: () => void;
@@ -91,7 +91,7 @@ interface AppLayoutProps {
   onPromotionClose: () => void;
   isSupportOpen: boolean;
   onSupportClose: () => void;
-  
+
   // Modals
   isCheckoutOpen: boolean;
   onCheckoutClose: () => void;
@@ -104,15 +104,15 @@ interface AppLayoutProps {
   isStoreRegistrationOpen: boolean;
   onStoreRegistrationClose: () => void;
   onStoreRegistration: (storeInfo: any) => void;
-  
+
   // Product actions
   onAddToCart: (product: any) => Promise<void>;
-  
+
   // Flying icons
   flyingIcons: FlyingIconConfig[];
   onAnimationComplete: (id: string) => void;
   onTriggerFlyingIcon?: (type: 'cart', element: HTMLElement) => void;
-  
+
   // Refs
   cartIconRef: React.RefObject<HTMLButtonElement>;
 }
@@ -196,10 +196,10 @@ export function AppLayout(props: AppLayoutProps) {
         cartItemsCount={cartItemsCount}
         unreadNotifications={unreadNotifications}
         onCartClick={onCartClick || onCartClose}
-        onNotificationsClick={onNotificationClick || (() => {})}
+        onNotificationsClick={onNotificationClick || (() => { })}
         onFilterClick={onFilterClick}
-        onPromotionClick={onPromotionClick || (() => {})}
-        onSupportClick={onSupportClick || (() => {})}
+        onPromotionClick={onPromotionClick || (() => { })}
+        onSupportClick={onSupportClick || (() => { })}
         onStoreClick={onStoreClick}
         onLogoClick={onLogoClick}
         isLoggedIn={isLoggedIn}
@@ -276,15 +276,17 @@ export function AppLayout(props: AppLayoutProps) {
         <AuthCallback onSuccess={onAuthCallbackSuccess} />
       )}
 
-      <ProductDetailModal
-        isOpen={isProductDetailOpen}
-        onClose={onProductDetailClose}
-        product={selectedProduct}
-        onAddToCart={onAddToCart}
-        onTriggerFlyingIcon={onTriggerFlyingIcon}
-        isLoggedIn={isLoggedIn}
-        onLogin={onLogin}
-      />
+      {selectedProduct && (
+        <ProductDetailModal
+          isOpen={isProductDetailOpen}
+          onClose={onProductDetailClose}
+          product={selectedProduct}
+          onAddToCart={onAddToCart}
+          onTriggerFlyingIcon={onTriggerFlyingIcon}
+          isLoggedIn={isLoggedIn}
+          onLogin={onLogin}
+        />
+      )}
 
       <FlyingIcon
         icons={flyingIcons}

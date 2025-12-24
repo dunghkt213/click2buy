@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { authStorage } from '../apis/auth';
 import { cartApi } from '../apis/cart';
 import { productApi } from '../apis/product';
 import { CartItem, Product } from '../types';
-import { getCache, setCache, removeCache, CACHE_KEYS } from '../utils/cache';
-import { authStorage } from '../apis/auth';
+import { CACHE_KEYS, getCache, removeCache, setCache } from '../utils/cache';
 
 /**
  * Hook để quản lý giỏ hàng với API backend
@@ -15,12 +15,10 @@ export const useCartApi = () => {
 
   // Ref để track loading state mà không trigger re-render
   const isLoadingRef = useRef(false);
-  
+
   // Track userId để detect khi user thay đổi
-  const currentUserIdRef = useRef<string | undefined>(() => {
-    const user = authStorage.getUser();
-    return user?.id;
-  });
+  const currentUserId = authStorage.getUser()?.id;
+  const currentUserIdRef = useRef<string | undefined>(currentUserId);
 
   const loadCart = useCallback(async (forceRefresh: boolean = false) => {
     // Tránh gọi nhiều lần đồng thời
@@ -33,14 +31,14 @@ export const useCartApi = () => {
     const user = authStorage.getUser();
     const currentUserId = user?.id;
     const previousUserId = currentUserIdRef.current;
-    
+
     // Nếu userId thay đổi, clear cache và force refresh
     if (previousUserId && currentUserId && previousUserId !== currentUserId) {
       console.log('🔄 [useCartApi] User đã thay đổi, clear cache và force refresh');
       removeCache(CACHE_KEYS.CART);
       forceRefresh = true;
     }
-    
+
     // Cập nhật userId hiện tại
     currentUserIdRef.current = currentUserId;
 
@@ -58,26 +56,26 @@ export const useCartApi = () => {
       isLoadingRef.current = true;
       setLoading(true);
       const response = await cartApi.getAll();
-      
+
       // Handle response wrapper if exists (response might be array or wrapped)
-      const carts = Array.isArray(response) 
-        ? response 
+      const carts = Array.isArray(response)
+        ? response
         : ((response as any)?.data || []);
-      
+
       console.log('Cart response from API:', carts);
-      
+
       // Transform cart response thành CartItem[]
       const items: CartItem[] = [];
-      
+
       // If no carts, return empty array
       if (!carts || carts.length === 0) {
         setCartItems([]);
         return;
       }
-      
+
       // Collect all product IDs to fetch
       const productPromises: Promise<{ product: Product | null; item: any; sellerId: string }>[] = [];
-      
+
       for (const cart of carts) {
         // Handle case where cart.items might be undefined
         const cartItems = cart.items || [];
@@ -86,7 +84,7 @@ export const useCartApi = () => {
             console.warn('Cart item missing productId:', item);
             continue;
           }
-          
+
           productPromises.push(
             productApi.getById(item.productId)
               .then(product => ({ product, item, sellerId: cart.sellerId }))
@@ -97,10 +95,10 @@ export const useCartApi = () => {
           );
         }
       }
-      
+
       // Fetch all products in parallel
       const results = await Promise.all(productPromises);
-      
+
       // Transform results to CartItem[]
       for (const { product, item, sellerId } of results) {
         // Find the cart ID for this seller
@@ -136,20 +134,20 @@ export const useCartApi = () => {
           } as CartItem & { sellerId?: string });
         }
       }
-      
+
       console.log('Transformed cart items:', items);
-      
+
       // Lưu vào cache (TTL: 2 phút - cart thay đổi thường xuyên hơn)
       setCache(CACHE_KEYS.CART, items, 2 * 60 * 1000);
-      
+
       // Chỉ update state nếu items thực sự thay đổi (tránh re-render không cần thiết)
       setCartItems(prevItems => {
         // So sánh nhanh: nếu số lượng và IDs giống nhau thì không update
-        if (prevItems.length === items.length && 
-            prevItems.every((item, idx) => {
-              const newItem = items[idx];
-              return newItem && item.id === newItem.id && item.quantity === newItem.quantity;
-            })) {
+        if (prevItems.length === items.length &&
+          prevItems.every((item, idx) => {
+            const newItem = items[idx];
+            return newItem && item.id === newItem.id && item.quantity === newItem.quantity;
+          })) {
           console.log('⏸️ [useCartApi] Cart items không thay đổi, bỏ qua update');
           return prevItems;
         }
@@ -172,14 +170,14 @@ export const useCartApi = () => {
     loadCart(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Chỉ chạy một lần khi mount (reload sẽ được handle bởi window.location.reload)
-  
+
   // Watch userId thay đổi từ authStorage (polling để detect khi user đăng nhập tài khoản khác)
   useEffect(() => {
     const checkUserChange = () => {
       const user = authStorage.getUser();
       const currentUserId = user?.id;
       const previousUserId = currentUserIdRef.current;
-      
+
       // Nếu userId thay đổi, reload cart
       if (previousUserId && currentUserId && previousUserId !== currentUserId) {
         console.log('🔄 [useCartApi] Phát hiện user thay đổi, reload cart');
@@ -196,13 +194,13 @@ export const useCartApi = () => {
         removeCache(CACHE_KEYS.CART);
       }
     };
-    
+
     // Check mỗi 500ms để detect user change (sau khi reload page)
     const interval = setInterval(checkUserChange, 500);
-    
+
     // Check ngay lập tức
     checkUserChange();
-    
+
     return () => clearInterval(interval);
   }, [loadCart]);
 
@@ -222,17 +220,17 @@ export const useCartApi = () => {
         price: product.price,
         sellerId,
       };
-      
+
       console.log('useCartApi.addToCart - Payload:', payload);
-      
+
       await cartApi.addItem(payload);
-      
+
       // Xóa cache để force reload từ API
       removeCache(CACHE_KEYS.CART);
-      
+
       // Force refresh từ API (không dùng cache)
       await loadCart(true);
-      
+
       toast.success('Đã thêm vào giỏ hàng');
     } catch (error: any) {
       console.error('useCartApi.addToCart - Error:', error);
@@ -260,13 +258,13 @@ export const useCartApi = () => {
         productId,
         sellerId,
       });
-      
+
       // Xóa cache để force reload từ API
       removeCache(CACHE_KEYS.CART);
-      
+
       // Force refresh từ API (không dùng cache)
       await loadCart(true);
-      
+
       toast.success('Đã xóa khỏi giỏ hàng');
     } catch (error: any) {
       console.error('Error removing from cart:', error);
@@ -275,7 +273,7 @@ export const useCartApi = () => {
   }, [cartItems, loadCart]);
 
   const updateQuantity = useCallback(async (
-    productId: string, 
+    productId: string,
     quantity: number,
     sellerId?: string
   ) => {
@@ -304,10 +302,10 @@ export const useCartApi = () => {
         quantity,
         sellerId,
       });
-      
+
       // Xóa cache để force reload từ API
       removeCache(CACHE_KEYS.CART);
-      
+
       // Force refresh từ API (không dùng cache)
       await loadCart(true);
     } catch (error: any) {
