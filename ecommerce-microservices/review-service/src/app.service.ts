@@ -33,7 +33,7 @@ export class AppService {
       userId,
       createdAt: new Date(),
     });
-    this.kafka.emit('review.created', {productId: dto.productId, rating: dto.rating, ownerId: product.ownerId});
+    this.kafka.emit('review.created', {productId: dto.productId, rating: dto.rating, ownerId: product.ownerId, reviewId: newReview._id});
     // 3️⃣ Lưu review vào MongoDB
     const created = await newReview.save();
 
