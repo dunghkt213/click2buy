@@ -67,6 +67,48 @@ export class NotificationController {
     }
   }
    
+    @EventPattern('review.sellerReplied')
+  async handleReviewSellerReplied(@Payload() payload: any) {
+    this.logger.log(`📨 Creating notification for user ${payload.userId}`);
+    const data = {userId: payload.userId, title: 'Đánh giá đã được trả lời', content: `Người bán đã trả lời đánh giá của bạn`, type: 'REVIEW', metadata: {productId: payload.productId, reviewId: payload.reviewId}};
+    const result = await this.service.create(data);
+
+    if (result.success && result.data) {
+      this.logger.log(`✅ Notification saved: ${result.data._id}`);
+
+      // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
+           this.kafkaClient.emit('noti.created', {
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        type: data.type,
+      });
+    } else {
+      this.logger.error(`❌ Failed to create notification: ${result.error}`);
+    }
+  }
+
+   @EventPattern('review.review.created')
+  async handleReviewCreated(@Payload() payload: any) {
+    this.logger.log(`📨 Creating notification for user ${payload.userId}`);
+    const data = {userId: payload.ownerId, title: 'Đơn hàng của bạn có đánh giá mới', content: `Người dùng đã đánh giá sản phẩm của bạn xem ngay!`, type: 'REVIEW', metadata: {productId: payload.productId, reviewId: payload.reviewId}};
+    const result = await this.service.create(data);
+
+    if (result.success && result.data) {
+      this.logger.log(`✅ Notification saved: ${result.data._id}`);
+
+      // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
+           this.kafkaClient.emit('noti.created', {
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        type: data.type,
+      });
+    } else {
+      this.logger.error(`❌ Failed to create notification: ${result.error}`);
+    }
+  }
+  
     @EventPattern('payment.success')
   async handlePaymentSuccess(@Payload() payload: any) {
     this.logger.log(`📨 Creating notification for user ${payload.userId}`);
