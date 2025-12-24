@@ -99,11 +99,6 @@ async findAll(q?: any) {
       throw new RpcException({ statusCode: 404, message: 'Review not found' });
     }
     
-    if (review.userId.toString() !== userId) {
-      console.log('🧩 Throwing RpcException: { statusCode: 403, message: "You are not allowed to edit this review" }');
-      throw new RpcException({ statusCode: 403, message: 'You are not allowed to edit this review' });
-    }
-    
     Object.assign(review, dto);
     const updated = await review.save();
     this.kafka.emit('review.sellerReplied', {userId: review.userId, productId: review.productId, reviewId: review._id});
