@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '../apis/client/baseUrl';
 
 export interface PaymentQR {
   orderId: string;
@@ -50,7 +51,7 @@ export function useSSE({
     const connectSSE = () => {
       try {
         console.log('SSE: Creating EventSource with credentials');
-        const eventSource = new EventSource('http://localhost:3000/sse/payments', {
+        const eventSource = new EventSource(`${API_BASE_URL}/sse/payments`, {
           withCredentials: true
         });
 
@@ -62,29 +63,29 @@ export function useSSE({
         eventSource.onmessage = (event) => {
           try {
             const sseEvent = JSON.parse(event.data);
-        
+
             // 👇 BỎ QUA EVENT HỆ THỐNG
             if (sseEvent.type === 'CONNECTED' || sseEvent.type === 'PING') {
               return;
             }
-        
+
             console.log('📡 SSE Event received:', sseEvent);
-        
+
             switch (sseEvent.type) {
               case 'QR_CREATED':
                 onQRCreated?.(sseEvent.data);
                 break;
-        
+
               case 'PAYMENT_SUCCESS':
                 toast.success('Thanh toán thành công!');
                 onPaymentSuccess?.(sseEvent.data);
                 break;
-        
+
               case 'QR_EXPIRED':
                 toast.error('Mã QR đã hết hạn. Vui lòng thử lại.');
                 onQRExpired?.(sseEvent.data);
                 break;
-        
+
               default:
                 console.warn('Unknown SSE event type:', sseEvent.type);
             }
@@ -92,7 +93,7 @@ export function useSSE({
             console.error('Failed to parse SSE event:', err);
           }
         };
-        
+
 
         eventSource.onerror = (error) => {
           console.error('SSE connection error:', error);

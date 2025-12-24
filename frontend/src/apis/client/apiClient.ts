@@ -1,8 +1,7 @@
-import { authApi } from '../auth/authApi';
 import { authStorage } from '../auth';
+import { authApi } from '../auth/authApi';
+import { API_BASE_URL } from './baseUrl';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
 export interface ApiError {
   message: string;
   status?: number;
@@ -27,13 +26,13 @@ async function refreshAccessToken(): Promise<string | null> {
     try {
       const response = await authApi.refresh();
       const newToken = response.accessToken;
-      
+
       // Update token trong storage
       const user = authStorage.getUser();
       if (user && newToken) {
         authStorage.save(user, newToken);
       }
-      
+
       return newToken;
     } catch (error) {
       // Refresh failed, clear auth
@@ -90,7 +89,7 @@ async function request<T>(
   // Nếu gặp 401 và requireAuth, thử refresh token và retry
   if (response.status === 401 && init?.requireAuth !== false && retryCount < maxRetries) {
     const newToken = await refreshAccessToken();
-    
+
     if (newToken) {
       // Retry request với token mới
       const retryHeaders: HeadersInit = {
@@ -206,7 +205,7 @@ async function requestFormData<T>(
   // Nếu gặp 401 và requireAuth, thử refresh token và retry
   if (response.status === 401 && requireAuth && retryCount < maxRetries) {
     const newToken = await refreshAccessToken();
-    
+
     if (newToken) {
       // Tạo lại FormData cho retry (FormData không thể reuse)
       const retryFormData = formDataFactory();
@@ -279,5 +278,5 @@ async function requestFormData<T>(
   return (payload?.data ?? payload) as T;
 }
 
-export { API_BASE_URL, request, requestFormData, refreshAccessToken };
+export { API_BASE_URL, refreshAccessToken, request, requestFormData };
 
