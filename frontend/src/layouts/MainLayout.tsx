@@ -141,10 +141,10 @@ export function MainLayout({ children }: MainLayoutProps) {
       onTriggerFlyingIcon={app.handleTriggerFlyingIcon}
       cartIconRef={app.cartIconRef}
       isCheckoutOpen={app.modals.isCheckoutOpen}
-      onCloseCheckout={() => app.modals.closeCheckout()}
+      onCheckoutClose={() => app.modals.closeCheckout()}
       isAuthOpen={app.modals.isAuthOpen}
       authTab={app.modals.authTab}
-      onCloseAuth={() => app.modals.closeAuth()}
+      onAuthClose={() => app.modals.closeAuth()}
       isStoreRegistrationOpen={app.modals.isStoreRegistrationOpen}
       onStoreRegistrationClose={() => app.modals.closeStoreRegistration()}
       onStoreRegistration={app.handleStoreRegistration}
@@ -153,4 +153,3 @@ export function MainLayout({ children }: MainLayoutProps) {
     </AppLayout>
   );
 }
-

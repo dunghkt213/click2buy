@@ -75,7 +75,7 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
    */
   handleNotificationCreated(payload: any) {
     const socketId = this.userSocketMap.get(payload.userId);
-
+    console.log('socketId:', payload.userId);
     if (socketId) {
       this.server.to(socketId).emit('notification', payload);
       this.logger.log(`📨 Pushed notification to user ${payload.userId} via WebSocket`);

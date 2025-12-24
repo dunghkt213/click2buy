@@ -28,12 +28,18 @@ export class NotificationController {
     this.logger.log(`📨 Creating notification for user ${payload.userId}`);
 
     const result = await this.service.create(payload);
-
+    console.log('resultdsd', result.data);
     if (result.success && result.data) {
+      const payload = result.data;
       this.logger.log(`✅ Notification saved: ${result.data._id}`);
-
+      console.log('result.data', result.data);
       // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
-      this.kafkaClient.emit('noti.created', result.data);
+      this.kafkaClient.emit('noti.created', {
+        userId: payload.userId,
+        title: payload.title,
+        content: payload.content,
+        type: payload.type,
+      });
     } else {
       this.logger.error(`❌ Failed to create notification: ${result.error}`);
     }
@@ -50,7 +56,12 @@ export class NotificationController {
       this.logger.log(`✅ Notification saved: ${result.data._id}`);
 
       // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
-      this.kafkaClient.emit('noti.created', result.data);
+           this.kafkaClient.emit('noti.created', {
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        type: data.type,
+      });
     } else {
       this.logger.error(`❌ Failed to create notification: ${result.error}`);
     }
@@ -66,7 +77,12 @@ export class NotificationController {
       this.logger.log(`✅ Notification saved: ${result.data._id}`);
 
       // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
-      this.kafkaClient.emit('noti.created', result.data);
+           this.kafkaClient.emit('noti.created', {
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        type: data.type,
+      });
     } else {
       this.logger.error(`❌ Failed to create notification: ${result.error}`);
     }
@@ -82,7 +98,12 @@ export class NotificationController {
       this.logger.log(`✅ Notification saved: ${result.data._id}`);
 
       // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
-      this.kafkaClient.emit('noti.created', result.data);
+           this.kafkaClient.emit('noti.created', {
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        type: data.type,
+      });
     } else {
       this.logger.error(`❌ Failed to create notification: ${result.error}`);
     }
@@ -99,7 +120,12 @@ export class NotificationController {
       this.logger.log(`✅ Notification saved: ${result.data._id}`);
 
       // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
-      this.kafkaClient.emit('noti.created', result.data);
+           this.kafkaClient.emit('noti.created', {
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        type: data.type,
+      });
     } else {
       this.logger.error(`❌ Failed to create notification: ${result.error}`);
     }
@@ -115,7 +141,12 @@ export class NotificationController {
       this.logger.log(`✅ Notification saved: ${result.data._id}`);
 
       // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
-      this.kafkaClient.emit('noti.created', result.data);
+           this.kafkaClient.emit('noti.created', {
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        type: data.type,
+      });
     } else {
       this.logger.error(`❌ Failed to create notification: ${result.error}`);
     }
@@ -130,7 +161,12 @@ export class NotificationController {
       this.logger.log(`✅ Notification saved: ${result.data._id}`);
 
       // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
-      this.kafkaClient.emit('noti.created', result.data);
+           this.kafkaClient.emit('noti.created', {
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        type: data.type,
+      });
     } else {
       this.logger.error(`❌ Failed to create notification: ${result.error}`);
     }
