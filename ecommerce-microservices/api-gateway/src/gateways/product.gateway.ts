@@ -346,6 +346,85 @@ console.log("Product in gateway: ", product);
   }
 
   // ============================================================
+  // SEARCH BY IMAGE (AI-powered)
+  // ============================================================
+  @Post('search-by-image')
+  async searchByImage(@Body() body: { image: string; limit?: number }) {
+    try {
+      const { image, limit = 20 } = body;
+
+      if (!image) {
+        throw new BadRequestException('Thiếu trường "image"');
+      }
+
+      this.logger.log('[Search by Image] Bắt đầu xử lý...');
+
+      // 1. (Optional) Validate image - fail-safe: AI lỗi thì vẫn tiếp tục
+      const isValidImage = await this.aiService.validateImage(image, 'PRODUCT_IMAGE');
+      if (!isValidImage) {
+        this.logger.warn('[Search by Image] Ảnh vi phạm chính sách');
+        return {
+          success: false,
+          message: 'Ảnh vi phạm chính sách nội dung. Vui lòng thử ảnh khác.',
+          queryUsed: null,
+          keywords: [],
+          products: [],
+        };
+      }
+
+      // 2. Trích xuất query text từ ảnh bằng AI
+      const extracted = await this.aiService.extractQueryFromImage(image);
+
+      if (!extracted || !extracted.query) {
+        this.logger.warn('[Search by Image] AI không thể trích xuất query');
+        return {
+          success: false,
+          message: 'Không thể phân tích ảnh. Vui lòng thử lại hoặc sử dụng tìm kiếm text.',
+          queryUsed: null,
+          keywords: [],
+          products: [],
+        };
+      }
+
+      const { query, keywords } = extracted;
+      this.logger.log(`[Search by Image] Query extracted: "${query}"`);
+
+      // 3. Dùng query để search sản phẩm qua Kafka
+      const searchResult = await firstValueFrom(
+        this.kafka.send('product.search', { 
+          q: { 
+            query, 
+            limit 
+          } 
+        })
+      );
+
+      const products = searchResult?.data || [];
+      this.logger.log(`[Search by Image] Tìm thấy ${products.length} sản phẩm`);
+
+      // 4. Trả về kết quả
+      return {
+        success: true,
+        queryUsed: query,
+        keywords,
+        products,
+        total: products.length,
+      };
+    } catch (error) {
+      this.logger.error(`[Search by Image] Lỗi: ${error.message}`);
+      
+      // Fail-safe: trả về empty list với message rõ ràng
+      return {
+        success: false,
+        message: error.message || 'Lỗi khi xử lý tìm kiếm bằng ảnh',
+        queryUsed: null,
+        keywords: [],
+        products: [],
+      };
+    }
+  }
+
+  // ============================================================
   // UPDATE STOCK
   // ============================================================
   @Patch(':id/stock')

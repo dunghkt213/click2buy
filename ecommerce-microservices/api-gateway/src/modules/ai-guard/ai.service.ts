@@ -1,15 +1,31 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import * as crypto from 'crypto';
 
 export type ContentType = 'REVIEW' | 'CHAT';
 export type ImageType = 'PRODUCT_IMAGE' | 'REVIEW_IMAGE';
+
+/**
+ * Cache entry cho image search query
+ */
+interface ImageSearchCache {
+  query: string;
+  keywords: string[];
+  cachedAt: number; // timestamp ms
+}
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly genAI: GoogleGenerativeAI;
   private readonly model: any;
+  
+  // Cache cho image -> query (image hash -> extracted data)
+  private readonly imageSearchCache = new Map<string, ImageSearchCache>();
+  
+  // Cache TTL - 1 giờ (configurable)
+  private readonly cacheMaxAge = 60 * 60 * 1000; // 1h in ms
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -111,6 +127,134 @@ Chỉ trả về bản tóm tắt, không giải thích thêm.`;
       this.logger.warn(`[AI Summary] Lỗi khi tạo tóm tắt: ${error.message}`);
       return null;
     }
+  }
+
+  /**
+   * Trích xuất query text từ ảnh sản phẩm để search (với cache)
+   * @param image - URL ảnh hoặc Base64 string
+   * @returns { query: string, keywords: string[] } hoặc null nếu lỗi
+   */
+  async extractQueryFromImage(image: string): Promise<{ query: string; keywords: string[] } | null> {
+    // Fail-safe: Nếu không có API key, return null
+    if (!this.configService.get<string>('GEMINI_API_KEY')) {
+      this.logger.warn('[AI Image Search] Bỏ qua do thiếu GEMINI_API_KEY');
+      return null;
+    }
+
+    // Nếu không có ảnh, return null
+    if (!image || typeof image !== 'string' || image.trim().length === 0) {
+      this.logger.warn('[AI Image Search] Ảnh trống');
+      return null;
+    }
+
+    try {
+      // 1. Tạo hash của ảnh để làm cache key
+      const imageHash = this.hashImage(image);
+      const now = Date.now();
+
+      // 2. Check cache
+      const cached = this.imageSearchCache.get(imageHash);
+      if (cached) {
+        const age = now - cached.cachedAt;
+        if (age < this.cacheMaxAge) {
+          const ageMin = Math.floor(age / 60000);
+          this.logger.log(
+            `[AI Image Search] CACHE HIT (age: ${ageMin}m) - query="${cached.query.substring(0, 50)}..."`
+          );
+          return {
+            query: cached.query,
+            keywords: cached.keywords,
+          };
+        } else {
+          // Cache expired, xóa
+          this.imageSearchCache.delete(imageHash);
+          this.logger.debug('[AI Image Search] Cache expired, xóa và gọi AI lại');
+        }
+      }
+
+      // 3. Cache MISS - gọi AI
+      this.logger.log('[AI Image Search] CACHE MISS - gọi Gemini...');
+      
+      const prompt = `Bạn là trợ lý AI cho website thương mại điện tử.
+Nhiệm vụ: Phân tích ảnh sản phẩm và trích xuất thông tin để tìm kiếm.
+
+Yêu cầu:
+- Xác định loại sản phẩm, thương hiệu (nếu có), màu sắc, đặc điểm nổi bật
+- Trả về JSON STRICT theo format:
+{
+  "query": "mô tả ngắn gọn sản phẩm (12-20 từ, tiếng Việt)",
+  "keywords": ["từ khóa 1", "từ khóa 2", "từ khóa 3"]
+}
+
+Ví dụ:
+- Ảnh iPhone 13 đỏ → {"query": "điện thoại iPhone 13 màu đỏ smartphone", "keywords": ["iphone", "điện thoại", "đỏ"]}
+- Ảnh áo thun trắng → {"query": "áo thun nam nữ màu trắng cotton", "keywords": ["áo thun", "trắng", "cotton"]}
+
+CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.`;
+
+      const imagePart = await this.prepareImagePart(image);
+
+      if (!imagePart) {
+        this.logger.warn('[AI Image Search] Không thể xử lý ảnh');
+        return null;
+      }
+
+      const result = await this.model.generateContent([prompt, imagePart]);
+      const responseText = result.response.text().trim();
+
+      // Parse JSON response
+      // Remove markdown code blocks nếu có
+      let jsonText = responseText;
+      if (responseText.includes('```json')) {
+        const match = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+        if (match) jsonText = match[1];
+      } else if (responseText.includes('```')) {
+        const match = responseText.match(/```\s*([\s\S]*?)\s*```/);
+        if (match) jsonText = match[1];
+      }
+
+      const parsed = JSON.parse(jsonText);
+
+      if (!parsed.query || typeof parsed.query !== 'string') {
+        this.logger.warn('[AI Image Search] AI trả về query không hợp lệ');
+        return null;
+      }
+
+      this.logger.log(`[AI Image Search] Trích xuất thành công: query="${parsed.query.substring(0, 50)}...", keywords=${JSON.stringify(parsed.keywords || [])}`);
+      
+      const result_data = {
+        query: parsed.query,
+        keywords: parsed.keywords || [],
+      };
+
+      // 4. Lưu vào cache
+      this.imageSearchCache.set(imageHash, {
+        ...result_data,
+        cachedAt: now,
+      });
+      this.logger.debug(`[AI Image Search] Đã cache kết quả (hash: ${imageHash.substring(0, 12)}...)`);
+
+      // 5. Clean old cache (giữ max 100 entries)
+      if (this.imageSearchCache.size > 100) {
+        const firstKey = this.imageSearchCache.keys().next().value;
+        this.imageSearchCache.delete(firstKey);
+      }
+      
+      return result_data;
+    } catch (error) {
+      // Fail-safe: không throw error, chỉ log warning
+      this.logger.warn(`[AI Image Search] Lỗi khi trích xuất query: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Tạo hash SHA256 của ảnh (URL hoặc base64)
+   * @param image - URL hoặc base64 string
+   * @returns hash string
+   */
+  private hashImage(image: string): string {
+    return crypto.createHash('sha256').update(image).digest('hex');
   }
 
   /**
