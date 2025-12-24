@@ -3,7 +3,7 @@
  * Hiển thị đầy đủ thông tin sản phẩm, shop, mô tả, đánh giá và sản phẩm liên quan
  */
 
-import { ArrowLeft, ChevronLeft, ChevronRight, MessageCircle, Package, Share2, Shield, ShoppingCart, Sparkles, Star, Store, ThumbsUp, TruckIcon } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, MessageCircle, Package, Reply, Share2, Shield, ShoppingCart, Sparkles, Star, Store, ThumbsUp, TruckIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -43,6 +43,10 @@ export function ProductDetailPage() {
   // Review pagination & filter
   const [reviewPage, setReviewPage] = useState(1);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const [sellerRepliesByReviewId, setSellerRepliesByReviewId] = useState<Record<string, string>>({});
+  const [replyDraftsByReviewId, setReplyDraftsByReviewId] = useState<Record<string, string>>({});
+  const [replyEditorReviewId, setReplyEditorReviewId] = useState<string | null>(null);
+  const [expandedSellerReplyByReviewId, setExpandedSellerReplyByReviewId] = useState<Record<string, boolean>>({});
 
   function clearSavedScrollPositionForPath(pathname: string) {
     try {
@@ -196,6 +200,46 @@ export function ProductDetailPage() {
     (reviewPage - 1) * REVIEWS_PER_PAGE,
     reviewPage * REVIEWS_PER_PAGE
   );
+
+  const isProductOwner = !!app.user?.id && product.ownerId === app.user.id;
+
+  const toggleSellerReply = (reviewId: string) => {
+    setExpandedSellerReplyByReviewId((prev) => ({
+      ...prev,
+      [reviewId]: !prev[reviewId],
+    }));
+  };
+
+  const openReplyEditor = (reviewId: string) => {
+    setReplyEditorReviewId(reviewId);
+    setReplyDraftsByReviewId((prev) => ({
+      ...prev,
+      [reviewId]: prev[reviewId] ?? sellerRepliesByReviewId[reviewId] ?? '',
+    }));
+  };
+
+  const cancelReplyEditor = () => {
+    setReplyEditorReviewId(null);
+  };
+
+  const saveSellerReply = (reviewId: string) => {
+    const content = (replyDraftsByReviewId[reviewId] || '').trim();
+    if (!content) {
+      toast.error('Vui lòng nhập nội dung trả lời');
+      return;
+    }
+
+    setSellerRepliesByReviewId((prev) => ({
+      ...prev,
+      [reviewId]: content,
+    }));
+    setReplyEditorReviewId(null);
+    setExpandedSellerReplyByReviewId((prev) => ({
+      ...prev,
+      [reviewId]: true,
+    }));
+    toast.success('Đã lưu phản hồi');
+  };
 
   // Rating breakdown
   const ratingBreakdown = [5, 4, 3, 2, 1].map((stars) => {
@@ -805,10 +849,76 @@ export function ProductDetailPage() {
                         </div>
                       )}
 
-                      <Button variant="ghost" size="sm" className="gap-2 h-8">
-                        <ThumbsUp className="w-3 h-3" />
-                        Hữu ích ({review.helpful})
-                      </Button>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" className="gap-2 h-8">
+                            <ThumbsUp className="w-3 h-3" />
+                            Hữu ích ({review.helpful})
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2 h-8"
+                            onClick={() => toggleSellerReply(review.id)}
+                          >
+                            Xem thêm
+                          </Button>
+                          {isProductOwner && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-2 h-8"
+                              onClick={() => openReplyEditor(review.id)}
+                            >
+                              <Reply className="w-3 h-3" />
+                              Trả lời
+                            </Button>
+                          )}
+                        </div>
+
+                        {(expandedSellerReplyByReviewId[review.id] || replyEditorReviewId === review.id) && (
+                          <div className="rounded-lg border border-border bg-muted/20 p-3">
+                            <div className="text-xs font-medium text-muted-foreground mb-2">Phản hồi từ shop</div>
+
+                            {expandedSellerReplyByReviewId[review.id] && (
+                              <div className="text-sm text-foreground/90 whitespace-pre-wrap">
+                                {sellerRepliesByReviewId[review.id] || 'Shop chưa phản hồi.'}
+                              </div>
+                            )}
+
+                            {replyEditorReviewId === review.id && isProductOwner && (
+                              <div className="mt-3">
+                                <textarea
+                                  value={replyDraftsByReviewId[review.id] || ''}
+                                  onChange={(e) =>
+                                    setReplyDraftsByReviewId((prev) => ({
+                                      ...prev,
+                                      [review.id]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="Nhập phản hồi của shop..."
+                                  className="w-full min-h-[90px] rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                />
+                                <div className="flex items-center justify-end gap-2 mt-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={cancelReplyEditor}
+                                  >
+                                    Hủy
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => saveSellerReply(review.id)}
+                                  >
+                                    Lưu
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
