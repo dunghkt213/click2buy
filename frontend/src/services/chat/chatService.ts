@@ -3,10 +3,9 @@
  */
 
 import { io, Socket } from 'socket.io-client';
-import { ChatMessage, Conversation, TypingStatus, ChatError } from '../../types/interface/chat.types';
 import { authStorage } from '../../apis/auth';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+import { API_BASE_URL } from '../../apis/client/baseUrl';
+import { ChatError, ChatMessage, Conversation, TypingStatus } from '../../types/interface/chat.types';
 
 class ChatService {
   private socket: Socket | null = null;
@@ -48,7 +47,7 @@ class ChatService {
       // URL: ws://localhost:3000/chat
       // Query: { userId: 'user123' }
       this.socket = io(`${API_BASE_URL}/chat`, {
-        query: { 
+        query: {
           userId, // Required by API
         },
         // Optional: include token in auth if backend requires it
@@ -156,7 +155,7 @@ class ChatService {
         console.error('Error type:', typeof error);
         console.error('Error keys:', error ? Object.keys(error) : 'null');
         console.error('Full error object:', JSON.stringify(error, null, 2));
-        
+
         // Handle different error formats
         const chatError: ChatError = {
           code: error?.code || error?.type || error?.error?.code || 'UNKNOWN_ERROR',

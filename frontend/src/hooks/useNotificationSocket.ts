@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '../apis/client/baseUrl';
 
 export interface BackendNotification {
   _id: string;
@@ -67,7 +68,7 @@ export function useNotificationSocket({
     // ❗ ĐÃ CÓ SOCKET → KHÔNG TẠO LẠI
     if (socketRef.current) return;
 
-    const socket = io('http://localhost:3000/notification', {
+    const socket = io(`${API_BASE_URL}/notification`, {
       withCredentials: true,
       transports: ['websocket'],
       query: {

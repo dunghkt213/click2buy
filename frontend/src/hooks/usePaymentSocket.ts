@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '../apis/client/baseUrl';
 
 export function usePaymentSocket({
   isLoggedIn,
@@ -38,7 +39,7 @@ export function usePaymentSocket({
     // ❗ ĐÃ CÓ SOCKET → KHÔNG TẠO LẠI
     if (socketRef.current) return;
 
-    const socket = io('http://localhost:3000', {
+    const socket = io(API_BASE_URL, {
       withCredentials: true,
       transports: ['websocket'],
     });

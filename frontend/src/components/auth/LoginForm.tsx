@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+import { Eye, EyeOff, Lock, Mail, Phone } from 'lucide-react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { authApi, AuthSuccessPayload, mapAuthResponse } from '../../apis/auth';
+import { API_BASE_URL } from '../../apis/client/baseUrl';
 import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Checkbox } from '../ui/checkbox';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
-import { toast } from 'sonner';
-import { authApi, mapAuthResponse, AuthSuccessPayload } from '../../apis/auth';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
 
 interface LoginFormData {
   username: string;
@@ -33,7 +32,7 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
   const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
   const [otpSent, setOtpSent] = useState(false);
   const [otpPhone, setOtpPhone] = useState('');
-  
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormData>();
   const { register: registerOtp, handleSubmit: handleSubmitOtp, formState: { errors: otpErrors, isSubmitting: isSubmittingOtp } } = useForm<OtpFormData>();
 
@@ -67,7 +66,7 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
       const response = await authApi.sendOtp({ phone: data.phone });
       setOtpSent(true);
       setOtpPhone(data.phone);
-      
+
       // Trong dev mode, OTP sẽ có trong response
       if (response.otp) {
         console.log('🔐 OTP Code (Dev Mode):', response.otp);
@@ -115,84 +114,84 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
 
         <TabsContent value="password" className="mt-4">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="username">Tên đăng nhập / Email</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="username"
-              type="text"
-              placeholder="Nhập tên đăng nhập hoặc email"
-              className="pl-10"
-              {...register('username', { 
-                required: 'Vui lòng nhập tên đăng nhập hoặc email',
-                minLength: {
-                  value: 3,
-                  message: 'Tên đăng nhập phải có ít nhất 3 ký tự'
-                }
-              })}
-            />
-          </div>
-          {errors.username && (
-            <p className="text-sm text-red-500">{errors.username.message}</p>
-          )}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="username">Tên đăng nhập / Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Nhập tên đăng nhập hoặc email"
+                  className="pl-10"
+                  {...register('username', {
+                    required: 'Vui lòng nhập tên đăng nhập hoặc email',
+                    minLength: {
+                      value: 3,
+                      message: 'Tên đăng nhập phải có ít nhất 3 ký tự'
+                    }
+                  })}
+                />
+              </div>
+              {errors.username && (
+                <p className="text-sm text-red-500">{errors.username.message}</p>
+              )}
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Mật khẩu</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Nhập mật khẩu"
-              className="pl-10 pr-10"
-              {...register('password', { 
-                required: 'Vui lòng nhập mật khẩu',
-                minLength: {
-                  value: 6,
-                  message: 'Mật khẩu phải có ít nhất 6 ký tự'
-                }
-              })}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="text-sm text-red-500">{errors.password.message}</p>
-          )}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Mật khẩu</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Nhập mật khẩu"
+                  className="pl-10 pr-10"
+                  {...register('password', {
+                    required: 'Vui lòng nhập mật khẩu',
+                    minLength: {
+                      value: 6,
+                      message: 'Mật khẩu phải có ít nhất 6 ký tự'
+                    }
+                  })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password.message}</p>
+              )}
+            </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="remember" 
-              checked={rememberMe}
-              onCheckedChange={(checked: boolean) => setRememberMe(checked as boolean)}
-            />
-            <label
-              htmlFor="remember"
-              className="text-sm cursor-pointer select-none"
-            >
-              Ghi nhớ tôi
-            </label>
-          </div>
-          <button
-            type="button"
-            className="text-sm text-orange-600 hover:text-orange-700"
-            onClick={() => toast.info('Tính năng quên mật khẩu đang được phát triển')}
-          >
-            Quên mật khẩu?
-          </button>
-        </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked: boolean) => setRememberMe(checked as boolean)}
+                />
+                <label
+                  htmlFor="remember"
+                  className="text-sm cursor-pointer select-none"
+                >
+                  Ghi nhớ tôi
+                </label>
+              </div>
+              <button
+                type="button"
+                className="text-sm text-orange-600 hover:text-orange-700"
+                onClick={() => toast.info('Tính năng quên mật khẩu đang được phát triển')}
+              >
+                Quên mật khẩu?
+              </button>
+            </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-orange-600 hover:bg-orange-700"
               disabled={isSubmitting}
             >
@@ -213,7 +212,7 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
                     type="tel"
                     placeholder="+84987654321"
                     className="pl-10"
-                    {...registerOtp('phone', { 
+                    {...registerOtp('phone', {
                       required: 'Vui lòng nhập số điện thoại',
                       pattern: {
                         value: /^\+?[0-9]{10,15}$/,
@@ -227,8 +226,8 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
                 )}
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-orange-600 hover:bg-orange-700"
                 disabled={isSubmittingOtp}
               >
@@ -258,7 +257,7 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
                     placeholder="Nhập mã OTP 6 số"
                     className="pl-10"
                     maxLength={6}
-                    {...registerOtp('otp', { 
+                    {...registerOtp('otp', {
                       required: 'Vui lòng nhập mã OTP',
                       pattern: {
                         value: /^[0-9]{6}$/,
@@ -274,7 +273,7 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
               </div>
 
               <div className="flex gap-2">
-                <Button 
+                <Button
                   type="button"
                   variant="outline"
                   className="flex-1"
@@ -285,8 +284,8 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
                 >
                   Quay lại
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="flex-1 bg-orange-600 hover:bg-orange-700"
                   disabled={isSubmittingOtp}
                 >
@@ -306,9 +305,9 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Button 
+        <Button
           type="button"
-          variant="outline" 
+          variant="outline"
           className="w-full"
           onClick={() => handleSocialLogin('google')}
         >
@@ -333,14 +332,14 @@ export function LoginForm({ onSuccess, onClose }: LoginFormProps) {
           Google
         </Button>
 
-        <Button 
+        <Button
           type="button"
-          variant="outline" 
+          variant="outline"
           className="w-full"
           onClick={() => handleSocialLogin('facebook')}
         >
           <svg className="mr-2 h-4 w-4" fill="#1877F2" viewBox="0 0 24 24">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
           </svg>
           Facebook
         </Button>

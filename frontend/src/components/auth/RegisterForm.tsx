@@ -3,13 +3,12 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { authApi, AuthSuccessPayload, mapAuthResponse } from '../../apis/auth';
+import { API_BASE_URL } from '../../apis/client/baseUrl';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Separator } from '../ui/separator';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
 
 interface RegisterFormData {
   username: string;
@@ -29,9 +28,9 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
-  
+
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<RegisterFormData>();
-  
+
   const password = watch('password');
 
   const onSubmit = async (data: RegisterFormData) => {
@@ -84,7 +83,7 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
               type="text"
               placeholder="Nhập tên đăng nhập"
               className="pl-10"
-              {...register('username', { 
+              {...register('username', {
                 required: 'Vui lòng nhập tên đăng nhập',
                 minLength: {
                   value: 3,
@@ -107,7 +106,7 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
               type="email"
               placeholder="Nhập địa chỉ email"
               className="pl-10"
-              {...register('email', { 
+              {...register('email', {
                 required: 'Vui lòng nhập email',
                 pattern: {
                   value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -130,7 +129,7 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
               type="tel"
               placeholder="Nhập số điện thoại"
               className="pl-10"
-              {...register('phone', { 
+              {...register('phone', {
                 required: 'Vui lòng nhập số điện thoại',
                 pattern: {
                   value: /^[0-9]{10,11}$/,
@@ -153,7 +152,7 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
               type={showPassword ? 'text' : 'password'}
               placeholder="Nhập mật khẩu"
               className="pl-10 pr-10"
-              {...register('password', { 
+              {...register('password', {
                 required: 'Vui lòng nhập mật khẩu',
                 minLength: {
                   value: 6,
@@ -187,7 +186,7 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
               type={showConfirmPassword ? 'text' : 'password'}
               placeholder="Nhập lại mật khẩu"
               className="pl-10 pr-10"
-              {...register('confirmPassword', { 
+              {...register('confirmPassword', {
                 required: 'Vui lòng xác nhận mật khẩu',
                 validate: value => value === password || 'Mật khẩu không khớp'
               })}
@@ -206,8 +205,8 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
         </div>
 
         <div className="flex items-start space-x-2">
-          <Checkbox 
-            id="agreeToTerms" 
+          <Checkbox
+            id="agreeToTerms"
             checked={agreeToTerms}
             onCheckedChange={(checked: boolean) => setAgreeToTerms(checked as boolean)}
             className="mt-1"
@@ -228,8 +227,8 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
           </label>
         </div>
 
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="w-full bg-orange-600 hover:bg-orange-700"
           disabled={isSubmitting}
         >
@@ -245,9 +244,9 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Button 
+        <Button
           type="button"
-          variant="outline" 
+          variant="outline"
           className="w-full"
           onClick={() => handleSocialRegister('google')}
         >
@@ -272,14 +271,14 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
           Google
         </Button>
 
-        <Button 
+        <Button
           type="button"
-          variant="outline" 
+          variant="outline"
           className="w-full"
           onClick={() => handleSocialRegister('facebook')}
         >
           <svg className="mr-2 h-4 w-4" fill="#1877F2" viewBox="0 0 24 24">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
           </svg>
           Facebook
         </Button>
@@ -287,7 +286,7 @@ export function RegisterForm({ onSuccess, onClose, onSwitchToLogin }: RegisterFo
 
       <p className="text-center text-sm">
         Đã có tài khoản?{' '}
-        <button 
+        <button
           type="button"
           onClick={onSwitchToLogin}
           className="text-orange-600 hover:underline"
