@@ -7,11 +7,14 @@ import { mapBackendProductToStoreProduct, mapProductResponse } from './product.m
 // -------------------------------
 // Lấy danh sách sản phẩm
 // -------------------------------
-async function getAll(query?: { 
+async function getAll(query?: {
   category?: string;
-  categoryId?: string; 
-  minPrice?: number; 
-  maxPrice?: number; 
+  categoryId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  rating?: number;
+  brands?: string | string[];
+  inStock?: boolean;
   search?: string;
   page?: number;
   limit?: number;
@@ -21,24 +24,30 @@ async function getAll(query?: {
   if (query?.categoryId) params.append('categoryId', query.categoryId);
   if (query?.minPrice) params.append('minPrice', query.minPrice.toString());
   if (query?.maxPrice) params.append('maxPrice', query.maxPrice.toString());
+  if (query?.rating) params.append('rating', query.rating.toString());
+  if (query?.brands) {
+    const brandsValue = Array.isArray(query.brands) ? query.brands.join(',') : query.brands;
+    if (brandsValue) params.append('brands', brandsValue);
+  }
+  if (query?.inStock !== undefined) params.append('inStock', query.inStock ? 'true' : 'false');
   if (query?.search) params.append('search', query.search);
   if (query?.page) params.append('page', query.page.toString());
   if (query?.limit) params.append('limit', query.limit.toString());
-  
+
   const queryString = params.toString();
   const response = await request<any>(`/products${queryString ? `?${queryString}` : ''}`, {
     method: 'GET',
     requireAuth: false,
   });
-  
+
   // Backend có thể trả về { success: true, data: [...], pagination: {...} } hoặc array trực tiếp
   const products = response?.data || response;
   const pagination = response?.pagination;
-  
+
   if (!products || !Array.isArray(products)) {
     throw new Error("Dữ liệu sản phẩm không hợp lệ");
   }
-  
+
   return {
     products: products.map(mapProductResponse),
     pagination: pagination ? {
@@ -64,7 +73,7 @@ async function getById(id: string): Promise<Product> {
 // -------------------------------
 // Tìm kiếm sản phẩm
 // -------------------------------
-async function search(query: { 
+async function search(query: {
   search?: string;
   keyword?: string;
   category?: string;
@@ -87,30 +96,30 @@ async function search(query: {
     sortBy: query.sortBy,
     sortOrder: query.sortOrder,
   };
-  
+
   console.log('🔍 [productApi.search] Gọi POST /products/search với body:', requestBody);
-  
+
   const response = await request<any>('/products/search', {
     method: 'POST',
     body: JSON.stringify(requestBody),
     requireAuth: false,
   });
-  
+
   console.log('📥 [productApi.search] Response từ API:', response);
-  
+
   // Backend có thể trả về { success: true, data: [...] } hoặc array trực tiếp
   const products = response?.data || response;
-  
+
   console.log('📦 [productApi.search] Products sau khi extract:', products);
-  
+
   if (!products || !Array.isArray(products)) {
     console.error('❌ [productApi.search] Dữ liệu không hợp lệ:', products);
     throw new Error("Dữ liệu tìm kiếm không hợp lệ");
   }
-  
+
   const mappedProducts = products.map(mapProductResponse);
   console.log('✅ [productApi.search] Đã map', mappedProducts.length, 'sản phẩm');
-  
+
   return mappedProducts;
 }
 
@@ -176,19 +185,19 @@ async function update(id: string, dto: {
 // -------------------------------
 async function remove(id: string): Promise<{ success: boolean; message: string }> {
   console.log(`🗑️ [ProductAPI] Gọi API DELETE /products/${id}`);
-  
+
   const response = await request<any>(`/products/${id}`, {
     method: 'DELETE',
     requireAuth: true,
   });
-  
+
   console.log('✅ [ProductAPI] Xóa sản phẩm thành công:', response);
-  
+
   // Backend trả về { success: true, message: '...' } hoặc chỉ message
   if (typeof response === 'object' && response.success !== undefined) {
     return response as { success: boolean; message: string };
   }
-  
+
   return {
     success: true,
     message: response?.message || 'Sản phẩm đã được xóa thành công'
@@ -209,26 +218,26 @@ async function getAllBySeller(query?: {
   if (query?.limit) params.append('limit', query.limit.toString());
   if (query?.keyword) params.append('keyword', query.keyword);
   if (query?.sort) params.append('sort', query.sort);
-  
+
   const queryString = params.toString();
   console.log(`🔍 [ProductAPI] Gọi API GET /products/seller${queryString ? `?${queryString}` : ''}`);
-  
+
   const response = await request<any>(`/products/seller${queryString ? `?${queryString}` : ''}`, {
     method: 'GET',
     requireAuth: true,
   });
-  
+
   console.log('📥 [ProductAPI] Response từ API /products/seller (raw):', response);
   console.log('📥 [ProductAPI] Response type:', typeof response, Array.isArray(response) ? 'Array' : 'Object');
-  
+
   // apiClient trả về payload.data ?? payload
   // Nếu backend trả về { success: true, data: [...], pagination: {...} }
   // thì apiClient sẽ trả về data (array) trực tiếp
   // Nếu backend trả về array trực tiếp, thì apiClient cũng trả về array
   // Nếu backend trả về { success: true, data: [...] } nhưng apiClient đã unwrap, thì response là array
-  
+
   let products: any[] = [];
-  
+
   if (Array.isArray(response)) {
     // Response đã là array rồi (apiClient đã unwrap)
     products = response;
@@ -246,20 +255,20 @@ async function getAllBySeller(query?: {
     console.error('❌ [ProductAPI] Dữ liệu không hợp lệ:', response);
     throw new Error("Dữ liệu sản phẩm không hợp lệ");
   }
-  
+
   if (!Array.isArray(products) || products.length === 0) {
     console.warn('⚠️ [ProductAPI] Không có sản phẩm nào:', products);
     return []; // Trả về array rỗng thay vì throw error
   }
-  
+
   console.log(`📦 [ProductAPI] Nhận được ${products.length} sản phẩm từ backend`);
   console.log('📦 [ProductAPI] Sản phẩm đầu tiên (raw):', products[0]);
-  
+
   // Convert từ backend product response sang StoreProduct
   const storeProducts = products.map(mapBackendProductToStoreProduct);
   console.log('✅ [ProductAPI] Đã convert sang StoreProduct:', storeProducts);
   console.log('✅ [ProductAPI] Sản phẩm đầu tiên (converted):', storeProducts[0]);
-  
+
   return storeProducts;
 }
 
@@ -272,12 +281,12 @@ async function updateStock(id: string, amount: number): Promise<{ success: boole
     body: JSON.stringify({ amount }),
     requireAuth: true,
   });
-  
+
   // Backend có thể trả về { success: true, message: '...', availableStock: ... } hoặc chỉ message
   if (typeof data === 'object' && data.success !== undefined) {
     return data as { success: boolean; message: string; availableStock?: number };
   }
-  
+
   return {
     success: true,
     message: data?.message || 'Cập nhật số lượng thành công',
