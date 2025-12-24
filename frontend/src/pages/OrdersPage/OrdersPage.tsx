@@ -89,7 +89,6 @@ export function OrdersPage() {
   // --- 1. STATE & LOGIC ---
   const [selectedTab, setSelectedTab] = useState<TabValue>("pending");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [allOrders, setAllOrders] = useState<Order[]>([]); // Store all orders for counting
 
   // ReviewModal removed - now using ReviewPage
@@ -251,9 +250,32 @@ export function OrdersPage() {
     navigate(`/orders/${order.id}`);
   };
 
-  const handleReview = (orderId: string) => {
-    // Navigate to review page instead of opening modal
-    navigate(`/review/${orderId}`);
+  const handleReview = (orderId: string, productId?: string) => {
+    const url = productId
+      ? `/review/${orderId}?productId=${encodeURIComponent(productId)}`
+      : `/review/${orderId}`;
+    navigate(url);
+  };
+
+  const handleReorderItem = (item: any) => {
+    const productId = item?.productId || item?.id;
+    if (!productId) return;
+
+    app.addToCart({
+      id: productId,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      category: 'electronics',
+      rating: 4.5,
+      reviews: 100,
+      description: item.name,
+      brand: 'Brand',
+      inStock: true,
+      quantity: item.quantity,
+      variant: item.variant,
+    } as any);
+    toast.success('Đã thêm sản phẩm vào giỏ hàng');
   };
 
   const handleCancelOrder = async (orderId: string, orderStatus?: string) => {
@@ -478,7 +500,7 @@ export function OrdersPage() {
                       >
                         <div className="space-y-3">
                           {/* Fix lỗi 'item' implicitly any */}
-                          {order.items.slice(0, 2).map((item: any) => (
+                          {(order.status === 'completed' ? order.items : order.items.slice(0, 2)).map((item: any) => (
                             <div key={item.id} className="flex gap-3">
                               <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0 border">
                                 <ImageWithFallback
@@ -504,10 +526,36 @@ export function OrdersPage() {
                                     {formatPrice(item.price)}
                                   </span>
                                 </div>
+
+                                {order.status === 'completed' && (
+                                  <div className="flex items-center justify-end gap-2 mt-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        handleReview(order.id, item.productId || item.id);
+                                      }}
+                                      className="gap-2"
+                                    >
+                                      <Star className="w-4 h-4" /> Đánh giá
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        handleReorderItem(item);
+                                      }}
+                                    >
+                                      Mua lại
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
-                          {order.items.length > 2 && (
+                          {order.status !== 'completed' && order.items.length > 2 && (
                             <p className="text-sm text-muted-foreground text-center py-1 bg-muted/20 rounded">
                               + {order.items.length - 2} sản phẩm khác
                             </p>
@@ -636,31 +684,7 @@ export function OrdersPage() {
                             </Button>
                           )}
 
-                          {order.status === "completed" && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  handleReview(order.id);
-                                }}
-                                className="gap-2"
-                              >
-                                <Star className="w-4 h-4" /> Đánh giá
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  app.handleReorder(order.id);
-                                }}
-                              >
-                                Mua lại
-                              </Button>
-                            </>
-                          )}
+                          {order.status === "completed" && null}
 
                           {(order.status === "cancelled" ||
                             order.status === "refund") && (

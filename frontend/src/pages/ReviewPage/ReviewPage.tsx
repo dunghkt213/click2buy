@@ -3,53 +3,76 @@
  * Hiển thị thông tin sản phẩm, các đánh giá trước đó, và form đánh giá mới
  */
 
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAppContext } from '../../providers/AppProvider';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAppContext } from '../../providers/AppProvider';
 
 // UI Components
+import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
-import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
-import { Badge } from '../../components/ui/badge';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Separator } from '../../components/ui/separator';
-import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { Textarea } from '../../components/ui/textarea';
 
 // Icons
 import {
   ArrowLeft,
-  Star,
-  Image as ImageIcon,
-  X,
-  Package,
-  DollarSign,
   Calendar,
-  User,
+  DollarSign,
+  Image as ImageIcon,
   Loader2,
+  Package,
+  Star,
+  User,
+  X,
 } from 'lucide-react';
 
 // Types & Utils
-import { Order, ProductReview, Product } from '../../types';
-import { formatPrice } from '../../utils/utils';
-import { reviewService } from '../../apis/review';
-import { productService } from '../../apis/product';
 import { mediaApi } from '../../apis/media';
+import { productService } from '../../apis/product';
+import { reviewService } from '../../apis/review';
 import { mapReviewResponse } from '../../apis/review/review.mapper';
+import { Order, Product, ProductReview } from '../../types';
+import { formatPrice } from '../../utils/utils';
 
 export function ReviewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { orderId } = useParams<{ orderId: string }>();
   const app = useAppContext();
+
+  useLayoutEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('scrollPositions');
+      if (stored) {
+        const positions = JSON.parse(stored) as Record<string, number>;
+        delete positions[location.pathname];
+        sessionStorage.setItem('scrollPositions', JSON.stringify(positions));
+      }
+    } catch {
+      // ignore
+    }
+
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [location.pathname, location.search]);
 
   // State
   const [order, setOrder] = useState<Order | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
+  const [orderItem, setOrderItem] = useState<any>(null);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const targetProductId = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const value = params.get('productId');
+    return value && value.trim() ? value.trim() : null;
+  }, [location.search]);
 
   // Review form state
   const [rating, setRating] = useState(5);
@@ -57,7 +80,6 @@ export function ReviewPage() {
   const [comment, setComment] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
 
   // Load order and product data
   useEffect(() => {
@@ -71,7 +93,7 @@ export function ReviewPage() {
       try {
         // Try to find order in context first
         let foundOrder = app.orders.orders.find((o: Order) => o.id === orderId);
-        
+
         // If not found, try to load from API
         if (!foundOrder) {
           // Try to load all orders for user (without status filter to get all)
@@ -87,15 +109,20 @@ export function ReviewPage() {
 
         setOrder(foundOrder);
 
-        // Load product details (lấy product đầu tiên trong order)
+        // Load product details (lấy theo productId trên query nếu có, fallback item đầu tiên)
         if (foundOrder.items && foundOrder.items.length > 0) {
-          const firstItem = foundOrder.items[0];
-          const productId = firstItem.productId || firstItem.id;
-          
+          const matchedItem = targetProductId
+            ? foundOrder.items.find((it: any) => (it.productId || it.id) === targetProductId)
+            : null;
+          const selectedItem = matchedItem || foundOrder.items[0];
+          const productId = selectedItem.productId || selectedItem.id;
+
+          setOrderItem(selectedItem);
+
           try {
             const productData = await productService.getById(productId);
             setProduct(productData);
-            
+
             // Load reviews for this product
             const reviewsData = await reviewService.findAll({ productId: productData.id });
             const mappedReviews = reviewsData.map(mapReviewResponse);
@@ -113,7 +140,7 @@ export function ReviewPage() {
     };
 
     loadData();
-  }, [orderId, app.isLoggedIn, app.orders.orders, navigate]);
+  }, [orderId, app.isLoggedIn, app.orders.orders, navigate, targetProductId]);
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,7 +201,7 @@ export function ReviewPage() {
       });
 
       toast.success('Đánh giá đã được gửi thành công!');
-      
+
       // Reload reviews
       const reviewsData = await reviewService.findAll({ productId: product.id });
       const mappedReviews = reviewsData.map(mapReviewResponse);
@@ -185,7 +212,6 @@ export function ReviewPage() {
       setComment('');
       setImages([]);
       setImagePreviews([]);
-      setUploadedImageUrls([]);
     } catch (error: any) {
       console.error('Error submitting review:', error);
       toast.error(error.message || 'Không thể gửi đánh giá. Vui lòng thử lại.');
@@ -209,11 +235,10 @@ export function ReviewPage() {
             className={`transition-transform ${interactive ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
           >
             <Star
-              className={`w-6 h-6 transition-colors ${
-                star <= (interactive ? (hoveredStar || currentRating) : currentRating)
-                  ? 'fill-yellow-400 text-yellow-400'
-                  : 'text-gray-300'
-              }`}
+              className={`w-6 h-6 transition-colors ${star <= (interactive ? (hoveredStar || currentRating) : currentRating)
+                ? 'fill-yellow-400 text-yellow-400'
+                : 'text-gray-300'
+                }`}
             />
           </button>
         ))}
@@ -235,12 +260,12 @@ export function ReviewPage() {
   // Convert Google Drive URL to displayable format
   const convertGoogleDriveUrl = (url: string): string => {
     if (!url || typeof url !== 'string') return url;
-    
+
     const trimmedUrl = url.trim();
-    
+
     // Extract file ID from various Google Drive URL formats
     let fileId: string | null = null;
-    
+
     // Handle Google Drive thumbnail URL: https://drive.google.com/thumbnail?id=FILE_ID&sz=w1000
     // This is the most common format from backend
     if (trimmedUrl.includes('drive.google.com/thumbnail')) {
@@ -268,12 +293,12 @@ export function ReviewPage() {
     else if (trimmedUrl.includes('lh3.googleusercontent.com')) {
       return url; // Already in correct format
     }
-    
+
     // Convert to lh3.googleusercontent.com format if we have a file ID
     if (fileId) {
       return `https://lh3.googleusercontent.com/d/${fileId}`;
     }
-    
+
     // Return original URL if not a Google Drive URL
     return url;
   };
@@ -289,7 +314,7 @@ export function ReviewPage() {
     );
   }
 
-  if (!order || !product) {
+  if (!order || !product || !orderItem) {
     return (
       <div className="min-h-screen bg-background pt-16 flex items-center justify-center">
         <Card className="p-8 text-center">
@@ -299,8 +324,6 @@ export function ReviewPage() {
       </div>
     );
   }
-
-  const orderItem = order.items[0]; // Lấy sản phẩm đầu tiên để đánh giá
 
   return (
     <div className="min-h-screen bg-background pt-16">
@@ -389,24 +412,24 @@ export function ReviewPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-2 mb-2">
-                              {renderStars(review.rating, () => {}, false)}
+                              {renderStars(review.rating, () => { }, false)}
                               <span className="text-xs text-muted-foreground">
-                                {review.updatedAt 
-                                  ? `Cập nhật: ${new Date(review.updatedAt).toLocaleDateString('vi-VN', { 
-                                      year: 'numeric', 
-                                      month: 'long', 
-                                      day: 'numeric' 
-                                    })}`
+                                {review.updatedAt
+                                  ? `Cập nhật: ${new Date(review.updatedAt).toLocaleDateString('vi-VN', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}`
                                   : review.createdAt
-                                  ? new Date(review.createdAt).toLocaleDateString('vi-VN', { 
-                                      year: 'numeric', 
-                                      month: 'long', 
-                                      day: 'numeric' 
+                                    ? new Date(review.createdAt).toLocaleDateString('vi-VN', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
                                     })
-                                  : new Date(review.date).toLocaleDateString('vi-VN', { 
-                                      year: 'numeric', 
-                                      month: 'long', 
-                                      day: 'numeric' 
+                                    : new Date(review.date).toLocaleDateString('vi-VN', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
                                     })
                                 }
                               </span>
@@ -421,8 +444,8 @@ export function ReviewPage() {
                                 {review.images.map((img, idx) => {
                                   const convertedUrl = convertGoogleDriveUrl(img);
                                   return (
-                                    <div 
-                                      key={idx} 
+                                    <div
+                                      key={idx}
                                       className="relative w-24 h-24 rounded-lg overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity group"
                                       onClick={() => window.open(img, '_blank')}
                                       title="Nhấn để xem ảnh lớn"
@@ -490,7 +513,7 @@ export function ReviewPage() {
                 {/* Image Upload */}
                 <div className="space-y-3">
                   <Label className="text-base">Thêm hình ảnh (Tùy chọn)</Label>
-                  
+
                   {/* Image Previews */}
                   {imagePreviews.length > 0 && (
                     <div className="flex flex-wrap gap-3">
