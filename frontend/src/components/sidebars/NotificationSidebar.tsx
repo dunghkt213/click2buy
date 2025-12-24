@@ -4,21 +4,22 @@ import {
   Bell,
   CheckCircle,
   Clock,
+  Loader2,
   Package,
   Star,
   Tag,
   Truck,
-  X,
-  Loader2
+  X
 } from 'lucide-react';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Notification } from 'types';
+import { useNotificationContext } from '../../contexts/NotificationContext';
+import { mapBackendNotificationToNotification } from '../../utils/notificationMapper';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
-import { useNotificationContext } from '../../contexts/NotificationContext';
-import { mapBackendNotificationToNotification } from '../../utils/notificationMapper';
-import { useMemo } from 'react';
 
 interface NotificationSidebarProps {
   isOpen: boolean;
@@ -38,9 +39,10 @@ export function NotificationSidebar({
   onMarkAllAsRead: legacyMarkAllAsRead,
   onDeleteNotification: legacyDeleteNotification
 }: NotificationSidebarProps) {
+  const navigate = useNavigate();
   // Sử dụng NotificationContext nếu có, fallback về legacy props
   const notificationContext = useNotificationContext();
-  
+
   // Map backend notifications sang frontend format
   const mappedNotifications = useMemo(() => {
     if (notificationContext) {
@@ -73,6 +75,19 @@ export function NotificationSidebar({
     // Nếu cần delete, có thể implement sau
     if (legacyDeleteNotification) {
       legacyDeleteNotification(id);
+    }
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    handleMarkAsRead(notification.id);
+
+    const productId = (notification as any)?.metadata?.productId;
+    const reviewId = (notification as any)?.metadata?.reviewId;
+
+    if (productId) {
+      const url = reviewId ? `/product/${productId}?reviewId=${reviewId}&openReply=1&focusReview=1` : `/product/${productId}`;
+      onClose();
+      navigate(url);
     }
   };
 
@@ -190,9 +205,9 @@ export function NotificationSidebar({
               {/* Action buttons */}
               {unreadCount > 0 && (
                 <div className="px-6 py-3 border-b border-border">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleMarkAllAsRead}
                     className="w-full"
                   >
@@ -213,15 +228,14 @@ export function NotificationSidebar({
                   {notifications.map((notification) => {
                     const IconComponent = getNotificationIcon(notification.type);
                     const iconColor = getNotificationColor(notification.type);
-                    
+
                     return (
-                      <motion.div 
-                        key={notification.id} 
+                      <motion.div
+                        key={notification.id}
                         variants={itemVariants}
-                        className={`group relative p-4 border border-border rounded-xl transition-all duration-200 hover:shadow-md hover:border-primary/20 cursor-pointer ${
-                          !notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'
-                        }`}
-                        onClick={() => handleMarkAsRead(notification.id)}
+                        className={`group relative p-4 border border-border rounded-xl transition-all duration-200 hover:shadow-md hover:border-primary/20 cursor-pointer ${!notification.isRead ? 'bg-primary/5 border-primary/20' : 'bg-card'
+                          }`}
+                        onClick={() => handleNotificationClick(notification)}
                       >
                         {/* Unread indicator */}
                         {!notification.isRead && (
@@ -250,11 +264,11 @@ export function NotificationSidebar({
                                 <X className="w-3 h-3" />
                               </Button>
                             </div>
-                            
+
                             <p className="text-sm text-muted-foreground line-clamp-2">
                               {notification.message}
                             </p>
-                            
+
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <Clock className="w-3 h-3" />
                               <span>{notification.time}</span>

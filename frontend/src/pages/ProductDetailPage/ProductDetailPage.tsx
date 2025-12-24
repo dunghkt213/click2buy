@@ -4,7 +4,7 @@
  */
 
 import { ArrowLeft, ChevronLeft, ChevronRight, MessageCircle, Package, Reply, Share2, Shield, ShoppingCart, Sparkles, Star, Store, ThumbsUp, TruckIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { CartItem, Product, ProductReview } from 'types';
@@ -29,6 +29,14 @@ export function ProductDetailPage() {
   const navigate = useNavigate();
   const app = useAppContext();
 
+  const reviewSectionRef = useRef<HTMLDivElement>(null);
+  const reviewItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pendingScrollReviewIdRef = useRef<string | null>(null);
+  const hasAutoScrolledToReviewSectionRef = useRef(false);
+  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasAutoOpenedReplyEditorRef = useRef(false);
+  const replyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -47,6 +55,7 @@ export function ProductDetailPage() {
   const [replyDraftsByReviewId, setReplyDraftsByReviewId] = useState<Record<string, string>>({});
   const [replyEditorReviewId, setReplyEditorReviewId] = useState<string | null>(null);
   const [expandedSellerReplyByReviewId, setExpandedSellerReplyByReviewId] = useState<Record<string, boolean>>({});
+  const [sendingSellerReplyReviewId, setSendingSellerReplyReviewId] = useState<string | null>(null);
 
   function clearSavedScrollPositionForPath(pathname: string) {
     try {
@@ -66,18 +75,101 @@ export function ProductDetailPage() {
   // Không scroll về đầu trang nữa, để useScrollRestoration xử lý
   useEffect(() => {
     if (id) {
+      const params = new URLSearchParams(location.search);
+      const reviewIdFromQuery = params.get('reviewId');
+
       clearSavedScrollPositionForPath(location.pathname);
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      const timeoutId = setTimeout(() => {
+
+      // If navigating from a notification to a specific review, avoid forcing scroll-to-top,
+      // because it can override the later scroll-to-review behavior.
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      if (!reviewIdFromQuery) {
         window.scrollTo({ top: 0, behavior: 'auto' });
-      }, 150);
+        timeoutId = setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        }, 150);
+      }
+
       loadProduct();
-      return () => clearTimeout(timeoutId);
+      return () => {
+        if (timeoutId) clearTimeout(timeoutId);
+      };
     } else {
       toast.error('Không tìm thấy sản phẩm');
       navigate('/feed');
     }
-  }, [id]);
+  }, [id, location.pathname, location.search]);
+
+  const targetReviewId = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const value = params.get('reviewId');
+    return value && value.trim() ? value.trim() : null;
+  }, [location.search]);
+
+  const focusReview = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const value = params.get('focusReview');
+    return value === '1' || value === 'true';
+  }, [location.search]);
+
+  const shouldAutoOpenReplyEditor = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const value = params.get('openReply');
+    return value === '1' || value === 'true';
+  }, [location.search]);
+
+  const isProductOwner = !!app.user?.id && !!product?.ownerId && product.ownerId === app.user.id;
+
+  const scrollToElementWithOffset = (el: HTMLElement, align: 'start' | 'center') => {
+    const headerOffset = 80;
+    const rect = el.getBoundingClientRect();
+    const elementTop = rect.top + window.pageYOffset;
+
+    const top = align === 'center'
+      ? elementTop - headerOffset - (window.innerHeight / 2) + (rect.height / 2)
+      : elementTop - headerOffset;
+
+    window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+  };
+
+  useEffect(() => {
+    pendingScrollReviewIdRef.current = targetReviewId;
+    hasAutoScrolledToReviewSectionRef.current = false;
+    hasAutoOpenedReplyEditorRef.current = false;
+  }, [id, targetReviewId]);
+
+  useEffect(() => {
+    if (!replyEditorReviewId) return;
+    const timeoutId = setTimeout(() => {
+      try {
+        replyTextareaRef.current?.focus();
+      } catch {
+        // ignore
+      }
+    }, 50);
+
+    return () => clearTimeout(timeoutId);
+  }, [replyEditorReviewId]);
+
+  useEffect(() => {
+    if (!targetReviewId) return;
+    if (!product?.id) return;
+    if (hasAutoScrolledToReviewSectionRef.current) return;
+    if (!reviewSectionRef.current) return;
+
+    hasAutoScrolledToReviewSectionRef.current = true;
+    const timeoutId = setTimeout(() => {
+      try {
+        if (reviewSectionRef.current) {
+          scrollToElementWithOffset(reviewSectionRef.current, 'start');
+        }
+      } catch {
+        // ignore
+      }
+    }, 250);
+
+    return () => clearTimeout(timeoutId);
+  }, [targetReviewId, product?.id]);
 
   // Load reviews và shop info khi có product
   useEffect(() => {
@@ -102,6 +194,88 @@ export function ProductDetailPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!targetReviewId) return;
+    if (loadingReviews) return;
+    if (!reviews || reviews.length === 0) return;
+
+    // Ensure the target review is visible regardless of current filters/pagination
+    const idx = reviews.findIndex((r) => r.id === targetReviewId);
+    if (idx < 0) return;
+
+    if (selectedRating !== null) {
+      setSelectedRating(null);
+    }
+
+    const desiredPage = Math.floor(idx / REVIEWS_PER_PAGE) + 1;
+    if (reviewPage !== desiredPage) {
+      setReviewPage(desiredPage);
+    }
+
+    pendingScrollReviewIdRef.current = targetReviewId;
+  }, [targetReviewId, loadingReviews, reviews, reviewPage, selectedRating]);
+
+  useEffect(() => {
+    const reviewId = pendingScrollReviewIdRef.current;
+    if (!reviewId) return;
+
+    if (scrollIntervalRef.current) {
+      clearInterval(scrollIntervalRef.current);
+      scrollIntervalRef.current = null;
+    }
+
+    let attempts = 0;
+    scrollIntervalRef.current = setInterval(() => {
+      attempts += 1;
+      const el = reviewItemRefs.current[reviewId];
+
+      if (el) {
+        try {
+          scrollToElementWithOffset(el, 'center');
+          setTimeout(() => {
+            try {
+              scrollToElementWithOffset(el, 'center');
+            } catch {
+              // ignore
+            }
+          }, 150);
+        } catch {
+          // ignore
+        }
+
+        pendingScrollReviewIdRef.current = null;
+        if (scrollIntervalRef.current) {
+          clearInterval(scrollIntervalRef.current);
+          scrollIntervalRef.current = null;
+        }
+        return;
+      }
+
+      if (attempts === 1 && reviewSectionRef.current) {
+        try {
+          scrollToElementWithOffset(reviewSectionRef.current, 'start');
+        } catch {
+          // ignore
+        }
+      }
+
+      if (attempts >= 20) {
+        pendingScrollReviewIdRef.current = null;
+        if (scrollIntervalRef.current) {
+          clearInterval(scrollIntervalRef.current);
+          scrollIntervalRef.current = null;
+        }
+      }
+    }, 150);
+
+    return () => {
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current);
+        scrollIntervalRef.current = null;
+      }
+    };
+  }, [reviewPage, selectedRating, reviews.length, targetReviewId]);
 
   const loadShopInfo = async () => {
     const shopId = product?.ownerId || product?.sellerId;
@@ -146,7 +320,15 @@ export function ProductDetailPage() {
     try {
       setLoadingReviews(true);
       const data = await reviewApi.findAll({ productId: product.id });
-      const mappedReviews = data.map(mapReviewResponse);
+      const rawList = Array.isArray(data)
+        ? data
+        : (data as any)?.data
+          ? (Array.isArray((data as any).data) ? (data as any).data : [(data as any).data])
+          : data
+            ? [data]
+            : [];
+
+      const mappedReviews = rawList.map(mapReviewResponse);
       setReviews(mappedReviews);
     } catch (error) {
       console.error('Failed to load reviews:', error);
@@ -155,6 +337,26 @@ export function ProductDetailPage() {
       setLoadingReviews(false);
     }
   };
+
+  useEffect(() => {
+    if (!targetReviewId) return;
+    if (!shouldAutoOpenReplyEditor) return;
+    if (!product?.id) return;
+    if (!isProductOwner) return;
+    if (loadingReviews) return;
+    if (!reviews || reviews.length === 0) return;
+    if (hasAutoOpenedReplyEditorRef.current) return;
+
+    const exists = reviews.some((r) => r.id === targetReviewId);
+    if (!exists) return;
+
+    hasAutoOpenedReplyEditorRef.current = true;
+    setExpandedSellerReplyByReviewId((prev) => ({
+      ...prev,
+      [targetReviewId]: true,
+    }));
+    openReplyEditor(targetReviewId);
+  }, [targetReviewId, shouldAutoOpenReplyEditor, product?.id, isProductOwner, loadingReviews, reviews]);
 
   if (loading) {
     return (
@@ -201,7 +403,19 @@ export function ProductDetailPage() {
     reviewPage * REVIEWS_PER_PAGE
   );
 
-  const isProductOwner = !!app.user?.id && product.ownerId === app.user.id;
+  const isFocusReviewMode = !!focusReview && !!targetReviewId;
+  const focusReviews = isFocusReviewMode
+    ? filteredReviews.filter((r) => r.id === targetReviewId)
+    : [];
+  const displayedReviews = isFocusReviewMode ? focusReviews : paginatedReviews;
+
+  const getSellerReplyForReview = (review: ProductReview) => {
+    const localReply = sellerRepliesByReviewId[review.id];
+    if (localReply && localReply.trim()) return localReply;
+    const backendReply = review.replyBySeller;
+    if (backendReply && backendReply.trim()) return backendReply;
+    return '';
+  };
 
   const toggleSellerReply = (reviewId: string) => {
     setExpandedSellerReplyByReviewId((prev) => ({
@@ -210,35 +424,48 @@ export function ProductDetailPage() {
     }));
   };
 
-  const openReplyEditor = (reviewId: string) => {
+  function openReplyEditor(reviewId: string) {
+    const review = reviews.find((r) => r.id === reviewId);
     setReplyEditorReviewId(reviewId);
     setReplyDraftsByReviewId((prev) => ({
       ...prev,
-      [reviewId]: prev[reviewId] ?? sellerRepliesByReviewId[reviewId] ?? '',
+      [reviewId]: prev[reviewId] ?? sellerRepliesByReviewId[reviewId] ?? review?.replyBySeller ?? '',
     }));
-  };
+  }
 
   const cancelReplyEditor = () => {
     setReplyEditorReviewId(null);
   };
 
-  const saveSellerReply = (reviewId: string) => {
+  const saveSellerReply = async (reviewId: string) => {
     const content = (replyDraftsByReviewId[reviewId] || '').trim();
     if (!content) {
       toast.error('Vui lòng nhập nội dung trả lời');
       return;
     }
 
-    setSellerRepliesByReviewId((prev) => ({
-      ...prev,
-      [reviewId]: content,
-    }));
-    setReplyEditorReviewId(null);
-    setExpandedSellerReplyByReviewId((prev) => ({
-      ...prev,
-      [reviewId]: true,
-    }));
-    toast.success('Đã lưu phản hồi');
+    try {
+      setSendingSellerReplyReviewId(reviewId);
+      const updated = await reviewApi.sellerReply(reviewId, { replyBySeller: content });
+
+      setSellerRepliesByReviewId((prev) => ({
+        ...prev,
+        [reviewId]: content,
+      }));
+
+      setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, replyBySeller: (updated as any)?.replyBySeller ?? content } : r)));
+      setReplyEditorReviewId(null);
+      setExpandedSellerReplyByReviewId((prev) => ({
+        ...prev,
+        [reviewId]: true,
+      }));
+      toast.success('Đã gửi phản hồi');
+    } catch (error) {
+      console.error('Failed to send seller reply:', error);
+      toast.error('Không thể gửi phản hồi');
+    } finally {
+      setSendingSellerReplyReviewId(null);
+    }
   };
 
   // Rating breakdown
@@ -652,282 +879,312 @@ export function ProductDetailPage() {
 
         {/* Đánh giá sản phẩm */}
         <Card className="p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-6">Đánh giá sản phẩm</h2>
+          <div ref={reviewSectionRef}>
+            <h2 className="text-xl font-semibold mb-6">Đánh giá sản phẩm</h2>
 
-          {/* Rating Summary */}
-          <div className="bg-muted/30 rounded-lg p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Overall Rating */}
-              <div className="text-center">
-                <div className="text-5xl mb-2">
-                  {product.ratingAvg || product.rating || 0}
-                </div>
-                <div className="flex items-center justify-center gap-1 mb-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-5 h-5 ${star <= (product.ratingAvg || product.rating || 0)
-                        ? 'fill-primary text-primary'
-                        : 'text-muted-foreground/30'
-                        }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {reviews.length.toLocaleString()} đánh giá
-                </p>
-              </div>
-
-              {/* Rating Breakdown */}
-              <div className="space-y-2">
-                {ratingBreakdown.map((item) => (
-                  <div key={item.stars} className="flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        setSelectedRating(item.stars === selectedRating ? null : item.stars);
-                        setReviewPage(1);
-                      }}
-                      className={`flex items-center gap-2 text-sm transition-colors ${selectedRating === item.stars
-                        ? 'text-primary font-semibold'
-                        : 'text-muted-foreground hover:text-primary'
-                        }`}
-                    >
-                      <span className="w-12">{item.stars} sao</span>
-                      <Progress value={item.percentage} className="flex-1 h-2" />
-                      <span className="w-12 text-right">{item.count}</span>
-                    </button>
-                  </div>
-                ))}
-                {selectedRating && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedRating(null);
-                      setReviewPage(1);
-                    }}
-                    className="mt-2"
-                  >
-                    Xóa bộ lọc
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* AI Review Summary */}
-          {product.reviewSummary && (
-            <Card className="border-2 bg-gradient-to-br from-primary/5 to-primary/10 mb-6">
-              <div className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                  </div>
-                  <h3 className="font-bold text-lg">Tóm tắt đánh giá (AI)</h3>
-                </div>
-                <p className="text-sm leading-relaxed text-foreground/90">
-                  {product.reviewSummary}
-                </p>
-              </div>
-            </Card>
-          )}
-
-          {/* Reviews List */}
-          <div className="space-y-6">
-            {loadingReviews ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Đang tải đánh giá...
-              </div>
-            ) : paginatedReviews.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                {selectedRating
-                  ? `Chưa có đánh giá ${selectedRating} sao`
-                  : 'Chưa có đánh giá nào cho sản phẩm này'}
-              </div>
-            ) : (
-              paginatedReviews.map((review) => (
-                <div key={review.id} className="border-b border-border pb-6 last:border-0">
-                  <div className="flex items-start gap-3">
-                    <Avatar className="w-10 h-10">
-                      {review.userAvatar ? (
-                        <ImageWithFallback
-                          src={review.userAvatar}
-                          alt={review.userName}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-sm font-medium">
-                          {review.userName.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium">{review.userName}</span>
-                        {review.isVerifiedPurchase && (
-                          <Badge variant="outline" className="text-xs">
-                            Đã mua hàng
-                          </Badge>
-                        )}
+            {!isFocusReviewMode && (
+              <>
+                {/* Rating Summary */}
+                <div className="bg-muted/30 rounded-lg p-6 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Overall Rating */}
+                    <div className="text-center">
+                      <div className="text-5xl mb-2">
+                        {product.ratingAvg || product.rating || 0}
                       </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`w-3 h-3 ${star <= review.rating
-                                ? 'fill-primary text-primary'
-                                : 'text-muted-foreground/30'
-                                }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{review.date}</span>
+                      <div className="flex items-center justify-center gap-1 mb-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-5 h-5 ${star <= (product.ratingAvg || product.rating || 0)
+                              ? 'fill-primary text-primary'
+                              : 'text-muted-foreground/30'
+                              }`}
+                          />
+                        ))}
                       </div>
-                      <p className="text-sm mb-3">{review.comment}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {reviews.length.toLocaleString()} đánh giá
+                      </p>
+                    </div>
 
-                      {/* Review Images */}
-                      {review.images && review.images.length > 0 && (
-                        <div className="grid grid-cols-4 gap-2 mb-3">
-                          {review.images.map((img, idx) => {
-                            // Convert Google Drive URL to displayable format
-                            const convertGoogleDriveUrl = (url: string): string => {
-                              if (!url || typeof url !== 'string') return url;
-
-                              const trimmedUrl = url.trim();
-                              let fileId: string | null = null;
-
-                              // Handle Google Drive thumbnail URL
-                              if (trimmedUrl.includes('drive.google.com/thumbnail')) {
-                                const match = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-                                if (match && match[1]) {
-                                  fileId = match[1];
-                                }
-                              }
-                              // Handle Google Drive file URL
-                              else if (trimmedUrl.includes('drive.google.com/file/d/')) {
-                                const match = trimmedUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-                                if (match && match[1]) {
-                                  fileId = match[1];
-                                }
-                              }
-                              // Handle Google Drive uc URL
-                              else if (trimmedUrl.includes('drive.google.com/uc')) {
-                                const match = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-                                if (match && match[1]) {
-                                  fileId = match[1];
-                                }
-                              }
-                              // Already converted
-                              else if (trimmedUrl.includes('lh3.googleusercontent.com')) {
-                                return url;
-                              }
-
-                              if (fileId) {
-                                return `https://lh3.googleusercontent.com/d/${fileId}`;
-                              }
-
-                              return url;
-                            };
-
-                            const convertedUrl = convertGoogleDriveUrl(img);
-
-                            return (
-                              <div
-                                key={idx}
-                                className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => window.open(img, '_blank')}
-                              >
-                                <ImageWithFallback
-                                  src={convertedUrl}
-                                  alt={`Review image ${idx + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" className="gap-2 h-8">
-                            <ThumbsUp className="w-3 h-3" />
-                            Hữu ích ({review.helpful})
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-2 h-8"
-                            onClick={() => toggleSellerReply(review.id)}
+                    {/* Rating Breakdown */}
+                    <div className="space-y-2">
+                      {ratingBreakdown.map((item) => (
+                        <div key={item.stars} className="flex items-center gap-3">
+                          <button
+                            onClick={() => {
+                              setSelectedRating(item.stars === selectedRating ? null : item.stars);
+                              setReviewPage(1);
+                            }}
+                            className={`flex items-center gap-2 text-sm transition-colors ${selectedRating === item.stars
+                              ? 'text-primary font-semibold'
+                              : 'text-muted-foreground hover:text-primary'
+                              }`}
                           >
-                            Xem thêm
-                          </Button>
-                          {isProductOwner && (
+                            <span className="w-12">{item.stars} sao</span>
+                            <Progress value={item.percentage} className="flex-1 h-2" />
+                            <span className="w-12 text-right">{item.count}</span>
+                          </button>
+                        </div>
+                      ))}
+                      {selectedRating && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedRating(null);
+                            setReviewPage(1);
+                          }}
+                          className="mt-2"
+                        >
+                          Xóa bộ lọc
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Review Summary */}
+                {product.reviewSummary && (
+                  <Card className="border-2 bg-gradient-to-br from-primary/5 to-primary/10 mb-6">
+                    <div className="p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Sparkles className="w-4 h-4 text-primary" />
+                        </div>
+                        <h3 className="font-bold text-lg">Tóm tắt đánh giá (AI)</h3>
+                      </div>
+                      <p className="text-sm leading-relaxed text-foreground/90">
+                        {product.reviewSummary}
+                      </p>
+                    </div>
+                  </Card>
+                )}
+              </>
+            )}
+
+            {/* Reviews List */}
+            <div className="space-y-6">
+              {loadingReviews ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Đang tải đánh giá...
+                </div>
+              ) : displayedReviews.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {isFocusReviewMode
+                    ? 'Không tìm thấy đánh giá này'
+                    : selectedRating
+                      ? `Chưa có đánh giá ${selectedRating} sao`
+                      : 'Chưa có đánh giá nào cho sản phẩm này'}
+                </div>
+              ) : (
+                displayedReviews.map((review) => (
+                  <div
+                    key={review.id}
+                    ref={(el) => {
+                      reviewItemRefs.current[review.id] = el;
+                    }}
+                    className={`border-b border-border pb-6 last:border-0 ${targetReviewId === review.id ? 'rounded-lg bg-primary/5 ring-2 ring-primary/20 p-3' : ''}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-10 h-10">
+                        {review.userAvatar ? (
+                          <ImageWithFallback
+                            src={review.userAvatar}
+                            alt={review.userName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-sm font-medium">
+                            {review.userName.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium">{review.userName}</span>
+                          {review.isVerifiedPurchase && (
+                            <Badge variant="outline" className="text-xs">
+                              Đã mua hàng
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`w-3 h-3 ${star <= review.rating
+                                  ? 'fill-primary text-primary'
+                                  : 'text-muted-foreground/30'
+                                  }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-muted-foreground">{review.date}</span>
+                        </div>
+                        <p className="text-sm mb-3">{review.comment}</p>
+
+                        {/* Review Images */}
+                        {review.images && review.images.length > 0 && (
+                          <div className="grid grid-cols-4 gap-2 mb-3">
+                            {review.images.map((img, idx) => {
+                              // Convert Google Drive URL to displayable format
+                              const convertGoogleDriveUrl = (url: string): string => {
+                                if (!url || typeof url !== 'string') return url;
+
+                                const trimmedUrl = url.trim();
+                                let fileId: string | null = null;
+
+                                // Handle Google Drive thumbnail URL
+                                if (trimmedUrl.includes('drive.google.com/thumbnail')) {
+                                  const match = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                                  if (match && match[1]) {
+                                    fileId = match[1];
+                                  }
+                                }
+                                // Handle Google Drive file URL
+                                else if (trimmedUrl.includes('drive.google.com/file/d/')) {
+                                  const match = trimmedUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+                                  if (match && match[1]) {
+                                    fileId = match[1];
+                                  }
+                                }
+                                // Handle Google Drive uc URL
+                                else if (trimmedUrl.includes('drive.google.com/uc')) {
+                                  const match = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                                  if (match && match[1]) {
+                                    fileId = match[1];
+                                  }
+                                }
+                                // Already converted
+                                else if (trimmedUrl.includes('lh3.googleusercontent.com')) {
+                                  return url;
+                                }
+
+                                if (fileId) {
+                                  return `https://lh3.googleusercontent.com/d/${fileId}`;
+                                }
+
+                                return url;
+                              };
+
+                              const convertedUrl = convertGoogleDriveUrl(img);
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => window.open(img, '_blank')}
+                                >
+                                  <ImageWithFallback
+                                    src={convertedUrl}
+                                    alt={`Review image ${idx + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" className="gap-2 h-8">
+                              <ThumbsUp className="w-3 h-3" />
+                              Hữu ích ({review.helpful})
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="gap-2 h-8"
-                              onClick={() => openReplyEditor(review.id)}
+                              onClick={() => toggleSellerReply(review.id)}
                             >
-                              <Reply className="w-3 h-3" />
-                              Trả lời
+                              Xem thêm
                             </Button>
-                          )}
-                        </div>
-
-                        {(expandedSellerReplyByReviewId[review.id] || replyEditorReviewId === review.id) && (
-                          <div className="rounded-lg border border-border bg-muted/20 p-3">
-                            <div className="text-xs font-medium text-muted-foreground mb-2">Phản hồi từ shop</div>
-
-                            {expandedSellerReplyByReviewId[review.id] && (
-                              <div className="text-sm text-foreground/90 whitespace-pre-wrap">
-                                {sellerRepliesByReviewId[review.id] || 'Shop chưa phản hồi.'}
-                              </div>
-                            )}
-
-                            {replyEditorReviewId === review.id && isProductOwner && (
-                              <div className="mt-3">
-                                <textarea
-                                  value={replyDraftsByReviewId[review.id] || ''}
-                                  onChange={(e) =>
-                                    setReplyDraftsByReviewId((prev) => ({
-                                      ...prev,
-                                      [review.id]: e.target.value,
-                                    }))
-                                  }
-                                  placeholder="Nhập phản hồi của shop..."
-                                  className="w-full min-h-[90px] rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                />
-                                <div className="flex items-center justify-end gap-2 mt-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={cancelReplyEditor}
-                                  >
-                                    Hủy
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => saveSellerReply(review.id)}
-                                  >
-                                    Lưu
-                                  </Button>
-                                </div>
-                              </div>
+                            {isProductOwner && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-2 h-8"
+                                onClick={() => openReplyEditor(review.id)}
+                              >
+                                <Reply className="w-3 h-3" />
+                                Trả lời
+                              </Button>
                             )}
                           </div>
-                        )}
+
+                          {(expandedSellerReplyByReviewId[review.id] || replyEditorReviewId === review.id) && (
+                            <div className="rounded-lg border border-border bg-muted/20 p-3">
+                              <div className="text-xs font-medium text-muted-foreground mb-2">Phản hồi từ shop</div>
+
+                              {expandedSellerReplyByReviewId[review.id] && (
+                                <div className="text-sm text-foreground/90 whitespace-pre-wrap">
+                                  {getSellerReplyForReview(review) || 'Shop chưa phản hồi.'}
+                                </div>
+                              )}
+
+                              {replyEditorReviewId === review.id && isProductOwner && (
+                                <div className="mt-3">
+                                  {(() => {
+                                    const isSending = sendingSellerReplyReviewId === review.id;
+                                    return (
+                                      <>
+                                        <textarea
+                                          ref={(el) => {
+                                            if (replyEditorReviewId === review.id) {
+                                              replyTextareaRef.current = el;
+                                            }
+                                          }}
+                                          value={replyDraftsByReviewId[review.id] || ''}
+                                          onChange={(e) =>
+                                            setReplyDraftsByReviewId((prev) => ({
+                                              ...prev,
+                                              [review.id]: e.target.value,
+                                            }))
+                                          }
+                                          placeholder="Nhập phản hồi của shop..."
+                                          disabled={isSending}
+                                          className="w-full min-h-[90px] rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        />
+                                        <div className="flex items-center justify-end gap-2 mt-2">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={cancelReplyEditor}
+                                            disabled={isSending}
+                                          >
+                                            Hủy
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            onClick={() => saveSellerReply(review.id)}
+                                            disabled={isSending}
+                                          >
+                                            {isSending ? 'Đang gửi...' : 'Gửi'}
+                                          </Button>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
+
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {!isFocusReviewMode && totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 mt-6">
               <Button
                 variant="outline"

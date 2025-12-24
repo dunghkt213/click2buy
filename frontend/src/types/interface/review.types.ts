@@ -15,6 +15,7 @@ export interface ProductReview {
   updatedAt?: string;
   helpful: number;
   isVerifiedPurchase?: boolean;
+  replyBySeller?: string;
   user?: {
     name?: string;
     username?: string;

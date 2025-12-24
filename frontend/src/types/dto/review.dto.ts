@@ -56,5 +56,6 @@ export interface BackendReviewDto {
   updatedAt?: string;
   helpful?: number;
   isVerifiedPurchase?: boolean;
+  replyBySeller?: string;
 }
 

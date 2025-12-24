@@ -42,6 +42,7 @@ export interface ProductReview {
   updatedAt?: string;
   helpful: number;
   isVerifiedPurchase?: boolean;
+  replyBySeller?: string;
   user?: {
     name?: string;
     username?: string;
@@ -172,6 +173,7 @@ export interface Notification {
   message: string;
   time: string;
   isRead: boolean;
+  metadata?: Record<string, any>;
 }
 
 // User types
