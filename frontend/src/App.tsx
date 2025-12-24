@@ -1,20 +1,17 @@
-import { useEffect } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
-import { Toaster } from "sonner"; // Thư viện thông báo
-import { AppProvider } from "./providers/AppProvider"; // Context toàn cục
+import { Route, Routes } from "react-router-dom";
 import { useScrollRestoration } from "./hooks/useScrollRestoration";
+import { AppProvider } from "./providers/AppProvider"; // Context toàn cục
 
 // Layouts
 import { PaymentProcessPage } from "@/pages/PaymentProcessPage";
 import { MainLayout } from "./layouts/MainLayout";
 
-
 // Pages (Đảm bảo đường dẫn import đúng với cấu trúc dự án của bạn)
 import { ChatFloatingButton } from './components/chat/ChatFloatingButton';
-import { NotificationLog } from './components/notifications/NotificationLog';
 import { AddProductPage } from "./pages/AddProductPage/AddProductPage";
 import LoginPage from "./pages/AuthPage/LoginPage/LoginPage";
 import RegisterPage from "./pages/AuthPage/RegisterPage/RegisterPage";
+
 import { CartPage } from "./pages/CartPage/CartPage";
 import { ChatPage } from "./pages/ChatPage";
 import { CheckoutPage } from "./pages/CheckoutPage/CheckoutPage";
@@ -40,11 +37,9 @@ export default function App() {
   return (
     // 1. Bọc toàn bộ App trong AppProvider để các trang con dùng được Context
     <AppProvider>
-      {/* 2. Toaster để hiển thị thông báo (toast.success, toast.error) */}
-      <Toaster position="top-center" richColors closeButton />
-
       {/* 3. Xử lý khôi phục scroll position khi quay lại trang */}
       <ScrollRestoration />
+
 
       {/* 4. Định nghĩa các Routes */}
       <Routes>
@@ -89,8 +84,7 @@ export default function App() {
         {/* 404 - Redirect về trang chủ hoặc trang 404 riêng */}
         <Route path="*" element={<MainLayout><FeedPage /></MainLayout>} />
       </Routes>
-      <ChatFloatingButton/>
-      <NotificationLog />
+      <ChatFloatingButton />
     </AppProvider>
   );
 }

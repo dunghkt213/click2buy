@@ -1,30 +1,27 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { ArrowLeft, Image as ImageIcon, Info, Loader2, MessageCircle, MoreVertical, Search, Send } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MessageCircle, Send, Search, MoreVertical, Info, Loader2, ArrowLeft, Image as ImageIcon } from 'lucide-react';
-import { useAppContext } from '../../providers/AppProvider';
-import { useChat } from '../../hooks/useChat';
-import { ChatMessage, Conversation } from '../../types/interface/chat.types';
-import { userApi } from '../../apis/user';
-import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
 import { mediaApi } from '../../apis/media/mediaApi';
+import { userApi } from '../../apis/user';
+import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { useChat } from '../../hooks/useChat';
+import { useAppContext } from '../../providers/AppProvider';
+import { ChatMessage } from '../../types/interface/chat.types';
 
-// Component to handle Google Drive images - similar to how product images are displayed
-// Specifically handles: https://drive.google.com/thumbnail?id=FILE_ID
-// Uses ImageWithFallback for consistent behavior with product images
 // If direct image URL fails, will show clickable placeholder to open in new tab
 const GoogleDriveImage: React.FC<{ url: string; originalUrl: string; className?: string }> = ({ url, originalUrl, className }) => {
   const [hasError, setHasError] = useState(false);
-  
+
   // Handle image load error
   const handleImageError = () => {
     setHasError(true);
   };
-  
+
   // If image fails to load, show clickable placeholder
   if (hasError) {
     return (
-      <div 
+      <div
         className={`${className} bg-muted/50 flex flex-col items-center justify-center cursor-pointer hover:bg-muted transition-colors rounded-2xl`}
         onClick={() => window.open(originalUrl, '_blank')}
         title="Nhấn để mở hình ảnh trong tab mới"
@@ -39,10 +36,10 @@ const GoogleDriveImage: React.FC<{ url: string; originalUrl: string; className?:
       </div>
     );
   }
-  
+
   // Render image with ImageWithFallback (same as product images)
   return (
-    <div 
+    <div
       className="relative group cursor-pointer"
       onClick={() => window.open(originalUrl, '_blank')}
       title="Nhấn để mở hình ảnh trong tab mới"
@@ -64,36 +61,12 @@ const GoogleDriveImage: React.FC<{ url: string; originalUrl: string; className?:
   );
 };
 
-interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  senderAvatar?: string;
-  content: string;
-  timestamp: string;
-  type: 'text' | 'image';
-  imageUrl?: string;
-  isRead?: boolean;
-}
-
-interface Conversation {
-  id: string;
-  sellerId: string;
-  sellerName: string;
-  sellerAvatar: string;
-  sellerStatus: 'online' | 'offline';
-  lastMessage: string;
-  lastMessageTime: string;
-  unreadCount: number;
-  messages: Message[];
-}
-
 export function ChatPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const app = useAppContext();
   const userId = app.user?.id || null;
-  
+
   const [message, setMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentReceiverId, setCurrentReceiverId] = useState<string | null>(null);
@@ -113,11 +86,9 @@ export function ChatPage() {
     setCurrentConversationId,
     isConnected,
     isTyping,
-    unreadCount,
     loading,
     sendMessage,
     startConversation,
-    loadConversations,
     loadMessages,
     markAsRead,
     sendTyping,
@@ -131,10 +102,10 @@ export function ChatPage() {
     setCurrentReceiverId(targetUserId);
 
     // Check if conversation already exists
-    const existingConv = conversations.find(conv => 
+    const existingConv = conversations.find(conv =>
       conv.participants.includes(targetUserId) && conv.participants.includes(userId)
     );
-    
+
     if (existingConv) {
       // Normalize conversation ID
       const convId = existingConv.id || existingConv._id;
@@ -180,7 +151,7 @@ export function ChatPage() {
       // Set receiverId immediately for instant UI feedback
       setCurrentReceiverId(userIdFromUrl);
       setPendingUserId(userIdFromUrl);
-      
+
       // Clean up URL param immediately
       navigate('/chat', { replace: true });
     }
@@ -194,10 +165,10 @@ export function ChatPage() {
     // But don't wait too long - if conversations are empty after a short delay, start new conversation
     const checkAndOpen = () => {
       // Check if conversation already exists
-      const existingConv = conversations.find(conv => 
+      const existingConv = conversations.find(conv =>
         conv.participants.includes(pendingUserId) && conv.participants.includes(userId)
       );
-      
+
       if (existingConv) {
         const convId = existingConv.id || existingConv._id;
         if (convId && convId !== currentConversationId) {
@@ -228,14 +199,14 @@ export function ChatPage() {
         const cId = c.id || c._id;
         return cId === currentConversationId;
       });
-      
+
       if (conv) {
         // Find the other participant (not current user)
         const otherParticipant = conv.participants.find(p => p !== userId);
         if (otherParticipant && otherParticipant !== currentReceiverId) {
           setCurrentReceiverId(otherParticipant);
         }
-        
+
         // Clear pending if this is the conversation we were waiting for
         if (pendingUserId && conv.participants.includes(pendingUserId)) {
           setPendingUserId(null);
@@ -335,6 +306,40 @@ export function ChatPage() {
 
   // Enhanced conversations with user info
   const enhancedConversations = useMemo(() => {
+    const getMessagePreview = (msg?: any) => {
+      if (!msg) return '';
+      if (typeof msg === 'string') return msg.trim();
+
+      const raw = String(msg.content ?? '').trim();
+      const type = msg.type as ChatMessage['type'] | undefined;
+
+      const lower = raw.toLowerCase();
+      const isGoogleDriveThumbnail = lower.includes('drive.google.com/thumbnail?id=');
+      const looksLikeImageUrl =
+        lower.startsWith('http') &&
+        (lower.includes('drive.google.com') ||
+          lower.includes('res.cloudinary.com') ||
+          lower.includes('images.unsplash.com') ||
+          /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/.test(lower));
+
+      if (isGoogleDriveThumbnail) return 'Đã gửi một ảnh';
+      if (type === 'image' || looksLikeImageUrl) return 'Đã gửi một hình ảnh';
+      if (type === 'file') return 'Đã gửi một tệp';
+      return raw;
+    };
+
+    const getLatestMessage = (msgs: ChatMessage[]) => {
+      if (!msgs || msgs.length === 0) return null;
+      return msgs.reduce<ChatMessage | null>((latest, current) => {
+        if (!latest) return current;
+        const t1 = new Date(latest.timestamp).getTime();
+        const t2 = new Date(current.timestamp).getTime();
+        if (isNaN(t2)) return latest;
+        if (isNaN(t1)) return current;
+        return t2 > t1 ? current : latest;
+      }, null);
+    };
+
     return conversations
       .map(conv => {
         // Use _id if id is not available (backend returns _id)
@@ -346,7 +351,7 @@ export function ChatPage() {
 
         const otherParticipantId = conv.participants.find(p => p !== userId);
         const userInfo = otherParticipantId ? userInfoCache[otherParticipantId] : null;
-        
+
         // Handle unreadCount - can be number or object
         let unreadCountValue = 0;
         if (typeof conv.unreadCount === 'number') {
@@ -362,14 +367,39 @@ export function ChatPage() {
           sellerName: userInfo?.name || 'Người dùng',
           sellerAvatar: userInfo?.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=User',
           sellerStatus: 'online' as const, // TODO: Get real status from backend
-          lastMessage: conv.lastMessage?.content || '',
-          lastMessageTime: conv.lastMessageTime || conv.lastMessageAt || conv.lastMessage?.timestamp || '',
+          lastMessage: (() => {
+            const convMessages =
+              messagesByConversation[conversationId] ||
+              messagesByConversation[conv._id || ''] ||
+              [];
+            const latest = getLatestMessage(convMessages);
+
+            const fromBackend = getMessagePreview(conv.lastMessage);
+            if (fromBackend) return fromBackend;
+
+            return getMessagePreview(latest);
+          })(),
+          lastMessageTime: (() => {
+            const convMessages =
+              messagesByConversation[conversationId] ||
+              messagesByConversation[conv._id || ''] ||
+              [];
+            const latest = getLatestMessage(convMessages);
+
+            return (
+              conv.lastMessageTime ||
+              conv.lastMessageAt ||
+              conv.lastMessage?.timestamp ||
+              latest?.timestamp ||
+              ''
+            );
+          })(),
           unreadCount: unreadCountValue,
           messages: (() => {
             // Try to get messages by normalized conversationId
-            const convMessages = messagesByConversation[conversationId] || 
-                                messagesByConversation[conv._id || ''] || 
-                                [];
+            const convMessages = messagesByConversation[conversationId] ||
+              messagesByConversation[conv._id || ''] ||
+              [];
             // Removed console.log to prevent spam - only log in development if needed
             // console.log(`📦 Messages for conversation ${conversationId}:`, {
             //   conversationId,
@@ -393,9 +423,9 @@ export function ChatPage() {
   // Create virtual conversation when we have receiverId but no conversation yet
   const virtualConversation = useMemo(() => {
     if (!currentReceiverId || selectedConversation) return null;
-    
+
     const receiverInfo = userInfoCache[currentReceiverId];
-    
+
     // Create virtual conversation even if we don't have user info yet
     // It will be updated when user info loads
     return {
@@ -439,8 +469,6 @@ export function ChatPage() {
       }, 100);
     }
   }, [activeConversation?.messages.length, currentConversationId]);
-  
-  const totalUnreadCount = unreadCount || enhancedConversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
 
   const filteredConversations = enhancedConversations.filter(conv =>
     conv.sellerName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -467,7 +495,7 @@ export function ChatPage() {
       conversationId: validConversationId,
       conversationIdLength: validConversationId.length,
     });
-    
+
     // Small delay to ensure conversation is fully set up
     const timeoutId = setTimeout(() => {
       // Re-validate conversationId after timeout
@@ -484,7 +512,7 @@ export function ChatPage() {
         setPendingMessage(null); // Clear pending to avoid infinite loop
       }
     }, 500); // Increased delay to ensure conversation is fully set up
-    
+
     return () => clearTimeout(timeoutId);
   }, [currentConversationId, pendingMessage, sendMessage]);
 
@@ -592,10 +620,13 @@ export function ChatPage() {
     try {
       const response = await mediaApi.upload(file);
       console.log('📤 Media upload response:', response);
-      
+
       // Handle response format: { url: { fileId, thumbnailUrl } } or { url: string }
-      const imageUrl = response?.url?.thumbnailUrl || response?.url || '';
-      
+      const imageUrl =
+        typeof response?.url === 'string'
+          ? response.url
+          : (response?.url?.thumbnailUrl as string | undefined) || '';
+
       if (!imageUrl) {
         console.error('Invalid response format:', response);
         toast.error('Không nhận được URL ảnh từ server');
@@ -604,10 +635,10 @@ export function ChatPage() {
 
       console.log('✅ Image uploaded successfully, URL:', imageUrl);
       console.log('✅ isImageUrl check:', isImageUrl(imageUrl));
-      
+
       // Send message with image URL
       await handleSendMessage(imageUrl);
-      
+
       toast.success('Đã gửi ảnh thành công');
     } catch (error: any) {
       console.error('❌ Error uploading image:', error);
@@ -627,7 +658,7 @@ export function ChatPage() {
 
   const handleSelectConversation = (convId: string) => {
     console.log('Selecting conversation:', convId);
-    
+
     if (!convId) {
       console.error('❌ Cannot select conversation: ID is undefined');
       toast.error('Không thể chọn cuộc trò chuyện này (ID không hợp lệ)');
@@ -649,7 +680,7 @@ export function ChatPage() {
 
       setCurrentConversationId(convId);
       setCurrentReceiverId(conv.sellerId);
-      
+
       if (isConnected) {
         markAsRead(convId);
       }
@@ -659,35 +690,13 @@ export function ChatPage() {
     }
   };
 
-  const handleStartChat = (targetUserId: string) => {
-    if (!userId) {
-      app.handleLogin();
-      return;
-    }
-
-    // Check if conversation already exists
-    const existingConv = conversations.find(conv => 
-      conv.participants.includes(targetUserId) && conv.participants.includes(userId)
-    );
-    
-    if (existingConv) {
-      const convId = existingConv.id || existingConv._id;
-      if (convId) {
-        setCurrentConversationId(convId);
-        loadMessages(convId);
-      }
-    } else {
-      startConversation(targetUserId);
-    }
-  };
-
   const handleTyping = (typing: boolean) => {
     if (!currentReceiverId || !isConnected) return;
-    
+
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
-    
+
     if (typing) {
       typingTimeoutRef.current = setTimeout(() => {
         sendTyping(currentReceiverId, false);
@@ -704,20 +713,20 @@ export function ChatPage() {
     if (diffInMinutes < 60) return `${diffInMinutes} phút`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} giờ`;
     if (diffInMinutes < 10080) return `${Math.floor(diffInMinutes / 1440)} ngày`;
-    
-    return date.toLocaleDateString('vi-VN', { 
-      day: '2-digit', 
+
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
       month: '2-digit'
     });
   };
 
   const formatMessageTime = (timestamp: string | number | undefined) => {
     if (!timestamp) return '';
-    
+
     try {
       // Handle different timestamp formats
       let date: Date;
-      
+
       if (typeof timestamp === 'number') {
         // If it's a number, assume it's milliseconds or seconds
         date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
@@ -728,44 +737,44 @@ export function ChatPage() {
         console.warn('Invalid timestamp type:', typeof timestamp, timestamp);
         return '';
       }
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         console.warn('Invalid timestamp value:', timestamp);
         return '';
       }
-      
+
       const now = new Date();
       const diffInMs = now.getTime() - date.getTime();
       const diffInMinutes = Math.floor(diffInMs / 60000);
-      
+
       // If less than 1 minute, show "Vừa xong"
       if (diffInMinutes < 1) {
         return 'Vừa xong';
       }
-      
+
       // If same day, show time only
       const isToday = date.toDateString() === now.toDateString();
       if (isToday) {
-        return date.toLocaleTimeString('vi-VN', { 
+        return date.toLocaleTimeString('vi-VN', {
           hour: '2-digit',
           minute: '2-digit'
         });
       }
-      
+
       // If same year, show date and time
       const isSameYear = date.getFullYear() === now.getFullYear();
       if (isSameYear) {
-        return date.toLocaleDateString('vi-VN', { 
+        return date.toLocaleDateString('vi-VN', {
           day: '2-digit',
           month: '2-digit',
           hour: '2-digit',
           minute: '2-digit'
         });
       }
-      
+
       // Otherwise show full date and time
-      return date.toLocaleDateString('vi-VN', { 
+      return date.toLocaleDateString('vi-VN', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -783,12 +792,12 @@ export function ChatPage() {
   // We need to convert to direct image URL that works in img tag
   const convertGoogleDriveUrl = (url: string): string => {
     if (!url || typeof url !== 'string') return url;
-    
+
     const trimmedUrl = url.trim();
-    
+
     // Extract file ID from various Google Drive URL formats
     let fileId: string | null = null;
-    
+
     // Handle Google Drive thumbnail URL: https://drive.google.com/thumbnail?id=FILE_ID&sz=w1000
     // This is the most common format from backend
     if (trimmedUrl.includes('drive.google.com/thumbnail')) {
@@ -812,7 +821,7 @@ export function ChatPage() {
         fileId = match[1];
       }
     }
-    
+
     // If we found a file ID, convert to direct image URL
     if (fileId) {
       // Use Google's direct image serving (lh3.googleusercontent.com)
@@ -820,7 +829,7 @@ export function ChatPage() {
       // This format works best for embedding in img tags
       return `https://lh3.googleusercontent.com/d/${fileId}`;
     }
-    
+
     // If it's not a Google Drive URL, return as is
     return url;
   };
@@ -831,23 +840,23 @@ export function ChatPage() {
     if (!content || typeof content !== 'string') {
       return false;
     }
-    
+
     const trimmedContent = content.trim();
-    
+
     // Check if it's a URL
     if (!trimmedContent.startsWith('http://') && !trimmedContent.startsWith('https://')) {
       return false;
     }
-    
+
     const lowerContent = trimmedContent.toLowerCase();
-    
+
     // Priority 1: Check for Google Drive URLs (most common in this app)
     // Specifically check for thumbnail format: drive.google.com/thumbnail?id=
     const isGoogleDriveThumbnail = lowerContent.includes('drive.google.com/thumbnail') && lowerContent.includes('id=');
     const isGoogleDriveFile = lowerContent.includes('drive.google.com/file/d/');
     const isGoogleDriveUc = lowerContent.includes('drive.google.com/uc') && lowerContent.includes('id=');
     const isGoogleDrive = isGoogleDriveThumbnail || isGoogleDriveFile || isGoogleDriveUc;
-    
+
     // Priority 2: Check if it's an image file extension (even with query params)
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico'];
     const hasImageExtension = imageExtensions.some(ext => {
@@ -855,18 +864,18 @@ export function ChatPage() {
       const urlWithoutQuery = lowerContent.split('?')[0].split('#')[0];
       return urlWithoutQuery.endsWith(ext);
     });
-    
+
     // Priority 3: Check for common image hosting patterns
     const hasImagePattern = lowerContent.includes('/image/') ||
-                            lowerContent.includes('cloudinary') ||
-                            lowerContent.includes('imgur') ||
-                            lowerContent.includes('i.imgur') ||
-                            lowerContent.includes('res.cloudinary.com') ||
-                            lowerContent.includes('images.unsplash.com') ||
-                            lowerContent.includes('lh3.googleusercontent.com') ||
-                            lowerContent.includes('media/') ||
-                            lowerContent.includes('/upload/');
-    
+      lowerContent.includes('cloudinary') ||
+      lowerContent.includes('imgur') ||
+      lowerContent.includes('i.imgur') ||
+      lowerContent.includes('res.cloudinary.com') ||
+      lowerContent.includes('images.unsplash.com') ||
+      lowerContent.includes('lh3.googleusercontent.com') ||
+      lowerContent.includes('media/') ||
+      lowerContent.includes('/upload/');
+
     return isGoogleDrive || hasImageExtension || hasImagePattern;
   };
 
@@ -937,51 +946,49 @@ export function ChatPage() {
 
               const isSelected = currentConversationId === conv.id;
               return (
-              <button
-                key={conv.id}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (conv.id) {
-                    handleSelectConversation(conv.id);
-                  }
-                }}
-                disabled={loading && isSelected}
-                className={`w-full flex items-center gap-3 p-3 hover:bg-accent/50 transition-colors border-b border-border/50 last:border-b-0 ${
-                  isSelected ? 'bg-accent' : 'bg-white'
-                } ${loading && isSelected ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
-              >
-              <div className="relative flex-shrink-0">
-                <ImageWithFallback
-                  src={conv.sellerAvatar}
-                  alt={conv.sellerName}
-                  className="h-14 w-14 rounded-full object-cover border-2 border-border"
-                />
-                <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                  conv.sellerStatus === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                }`}></span>
-              </div>
-              
-              <div className="flex-1 min-w-0 text-left">
-                <div className="flex items-center justify-between mb-1.5">
-                  <h4 className="truncate font-medium text-sm">{conv.sellerName}</h4>
-                  <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                    {formatTime(conv.lastMessageTime)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                    {conv.lastMessage || 'Chưa có tin nhắn'}
-                  </p>
-                  {conv.unreadCount > 0 && (
-                    <span className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                      {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </button>
-            );
+                <button
+                  key={conv.id}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (conv.id) {
+                      handleSelectConversation(conv.id);
+                    }
+                  }}
+                  disabled={loading && isSelected}
+                  className={`w-full flex items-center gap-3 p-3 hover:bg-accent/50 transition-colors border-b border-border/50 last:border-b-0 ${isSelected ? 'bg-accent' : 'bg-white'
+                    } ${loading && isSelected ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                >
+                  <div className="relative flex-shrink-0">
+                    <ImageWithFallback
+                      src={conv.sellerAvatar}
+                      alt={conv.sellerName}
+                      className="h-14 w-14 rounded-full object-cover border-2 border-border"
+                    />
+                    <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${conv.sellerStatus === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                      }`}></span>
+                  </div>
+
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <h4 className="truncate font-medium text-sm">{conv.sellerName}</h4>
+                      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                        {formatTime(conv.lastMessageTime)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                        {conv.lastMessage || 'Chưa có tin nhắn'}
+                      </p>
+                      {conv.unreadCount > 0 && (
+                        <span className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                          {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
             })
           )}
         </div>
@@ -992,18 +999,17 @@ export function ChatPage() {
         <div className="flex-1 flex flex-col bg-background">
           {/* Chat Header */}
           <div className="flex items-center justify-between border-b border-border p-4 bg-white shadow-sm">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
               <div className="relative">
                 <ImageWithFallback
                   src={activeConversation.sellerAvatar}
                   alt={activeConversation.sellerName}
                   className="h-12 w-12 rounded-full object-cover border-2 border-border"
                 />
-                <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                  activeConversation.sellerStatus === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                }`}></span>
+                <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${activeConversation.sellerStatus === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                  }`}></span>
               </div>
-              
+
               <div>
                 <h4 className="font-semibold">{activeConversation.sellerName}</h4>
                 <p className="text-xs text-muted-foreground">
@@ -1049,165 +1055,164 @@ export function ChatPage() {
                     }
                   })
                   .map((msg) => {
-                  const isUser = msg.senderId === userId;
-                  const senderInfo = userInfoCache[msg.senderId];
-              
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex gap-3 items-end ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-                  >
-                    {!isUser && (
-                      <ImageWithFallback
-                        src={senderInfo?.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=User'}
-                        alt={senderInfo?.name || 'Người dùng'}
-                        className="h-9 w-9 rounded-full flex-shrink-0 object-cover border border-border"
-                      />
-                    )}
-                    
-                    <div className={`flex flex-col gap-1.5 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
-                      {(() => {
-                        // Check for images array first (multiple images in one message)
-                        const messageImages = (msg as any).images;
-                        const hasImagesArray = Array.isArray(messageImages) && messageImages.length > 0;
-                        
-                        // Determine if this is an image message
-                        // Check multiple conditions:
-                        // 1. msg.type === 'image'
-                        // 2. msg.imageUrl exists
-                        // 3. msg.images array exists
-                        // 4. msg.content is an image URL
-                        const rawImageUrl = (msg as any).imageUrl || msg.content;
-                        const hasImageUrlField = !!(msg as any).imageUrl;
-                        const isTypeImage = msg.type === 'image';
-                        const contentIsImage = isImageUrl(msg.content || '');
-                        const isImage = isTypeImage || hasImageUrlField || contentIsImage || hasImagesArray;
-                        
-                        // Debug log in development
-                        if (process.env.NODE_ENV === 'development') {
-                          console.log('🖼️ Message check:', {
-                            id: msg.id,
-                            type: msg.type,
-                            hasImageUrlField,
-                            hasImagesArray,
-                            imagesCount: hasImagesArray ? messageImages.length : 0,
-                            contentIsImage,
-                            isImage,
-                            content: msg.content?.substring(0, 100),
-                            rawImageUrl: rawImageUrl?.substring(0, 100),
-                          });
-                        }
-                        
-                        // Render multiple images if images array exists
-                        if (hasImagesArray) {
-                          return (
-                            <div className="flex flex-col gap-2">
-                              {messageImages.map((img: string, idx: number) => {
-                                const imageUrl = convertGoogleDriveUrl(img);
-                                const isGoogleDrive = img.includes('drive.google.com');
-                                
-                                return (
-                                  <div key={idx} className="rounded-2xl overflow-hidden max-w-[400px] shadow-md hover:shadow-lg transition-shadow bg-muted/50">
-                                    {isGoogleDrive ? (
-                                      <GoogleDriveImage
-                                        url={imageUrl}
-                                        originalUrl={img}
-                                        className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
-                                      />
-                                    ) : (
-                                      <ImageWithFallback
-                                        src={imageUrl}
-                                        alt={`Shared image ${idx + 1}`}
-                                        className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
-                                        onClick={() => window.open(img, '_blank')}
-                                        loading="lazy"
-                                      />
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        }
-                        
-                        // Only render single image if we have a valid URL
-                        if (isImage && rawImageUrl && typeof rawImageUrl === 'string' && rawImageUrl.trim()) {
-                          // Convert Google Drive URLs to direct image URLs
-                          const imageUrl = convertGoogleDriveUrl(rawImageUrl);
-                          const isGoogleDrive = rawImageUrl.includes('drive.google.com');
-                          
-                          if (process.env.NODE_ENV === 'development') {
-                            console.log('🖼️ Rendering image:', {
-                              rawImageUrl: rawImageUrl.substring(0, 100),
-                              imageUrl: imageUrl.substring(0, 100),
-                              isGoogleDrive,
-                            });
-                          }
-                          
-                          return (
-                            <div className="rounded-2xl overflow-hidden max-w-[400px] shadow-md hover:shadow-lg transition-shadow bg-muted/50">
-                              {isGoogleDrive ? (
-                                <GoogleDriveImage
-                                  url={imageUrl}
-                                  originalUrl={rawImageUrl}
-                                  className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
-                                />
-                              ) : (
-                                <ImageWithFallback
-                                  src={imageUrl}
-                                  alt="Shared image"
-                                  className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
-                                  onClick={() => window.open(rawImageUrl, '_blank')}
-                                  loading="lazy"
-                                />
-                              )}
-                            </div>
-                          );
-                        }
-                        
-                        // Regular text message - only show if content exists and is not an image URL
-                        if (msg.content && !contentIsImage) {
-                          return (
-                            <div
-                              className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                                isUser
-                                  ? 'bg-primary text-primary-foreground rounded-br-sm'
-                                  : 'bg-white text-foreground rounded-bl-sm border border-border'
-                              }`}
-                            >
-                              <p className="break-words text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p> 
-                            </div>
-                          );
-                        }
-                        
-                        // Fallback: if content is empty or only image URL, show nothing or placeholder
-                        return null;
-                      })()}
-                      {msg.timestamp && (
-                        <span className="text-xs text-muted-foreground px-1.5">
-                          {formatMessageTime(msg.timestamp)}
-                        </span>
-                      )}
+                    const isUser = msg.senderId === userId;
+                    const senderInfo = userInfoCache[msg.senderId];
+
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex gap-3 items-end ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                      >
+                        {!isUser && (
+                          <ImageWithFallback
+                            src={senderInfo?.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=User'}
+                            alt={senderInfo?.name || 'Người dùng'}
+                            className="h-9 w-9 rounded-full flex-shrink-0 object-cover border border-border"
+                          />
+                        )}
+
+                        <div className={`flex flex-col gap-1.5 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
+                          {(() => {
+                            // Check for images array first (multiple images in one message)
+                            const messageImages = (msg as any).images;
+                            const hasImagesArray = Array.isArray(messageImages) && messageImages.length > 0;
+
+                            // Determine if this is an image message
+                            // Check multiple conditions:
+                            // 1. msg.type === 'image'
+                            // 2. msg.imageUrl exists
+                            // 3. msg.images array exists
+                            // 4. msg.content is an image URL
+                            const rawImageUrl = (msg as any).imageUrl || msg.content;
+                            const hasImageUrlField = !!(msg as any).imageUrl;
+                            const isTypeImage = msg.type === 'image';
+                            const contentIsImage = isImageUrl(msg.content || '');
+                            const isImage = isTypeImage || hasImageUrlField || contentIsImage || hasImagesArray;
+
+                            // Debug log in development
+                            if (process.env.NODE_ENV === 'development') {
+                              console.log('🖼️ Message check:', {
+                                id: msg.id,
+                                type: msg.type,
+                                hasImageUrlField,
+                                hasImagesArray,
+                                imagesCount: hasImagesArray ? messageImages.length : 0,
+                                contentIsImage,
+                                isImage,
+                                content: msg.content?.substring(0, 100),
+                                rawImageUrl: rawImageUrl?.substring(0, 100),
+                              });
+                            }
+
+                            // Render multiple images if images array exists
+                            if (hasImagesArray) {
+                              return (
+                                <div className="flex flex-col gap-2">
+                                  {messageImages.map((img: string, idx: number) => {
+                                    const imageUrl = convertGoogleDriveUrl(img);
+                                    const isGoogleDrive = img.includes('drive.google.com');
+
+                                    return (
+                                      <div key={idx} className="rounded-2xl overflow-hidden max-w-[400px] shadow-md hover:shadow-lg transition-shadow bg-muted/50">
+                                        {isGoogleDrive ? (
+                                          <GoogleDriveImage
+                                            url={imageUrl}
+                                            originalUrl={img}
+                                            className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
+                                          />
+                                        ) : (
+                                          <ImageWithFallback
+                                            src={imageUrl}
+                                            alt={`Shared image ${idx + 1}`}
+                                            className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
+                                            onClick={() => window.open(img, '_blank')}
+                                            loading="lazy"
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            }
+
+                            // Only render single image if we have a valid URL
+                            if (isImage && rawImageUrl && typeof rawImageUrl === 'string' && rawImageUrl.trim()) {
+                              // Convert Google Drive URLs to direct image URLs
+                              const imageUrl = convertGoogleDriveUrl(rawImageUrl);
+                              const isGoogleDrive = rawImageUrl.includes('drive.google.com');
+
+                              if (process.env.NODE_ENV === 'development') {
+                                console.log('🖼️ Rendering image:', {
+                                  rawImageUrl: rawImageUrl.substring(0, 100),
+                                  imageUrl: imageUrl.substring(0, 100),
+                                  isGoogleDrive,
+                                });
+                              }
+
+                              return (
+                                <div className="rounded-2xl overflow-hidden max-w-[400px] shadow-md hover:shadow-lg transition-shadow bg-muted/50">
+                                  {isGoogleDrive ? (
+                                    <GoogleDriveImage
+                                      url={imageUrl}
+                                      originalUrl={rawImageUrl}
+                                      className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
+                                    />
+                                  ) : (
+                                    <ImageWithFallback
+                                      src={imageUrl}
+                                      alt="Shared image"
+                                      className="max-w-full h-auto rounded-2xl cursor-pointer hover:opacity-95 transition-opacity block"
+                                      onClick={() => window.open(rawImageUrl, '_blank')}
+                                      loading="lazy"
+                                    />
+                                  )}
+                                </div>
+                              );
+                            }
+
+                            // Regular text message - only show if content exists and is not an image URL
+                            if (msg.content && !contentIsImage) {
+                              return (
+                                <div
+                                  className={`rounded-2xl px-4 py-2.5 shadow-sm ${isUser
+                                    ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                    : 'bg-white text-foreground rounded-bl-sm border border-border'
+                                    }`}
+                                >
+                                  <p className="break-words text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                </div>
+                              );
+                            }
+
+                            // Fallback: if content is empty or only image URL, show nothing or placeholder
+                            return null;
+                          })()}
+                          {msg.timestamp && (
+                            <span className="text-xs text-muted-foreground px-1.5">
+                              {formatMessageTime(msg.timestamp)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                {isTyping[currentReceiverId || ''] && (
+                  <div className="flex gap-3 items-end">
+                    <div className="h-9 w-9 rounded-full bg-muted flex-shrink-0 border border-border" />
+                    <div className="bg-white rounded-2xl rounded-bl-sm border border-border px-4 py-3 shadow-sm">
+                      <div className="flex gap-1.5">
+                        <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
                     </div>
                   </div>
-                );
-              })}
-              {isTyping[currentReceiverId || ''] && (
-                <div className="flex gap-3 items-end">
-                  <div className="h-9 w-9 rounded-full bg-muted flex-shrink-0 border border-border" />
-                  <div className="bg-white rounded-2xl rounded-bl-sm border border-border px-4 py-3 shadow-sm">
-                    <div className="flex gap-1.5">
-                      <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-              {/* Scroll anchor - invisible element at the bottom */}
-              <div ref={messagesEndRef} />
-                </>
-              )}
+                )}
+                {/* Scroll anchor - invisible element at the bottom */}
+                <div ref={messagesEndRef} />
+              </>
+            )}
           </div>
 
           {/* Input Area */}
@@ -1255,7 +1260,7 @@ export function ChatPage() {
                   placeholder="Nhập tin nhắn..."
                   rows={1}
                   className="w-full rounded-lg border border-border px-4 py-2.5 resize-none outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 bg-background text-sm min-h-[44px] max-h-[120px] flex items-center"
-                  style={{ 
+                  style={{
                     maxHeight: '120px',
                     lineHeight: '1.5',
                   }}

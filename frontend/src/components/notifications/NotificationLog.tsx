@@ -238,4 +238,3 @@ export function NotificationLog() {
     </div>
   );
 }
-

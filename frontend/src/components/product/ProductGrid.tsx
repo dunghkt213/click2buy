@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FilterState, Product } from 'types';
 import { productApi } from '../../apis/product';
+import { getCache, setCache } from '../../utils/cache';
 import { Button } from '../ui/button';
 import { ProductCard } from './ProductCard';
-import { getCache, setCache, CACHE_KEYS } from '../../utils/cache';
 
 interface ProductGridProps {
   filters: FilterState;
@@ -88,14 +88,14 @@ export function ProductGrid({
     try {
       // Build query với tất cả filters
       const queryParams: any = {
-        page, 
-        limit: 40 
+        page,
+        limit: 40
       };
-      
+
       if (selectedCategoryId) {
         queryParams.categoryId = selectedCategoryId;
       }
-      
+
       // Thêm các filters vào query params
       if (filters.priceRange[0] > 0) {
         queryParams.minPrice = filters.priceRange[0];
@@ -116,22 +116,22 @@ export function ProductGrid({
       if (searchQuery) {
         queryParams.search = searchQuery;
       }
-      
+
       console.log('📦 [ProductGrid] Fetching products with query:', queryParams);
-      
+
       const result = await productApi.getAll(queryParams);
-      
+
       console.log('📦 [ProductGrid] API Response:', result);
-      
+
       // Lưu vào cache (TTL: 5 phút) với key dựa trên filters
       const cacheData = {
         products: result.products,
         pagination: result.pagination,
       };
       setCache(cacheKey, cacheData, 5 * 60 * 1000);
-      
+
       setAllProducts(result.products);
-      
+
       if (result.pagination) {
         console.log('📦 [ProductGrid] Pagination info:', result.pagination);
         setCurrentPage(result.pagination.page || page);
@@ -142,18 +142,18 @@ export function ProductGrid({
         // Nếu có đúng 40 sản phẩm, có thể còn trang tiếp theo
         const hasMore = result.products.length === 40;
         const estimatedPages = hasMore ? page + 1 : page;
-        
+
         console.log('⚠️ [ProductGrid] No pagination info, using fallback:', {
           productsCount: result.products.length,
           currentPage: page,
           estimatedPages
         });
-        
+
         setCurrentPage(page);
         setTotalPages(estimatedPages);
         setTotalProducts(result.products.length * estimatedPages);
       }
-      
+
       // Scroll đến phần hiển thị sản phẩm khi đổi trang
       if (productGridRef.current) {
         const headerOffset = 80; // Offset cho fixed header
@@ -214,15 +214,24 @@ export function ProductGrid({
       totalPages,
       isValid: page >= 1 && page <= totalPages && page !== currentPage
     });
-    
+
     if (page >= 1 && page <= totalPages && page !== currentPage) {
       fetchProducts(page);
     }
   };
 
-  // Không cần filter client-side nữa vì đã filter ở backend
-  // Chỉ giữ lại để đảm bảo tương thích nếu backend chưa hỗ trợ đầy đủ
-  const filteredProducts = allProducts;
+  const filteredProducts = allProducts.filter((product) => {
+    if (filters.rating > 0) {
+      const productRating =
+        typeof (product as any).rating === 'number'
+          ? (product as any).rating
+          : (product as any).ratingAvg;
+
+      const normalized = typeof productRating === 'number' ? productRating : 0;
+      if (normalized < filters.rating) return false;
+    }
+    return true;
+  });
 
   return (
     <div ref={productGridRef} className="space-y-6">
@@ -233,7 +242,9 @@ export function ProductGrid({
           <p className="text-muted-foreground">
             {loading
               ? 'Đang tải sản phẩm...'
-              : `Hiển thị ${filteredProducts.length} sản phẩm`}
+              : totalProducts > 0
+                ? `Hiển thị ${filteredProducts.length} / ${totalProducts} sản phẩm`
+                : `Hiển thị ${filteredProducts.length} sản phẩm`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -303,7 +314,7 @@ export function ProductGrid({
               {(() => {
                 const pages: (number | string)[] = [];
                 const maxVisible = 7;
-                
+
                 if (totalPages <= maxVisible) {
                   // Hiển thị tất cả nếu <= 7 trang
                   for (let i = 1; i <= totalPages; i++) {
@@ -312,7 +323,7 @@ export function ProductGrid({
                 } else {
                   // Luôn hiển thị trang đầu
                   pages.push(1);
-                  
+
                   if (currentPage <= 4) {
                     // Ở đầu: 1, 2, 3, 4, 5, ..., totalPages
                     for (let i = 2; i <= 5; i++) {
@@ -345,7 +356,7 @@ export function ProductGrid({
                       </span>
                     );
                   }
-                  
+
                   return (
                     <Button
                       key={page}
@@ -355,11 +366,10 @@ export function ProductGrid({
                         console.log('👆 [ProductGrid] Page number clicked:', page);
                         handlePageChange(page as number);
                       }}
-                      className={`min-w-[44px] h-10 font-medium ${
-                        currentPage === page 
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
-                          : 'hover:bg-accent'
-                      }`}
+                      className={`min-w-[44px] h-10 font-medium ${currentPage === page
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'hover:bg-accent'
+                        }`}
                     >
                       {page}
                     </Button>

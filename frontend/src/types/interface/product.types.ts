@@ -11,6 +11,7 @@ export interface Product {
   image: string;
   category: string;
   rating: number;
+  ratingAvg?: number; // Rating trung bình từ backend
   reviews: number;
   description: string;
   brand: string;
