@@ -99,7 +99,6 @@ async findAll(q?: any) {
       throw new RpcException({ statusCode: 404, message: 'Review not found' });
     }
     
-  
     Object.assign(review, dto);
     const updated = await review.save();
     this.kafka.emit('review.sellerReplied', {userId: review.userId, productId: review.productId, reviewId: review._id});
