@@ -6,15 +6,40 @@ import { AiImageGuard } from '../guards/ai-image.guard';
 import { AiImageType } from '../decorators/ai-image-type.decorator';
 import { AiService } from '../modules/ai-guard/ai.service';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { ConfigService } from '@nestjs/config';
+
+/**
+ * Cache entry cho review summary
+ */
+interface ReviewSummaryCache {
+    cachedSummary: string | null;
+    cachedLastReviewUpdatedAt: number; // timestamp ms
+    lastAiCallAt: number; // timestamp ms
+}
 
 @Controller('reviews')
 export class ReviewGateway {
     private readonly logger = new Logger(ReviewGateway.name);
+    
+    // In-memory cache cho review summary (productId -> cache)
+    private readonly summaryCache = new Map<string, ReviewSummaryCache>();
+    
+    // Cooldown period (ms) - default 60s
+    private readonly cooldownMs: number;
 
     constructor(
         @Inject('KAFKA_SERVICE') private readonly kafka: ClientKafka,
         private readonly aiService: AiService,
-    ) { }
+        private readonly configService: ConfigService,
+    ) {
+        // Đọc cooldown từ ENV, default 60s
+        const cooldownSeconds = parseInt(
+            this.configService.get<string>('REVIEW_SUMMARY_COOLDOWN_SECONDS') || '60',
+            10
+        );
+        this.cooldownMs = cooldownSeconds * 1000;
+        this.logger.log(`[AI Summary] Cooldown set to ${cooldownSeconds}s`);
+    }
 
     async onModuleInit() {
         this.kafka.subscribeToResponseOf('review.create');
@@ -43,14 +68,21 @@ export class ReviewGateway {
     }
 
     /**
-     * Lấy N review gần nhất và gọi AI tạo tóm tắt
+     * Lấy N review gần nhất và gọi AI tạo tóm tắt (với cache + cooldown)
      * Fail-safe: không throw error, chỉ log warning
+     * 
+     * TEST (Postman):
+     * 1. POST /reviews với productId X → gọi AI lần 1
+     * 2. POST /reviews với productId X ngay sau đó → skip (cooldown)
+     * 3. GET /reviews?productId=X nhiều lần → không gọi AI (không trigger summary)
+     * 4. Đợi >60s, POST /reviews với productId X → gọi AI lần 2 (nếu có review mới)
      */
     private async generateAndUpdateReviewSummary(productId: string): Promise<void> {
         try {
-            this.logger.log(`[AI Summary] Bắt đầu tạo tóm tắt cho product: ${productId}`);
+            const now = Date.now();
+            const cache = this.summaryCache.get(productId);
 
-            // 1. Lấy 10 review gần nhất của sản phẩm
+            // 1. Lấy tất cả review của sản phẩm
             const reviewsResult = await firstValueFrom(
                 this.kafka.send('review.findAll', { q: { productId } })
             );
@@ -60,32 +92,74 @@ export class ReviewGateway {
                 return;
             }
 
-            // 2. Lấy tối đa 10 review có comment
-            const reviews = reviewsResult.data
+            const allReviews = reviewsResult.data;
+
+            // 2. Tính lastReviewUpdatedAt = max(updatedAt hoặc createdAt)
+            const lastReviewUpdatedAt = Math.max(
+                ...allReviews.map((r: any) => {
+                    const updatedAt = r.updatedAt ? new Date(r.updatedAt).getTime() : 0;
+                    const createdAt = r.createdAt ? new Date(r.createdAt).getTime() : 0;
+                    return Math.max(updatedAt, createdAt);
+                })
+            );
+
+            this.logger.log(
+                `[AI Summary] product=${productId}, lastReviewUpdatedAt=${new Date(lastReviewUpdatedAt).toISOString()}, ` +
+                `cached=${cache?.cachedLastReviewUpdatedAt ? new Date(cache.cachedLastReviewUpdatedAt).toISOString() : 'none'}`
+            );
+
+            // 3. Check cache: nếu không có review mới, skip
+            if (cache && lastReviewUpdatedAt <= cache.cachedLastReviewUpdatedAt) {
+                this.logger.log(
+                    `[AI Summary] SKIP: skip_due_to_cache (no new reviews) - product=${productId}`
+                );
+                return;
+            }
+
+            // 4. Check cooldown: nếu gọi AI quá gần, skip
+            if (cache && (now - cache.lastAiCallAt) < this.cooldownMs) {
+                const remainingSec = Math.ceil((this.cooldownMs - (now - cache.lastAiCallAt)) / 1000);
+                this.logger.log(
+                    `[AI Summary] SKIP: skip_due_to_cooldown (${remainingSec}s remaining) - product=${productId}`
+                );
+                return;
+            }
+
+            // 5. Lấy tối đa 10 review có comment để tóm tắt
+            const reviewTexts = allReviews
                 .filter((r: any) => r.comment && r.comment.trim())
                 .slice(0, 10)
                 .map((r: any) => r.comment);
 
-            if (reviews.length === 0) {
+            if (reviewTexts.length === 0) {
                 this.logger.debug(`[AI Summary] Không có review có nội dung cho product: ${productId}`);
                 return;
             }
 
-            // 3. Gọi AI tạo tóm tắt
-            const summary = await this.aiService.summarizeReviews(reviews);
+            // 6. GỌI AI TẠO TÓM TẮT
+            this.logger.log(`[AI Summary] RUN_AI: Calling Gemini for product=${productId} (${reviewTexts.length} reviews)`);
+            const summary = await this.aiService.summarizeReviews(reviewTexts);
 
             if (!summary) {
                 this.logger.warn(`[AI Summary] AI không trả về tóm tắt cho product: ${productId}`);
+                // KHÔNG update cache nếu AI fail (để retry sau)
                 return;
             }
 
-            // 4. Cập nhật vào Product Service
+            // 7. Cập nhật vào Product Service
             const updateResult = await firstValueFrom(
                 this.kafka.send('product.updateReviewSummary', { productId, reviewSummary: summary })
             );
 
             if (updateResult?.success) {
-                this.logger.log(`[AI Summary] Cập nhật tóm tắt thành công cho product: ${productId}`);
+                this.logger.log(`[AI Summary] SUCCESS: Updated summary for product=${productId}`);
+                
+                // 8. CẬP NHẬT CACHE (chỉ khi thành công)
+                this.summaryCache.set(productId, {
+                    cachedSummary: summary,
+                    cachedLastReviewUpdatedAt: lastReviewUpdatedAt,
+                    lastAiCallAt: now,
+                });
             } else {
                 this.logger.warn(`[AI Summary] Không thể cập nhật tóm tắt: ${updateResult?.message}`);
             }

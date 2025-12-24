@@ -1,15 +1,31 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import * as crypto from 'crypto';
 
 export type ContentType = 'REVIEW' | 'CHAT';
 export type ImageType = 'PRODUCT_IMAGE' | 'REVIEW_IMAGE';
+
+/**
+ * Cache entry cho image search query
+ */
+interface ImageSearchCache {
+  query: string;
+  keywords: string[];
+  cachedAt: number; // timestamp ms
+}
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly genAI: GoogleGenerativeAI;
   private readonly model: any;
+  
+  // Cache cho image -> query (image hash -> extracted data)
+  private readonly imageSearchCache = new Map<string, ImageSearchCache>();
+  
+  // Cache TTL - 1 giờ (configurable)
+  private readonly cacheMaxAge = 60 * 60 * 1000; // 1h in ms
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -111,6 +127,134 @@ Chỉ trả về bản tóm tắt, không giải thích thêm.`;
       this.logger.warn(`[AI Summary] Lỗi khi tạo tóm tắt: ${error.message}`);
       return null;
     }
+  }
+
+  /**
+   * Trích xuất query text từ ảnh sản phẩm để search (với cache)
+   * @param image - URL ảnh hoặc Base64 string
+   * @returns { query: string, keywords: string[] } hoặc null nếu lỗi
+   */
+  async extractQueryFromImage(image: string): Promise<{ query: string; keywords: string[] } | null> {
+    // Fail-safe: Nếu không có API key, return null
+    if (!this.configService.get<string>('GEMINI_API_KEY')) {
+      this.logger.warn('[AI Image Search] Bỏ qua do thiếu GEMINI_API_KEY');
+      return null;
+    }
+
+    // Nếu không có ảnh, return null
+    if (!image || typeof image !== 'string' || image.trim().length === 0) {
+      this.logger.warn('[AI Image Search] Ảnh trống');
+      return null;
+    }
+
+    try {
+      // 1. Tạo hash của ảnh để làm cache key
+      const imageHash = this.hashImage(image);
+      const now = Date.now();
+
+      // 2. Check cache
+      const cached = this.imageSearchCache.get(imageHash);
+      if (cached) {
+        const age = now - cached.cachedAt;
+        if (age < this.cacheMaxAge) {
+          const ageMin = Math.floor(age / 60000);
+          this.logger.log(
+            `[AI Image Search] CACHE HIT (age: ${ageMin}m) - query="${cached.query.substring(0, 50)}..."`
+          );
+          return {
+            query: cached.query,
+            keywords: cached.keywords,
+          };
+        } else {
+          // Cache expired, xóa
+          this.imageSearchCache.delete(imageHash);
+          this.logger.debug('[AI Image Search] Cache expired, xóa và gọi AI lại');
+        }
+      }
+
+      // 3. Cache MISS - gọi AI
+      this.logger.log('[AI Image Search] CACHE MISS - gọi Gemini...');
+      
+      const prompt = `Bạn là trợ lý AI cho website thương mại điện tử.
+Nhiệm vụ: Phân tích ảnh sản phẩm và trích xuất thông tin để tìm kiếm.
+
+Yêu cầu:
+- Xác định loại sản phẩm, thương hiệu (nếu có), màu sắc, đặc điểm nổi bật
+- Trả về JSON STRICT theo format:
+{
+  "query": "mô tả ngắn gọn sản phẩm (12-20 từ, tiếng Việt)",
+  "keywords": ["từ khóa 1", "từ khóa 2", "từ khóa 3"]
+}
+
+Ví dụ:
+- Ảnh iPhone 13 đỏ → {"query": "điện thoại iPhone 13 màu đỏ smartphone", "keywords": ["iphone", "điện thoại", "đỏ"]}
+- Ảnh áo thun trắng → {"query": "áo thun nam nữ màu trắng cotton", "keywords": ["áo thun", "trắng", "cotton"]}
+
+CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.`;
+
+      const imagePart = await this.prepareImagePart(image);
+
+      if (!imagePart) {
+        this.logger.warn('[AI Image Search] Không thể xử lý ảnh');
+        return null;
+      }
+
+      const result = await this.model.generateContent([prompt, imagePart]);
+      const responseText = result.response.text().trim();
+
+      // Parse JSON response
+      // Remove markdown code blocks nếu có
+      let jsonText = responseText;
+      if (responseText.includes('```json')) {
+        const match = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+        if (match) jsonText = match[1];
+      } else if (responseText.includes('```')) {
+        const match = responseText.match(/```\s*([\s\S]*?)\s*```/);
+        if (match) jsonText = match[1];
+      }
+
+      const parsed = JSON.parse(jsonText);
+
+      if (!parsed.query || typeof parsed.query !== 'string') {
+        this.logger.warn('[AI Image Search] AI trả về query không hợp lệ');
+        return null;
+      }
+
+      this.logger.log(`[AI Image Search] Trích xuất thành công: query="${parsed.query.substring(0, 50)}...", keywords=${JSON.stringify(parsed.keywords || [])}`);
+      
+      const result_data = {
+        query: parsed.query,
+        keywords: parsed.keywords || [],
+      };
+
+      // 4. Lưu vào cache
+      this.imageSearchCache.set(imageHash, {
+        ...result_data,
+        cachedAt: now,
+      });
+      this.logger.debug(`[AI Image Search] Đã cache kết quả (hash: ${imageHash.substring(0, 12)}...)`);
+
+      // 5. Clean old cache (giữ max 100 entries)
+      if (this.imageSearchCache.size > 100) {
+        const firstKey = this.imageSearchCache.keys().next().value;
+        this.imageSearchCache.delete(firstKey);
+      }
+      
+      return result_data;
+    } catch (error) {
+      // Fail-safe: không throw error, chỉ log warning
+      this.logger.warn(`[AI Image Search] Lỗi khi trích xuất query: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Tạo hash SHA256 của ảnh (URL hoặc base64)
+   * @param image - URL hoặc base64 string
+   * @returns hash string
+   */
+  private hashImage(image: string): string {
+    return crypto.createHash('sha256').update(image).digest('hex');
   }
 
   /**
@@ -365,6 +509,150 @@ hoặc
     } catch (error) {
       // Fail-safe: Nếu AI lỗi/timeout, trả về null (cho phép)
       this.logger.warn(`[AI Batch Similarity] Lỗi: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * So sánh độ tương đồng ảnh giữa sản phẩm mới và NHIỀU sản phẩm cũ bằng 1 AI request multimodal
+   * @param newProductImages - Mảng ảnh sản phẩm mới (tối đa 2 ảnh đầu tiên)
+   * @param oldProductImages - Danh sách { productId, image } của sản phẩm cũ (1 ảnh đại diện mỗi sản phẩm)
+   * @returns { maxSimilarity: number, productId?: string, reason: string } hoặc null nếu lỗi
+   */
+  async compareImageSimilarityBatch(
+    newProductImages: string[],
+    oldProductImages: { productId: string; image: string }[]
+  ): Promise<{ maxSimilarity: number; productId?: string; reason: string } | null> {
+    // Fail-safe: Nếu không có API key, trả về null (cho phép)
+    if (!this.configService.get<string>('GEMINI_API_KEY')) {
+      this.logger.warn('[AI Image Batch Similarity] Bỏ qua do thiếu GEMINI_API_KEY');
+      return null;
+    }
+
+    // Nếu không có ảnh để so sánh
+    if (!newProductImages?.length || !oldProductImages?.length) {
+      this.logger.debug('[AI Image Batch Similarity] Không có ảnh để so sánh');
+      return null;
+    }
+
+    try {
+      // Chuẩn bị ảnh mới (tối đa 2 ảnh)
+      const newImages = newProductImages.slice(0, 2);
+      const newImageParts: any[] = [];
+      
+      for (let i = 0; i < newImages.length; i++) {
+        const imagePart = await this.prepareImagePart(newImages[i]);
+        if (imagePart) {
+          newImageParts.push(imagePart);
+        }
+      }
+
+      if (newImageParts.length === 0) {
+        this.logger.warn('[AI Image Batch Similarity] Không thể xử lý ảnh mới');
+        return null;
+      }
+
+      // Chuẩn bị ảnh cũ (1 ảnh đại diện mỗi sản phẩm)
+      const oldImageParts: any[] = [];
+      const validOldProducts: { productId: string; image: string }[] = [];
+
+      for (const oldProduct of oldProductImages) {
+        const imagePart = await this.prepareImagePart(oldProduct.image);
+        if (imagePart) {
+          oldImageParts.push(imagePart);
+          validOldProducts.push(oldProduct);
+        }
+      }
+
+      if (oldImageParts.length === 0) {
+        this.logger.debug('[AI Image Batch Similarity] Không có ảnh cũ hợp lệ để so sánh');
+        return null;
+      }
+
+      // Tạo prompt multimodal
+      const prompt = `Bạn là hệ thống phát hiện ảnh trùng lặp cho sàn thương mại điện tử.
+Nhiệm vụ: So sánh ảnh SẢN PHẨM MỚI với TẤT CẢ ảnh sản phẩm cũ và tìm độ tương đồng CAO NHẤT.
+
+CÁCH THỨC:
+- ${newImageParts.length} ảnh đầu tiên là ảnh SẢN PHẨM MỚI
+- ${oldImageParts.length} ảnh tiếp theo là ảnh các sản phẩm cũ (theo thứ tự): ${validOldProducts.map((p, i) => `${i + 1}. ${p.productId}`).join(', ')}
+
+Tiêu chí đánh giá độ tương đồng ảnh:
+- 0-30: Hoàn toàn khác nhau (sản phẩm khác loại, góc chụp khác, màu sắc khác)
+- 31-50: Có điểm tương đồng nhỏ (cùng danh mục nhưng khác sản phẩm)
+- 51-70: Tương đồng trung bình (cùng loại sản phẩm, có điểm giống nhau)
+- 71-85: Tương đồng cao (sản phẩm giống, góc chụp/ánh sáng khác)
+- 86-100: Gần như trùng lặp hoàn toàn (cùng sản phẩm, có thể chỉnh sửa nhẹ)
+
+CHỈ TRẢ VỀ JSON THEO FORMAT SAU (không giải thích, không text thừa):
+{
+  "maxSimilarity": <số nguyên 0-100>,
+  "productId": "<ID của sản phẩm cũ tương đồng nhất, hoặc null nếu maxSimilarity < 70>",
+  "reason": "IMAGE_DUPLICATE" hoặc "NOT_DUPLICATE"
+}
+
+Ví dụ:
+{"maxSimilarity": 85, "productId": "64fa123...", "reason": "IMAGE_DUPLICATE"}
+hoặc
+{"maxSimilarity": 45, "productId": null, "reason": "NOT_DUPLICATE"}`;
+
+      // Tạo content array với prompt + tất cả ảnh
+      const content = [prompt, ...newImageParts, ...oldImageParts];
+
+      this.logger.log(`[AI Image Batch Similarity] Gửi 1 multimodal request: ${newImageParts.length} ảnh mới + ${oldImageParts.length} ảnh cũ`);
+
+      const result = await this.model.generateContent(content);
+      const response = result.response.text().trim();
+
+      this.logger.debug(`[AI Image Batch Similarity] Raw response: ${response}`);
+
+      // Parse JSON response
+      const parsed = this.parseImageSimilarityResponse(response);
+      if (!parsed) {
+        this.logger.warn('[AI Image Batch Similarity] Không parse được JSON response');
+        return null;
+      }
+
+      const { maxSimilarity, productId, reason } = parsed;
+
+      // Validate maxSimilarity
+      if (typeof maxSimilarity !== 'number' || maxSimilarity < 0 || maxSimilarity > 100) {
+        this.logger.warn(`[AI Image Batch Similarity] maxSimilarity không hợp lệ: ${maxSimilarity}`);
+        return null;
+      }
+
+      this.logger.log(`[AI Image Batch Similarity] Kết quả: maxSimilarity=${maxSimilarity}%, productId=${productId}, reason=${reason}`);
+
+      return {
+        maxSimilarity,
+        productId: productId || undefined,
+        reason: reason || 'NOT_DUPLICATE',
+      };
+    } catch (error) {
+      // Fail-safe: Nếu AI lỗi/timeout, trả về null (cho phép)
+      this.logger.warn(`[AI Image Batch Similarity] Lỗi: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Parse JSON response từ AI image similarity một cách an toàn
+   */
+  private parseImageSimilarityResponse(response: string): { maxSimilarity: number; productId: string | null; reason: string } | null {
+    try {
+      // Tìm JSON object trong response
+      const jsonMatch = response.match(/\{[^}]*\}/);
+      if (!jsonMatch) {
+        return null;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        maxSimilarity: parsed.maxSimilarity,
+        productId: parsed.productId,
+        reason: parsed.reason || 'NOT_DUPLICATE',
+      };
+    } catch {
       return null;
     }
   }
