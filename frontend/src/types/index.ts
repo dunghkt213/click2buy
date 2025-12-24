@@ -173,6 +173,7 @@ export interface Notification {
   message: string;
   time: string;
   isRead: boolean;
+  metadata?: Record<string, any>;
 }
 
 // User types

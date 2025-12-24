@@ -13,6 +13,10 @@ export interface UpdateReviewDto {
   images?: string[];
 }
 
+export interface SellerReplyDto {
+  replyBySeller: string;
+}
+
 export interface BackendReview {
   _id?: string;
   id?: string;
@@ -76,6 +80,13 @@ export const reviewApi = {
    */
   update: (id: string, dto: UpdateReviewDto) =>
     request<BackendReview>(`/reviews/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+      requireAuth: true,
+    }),
+
+  sellerReply: (id: string, dto: SellerReplyDto) =>
+    request<BackendReview>(`/reviews/Seller/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(dto),
       requireAuth: true,

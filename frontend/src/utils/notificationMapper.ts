@@ -9,7 +9,7 @@ export function mapBackendNotificationToNotification(
 ): Notification {
   // Map type từ backend (ORDER, CHAT, SYSTEM...) sang frontend type
   let frontendType: 'order' | 'shipping' | 'promotion' | 'review' | 'system' = 'system';
-  
+
   if (backendNoti.type === 'ORDER') {
     frontendType = 'order';
   } else if (backendNoti.type === 'CHAT') {
@@ -54,6 +54,7 @@ export function mapBackendNotificationToNotification(
     message: backendNoti.content,
     time: timeStr,
     isRead: backendNoti.isRead,
+    metadata: backendNoti.metadata,
   };
 }
 
