@@ -88,7 +88,7 @@ export class NotificationController {
     }
   }
 
-   @EventPattern('review.review.created')
+   @EventPattern('review.created')
   async handleReviewCreated(@Payload() payload: any) {
     this.logger.log(`📨 Creating notification for user ${payload.userId}`);
     const data = {userId: payload.ownerId, title: 'Đơn hàng của bạn có đánh giá mới', content: `Người dùng đã đánh giá sản phẩm của bạn xem ngay!`, type: 'REVIEW', metadata: {productId: payload.productId, reviewId: payload.reviewId}};
