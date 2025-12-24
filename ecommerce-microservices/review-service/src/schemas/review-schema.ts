@@ -35,6 +35,9 @@ export class Review {
   // 🔹 Trạng thái duyệt (admin moderation)
   @Prop({ default: false })
   isApproved: boolean;
+
+  @Prop({ default: null})
+  replyBySeller: string;
 }
 
 /**

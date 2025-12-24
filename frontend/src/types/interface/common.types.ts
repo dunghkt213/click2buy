@@ -9,6 +9,7 @@ export interface Notification {
   message: string;
   time: string;
   isRead: boolean;
+  metadata?: Record<string, any>;
 }
 
 export interface Promotion {

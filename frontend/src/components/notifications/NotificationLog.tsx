@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, ChevronDown, ChevronUp, Package, CheckCircle, XCircle, AlertCircle, Clock } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Bell, ChevronDown, Clock, Package } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 import { useAppContext } from '../../providers/AppProvider';
 import { mapBackendNotificationToNotification } from '../../utils/notificationMapper';
@@ -11,8 +12,9 @@ import { cn } from '../ui/utils';
 
 export function NotificationLog() {
   const app = useAppContext();
+  const navigate = useNavigate();
   const notificationContext = useNotificationContext();
-  
+
   // Chỉ hiển thị khi user đã đăng nhập
   if (!app.isLoggedIn) {
     return null;
@@ -26,14 +28,14 @@ export function NotificationLog() {
     if (notificationContext?.notifications) {
       const mapped = notificationContext.notifications.map(mapBackendNotificationToNotification);
       notificationsRef.current = mapped;
-      
+
       // Chỉ lấy 5 notifications mới nhất
       const recent = mapped
         .filter(n => !n.isRead)
         .slice(0, 5);
-      
+
       setRecentNotifications(recent);
-      
+
       // Tự động expand nếu có notification mới chưa đọc
       if (recent.length > 0 && !isExpanded) {
         setIsExpanded(true);
@@ -80,6 +82,19 @@ export function NotificationLog() {
 
   const handleMarkAsRead = (id: string) => {
     notificationContext?.markAsRead(id);
+  };
+
+  const handleNotificationClick = (notification: any) => {
+    handleMarkAsRead(notification.id);
+
+    const productId = notification?.metadata?.productId;
+    const reviewId = notification?.metadata?.reviewId;
+
+    if (productId) {
+      const url = reviewId ? `/product/${productId}?reviewId=${reviewId}&openReply=1&focusReview=1` : `/product/${productId}`;
+      navigate(url);
+      setIsExpanded(false);
+    }
   };
 
   const handleToggleExpand = () => {
@@ -154,7 +169,7 @@ export function NotificationLog() {
                           colorClass,
                           !notification.isRead && "border-l-4"
                         )}
-                        onClick={() => handleMarkAsRead(notification.id)}
+                        onClick={() => handleNotificationClick(notification)}
                       >
                         <div className="flex gap-2">
                           <div className={cn(

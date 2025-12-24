@@ -53,5 +53,6 @@ export function mapBackendNotificationToNotification(backendNoti) {
         message: backendNoti.content,
         time: timeStr,
         isRead: backendNoti.isRead,
+        metadata: backendNoti.metadata,
     };
 }
