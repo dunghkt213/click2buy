@@ -287,67 +287,20 @@ console.log("Product in gateway: ", product);
   }
 
   // ============================================================
-  // GET ALL PRODUCTS
-  // ============================================================
-  @Get()
-  findAll(@Query() q: any) {
-    return this.kafka.send('product.findAll', { q });
-  }
-
-  // ============================================================
-  // GET PRODUCT BY ID
-  // ============================================================
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    // 1. Gọi product-service
-    const product = await firstValueFrom(
-      this.kafka.send('product.findOne', { id })
-    );
-
-    if (!product) return product;
-
-    // 2. Gọi inventory-service → inventory.getStock.request
-    const stock = await firstValueFrom(
-      this.kafka.send('inventory.getStock.request', { productId: id })
-    );
-
-    // 3. Merge
-    return {
-      ...product,
-      stock: stock?.availableStock ?? 0,
-      reservedStock: stock?.reservedStock ?? 0,
-    };
-  }
-
-  // ============================================================
-  // UPDATE PRODUCT
-  // ============================================================
-  @Patch(':id')
-  @UseGuards(AiImageGuard)
-  @AiImageType('PRODUCT_IMAGE')
-  update(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
-    return this.kafka.send('product.update', { id, dto, auth });
-  }
-
-  // ============================================================
-  // DELETE PRODUCT (SOFT DELETE)
-  // ============================================================
-  @Delete(':id')
-  remove(@Param('id') id: string, @Headers('authorization') auth?: string) {
-    return this.kafka.send('product.remove', { id, auth });
-  }
-
-  // ============================================================
-  // SEARCH
-  // ============================================================
-  @Post('search')
-  search(@Body() q: any) {
-    return this.kafka.send('product.search', { q });
-  }
-
-  // ============================================================
   // SEARCH BY IMAGE (AI-powered)
   // ============================================================
+  /**
+   * Tìm sản phẩm bằng ảnh (MVP: Image → AI extract text → Text search)
+   * QUAN TRỌNG: Phải đặt TRƯỚC route /:id để tránh conflict
+   * 
+   * TEST (Postman):
+   * POST http://localhost:3000/products/search-by-image
+   * Body (JSON):
+   * {
+   *   "image": "<URL hoặc data:image/jpeg;base64,...>",
+   *   "limit": 10
+   * }
+   */
   @Post('search-by-image')
   async searchByImage(@Body() body: { image: string; limit?: number }) {
     try {
@@ -422,6 +375,65 @@ console.log("Product in gateway: ", product);
         products: [],
       };
     }
+  }
+
+  // ============================================================
+  // SEARCH
+  // ============================================================
+  @Post('search')
+  search(@Body() q: any) {
+    return this.kafka.send('product.search', { q });
+  }
+
+  // ============================================================
+  // GET ALL PRODUCTS
+  // ============================================================
+  @Get()
+  findAll(@Query() q: any) {
+    return this.kafka.send('product.findAll', { q });
+  }
+
+  // ============================================================
+  // GET PRODUCT BY ID
+  // ============================================================
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    // 1. Gọi product-service
+    const product = await firstValueFrom(
+      this.kafka.send('product.findOne', { id })
+    );
+
+    if (!product) return product;
+
+    // 2. Gọi inventory-service → inventory.getStock.request
+    const stock = await firstValueFrom(
+      this.kafka.send('inventory.getStock.request', { productId: id })
+    );
+
+    // 3. Merge
+    return {
+      ...product,
+      stock: stock?.availableStock ?? 0,
+      reservedStock: stock?.reservedStock ?? 0,
+    };
+  }
+
+  // ============================================================
+  // UPDATE PRODUCT
+  // ============================================================
+  @Patch(':id')
+  @UseGuards(AiImageGuard)
+  @AiImageType('PRODUCT_IMAGE')
+  update(@Param('id') id: string, @Body() dto: any, @Headers('authorization') auth?: string) {
+    return this.kafka.send('product.update', { id, dto, auth });
+  }
+
+  // ============================================================
+  // DELETE PRODUCT (SOFT DELETE)
+  // ============================================================
+  @Delete(':id')
+  remove(@Param('id') id: string, @Headers('authorization') auth?: string) {
+    return this.kafka.send('product.remove', { id, auth });
   }
 
   // ============================================================
