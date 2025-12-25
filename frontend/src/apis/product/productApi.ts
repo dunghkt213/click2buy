@@ -124,6 +124,52 @@ async function search(query: {
 }
 
 // -------------------------------
+// Tìm kiếm sản phẩm bằng hình ảnh
+// -------------------------------
+async function searchByImage(body: { image: string; limit?: number }): Promise<{
+  success: boolean;
+  queryUsed: string | null;
+  keywords: string[];
+  products: Product[];
+  total: number;
+  message?: string;
+}> {
+  const requestBody = {
+    image: body.image,
+    limit: body.limit ?? 20,
+  };
+
+  const response = await request<any>('/products/search-by-image', {
+    method: 'POST',
+    body: JSON.stringify(requestBody),
+    requireAuth: false,
+  });
+
+  // Backend trả về 200 với success=false trong các case AI fail / policy violation
+  if (response && typeof response === 'object' && response.success === false) {
+    return {
+      success: false,
+      queryUsed: null,
+      keywords: [],
+      products: [],
+      total: 0,
+      message: response.message || 'Không thể tìm kiếm bằng ảnh',
+    };
+  }
+
+  const rawProducts = response?.products || response?.data || [];
+  const mappedProducts = Array.isArray(rawProducts) ? rawProducts.map(mapProductResponse) : [];
+
+  return {
+    success: true,
+    queryUsed: response?.queryUsed ?? null,
+    keywords: Array.isArray(response?.keywords) ? response.keywords : [],
+    products: mappedProducts,
+    total: typeof response?.total === 'number' ? response.total : mappedProducts.length,
+  };
+}
+
+// -------------------------------
 // Tạo sản phẩm mới (seller)
 // -------------------------------
 async function create(dto: {
@@ -301,6 +347,7 @@ export const productApi = {
   getAll,
   getById,
   search,
+  searchByImage,
   create,
   update,
   remove,

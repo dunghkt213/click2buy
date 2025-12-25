@@ -17,6 +17,7 @@
 6. [Chat Service (HTTP APIs)](#6-chat-service-http-apis)
 7. [Error Handling](#7-error-handling)
 8. [Authentication](#8-authentication)
+9. [Product Search By Image](#13-product-search-by-image)
 
 ---
 
@@ -1022,6 +1023,171 @@ docker-compose logs -f chat-service
 
 # Test WebSocket connection
 curl -X GET http://localhost:3000/health
+```
+
+---
+
+## 13. PRODUCT SEARCH BY IMAGE
+
+### Overview
+
+API cho phép người dùng tìm kiếm sản phẩm bằng cách upload ảnh. Hệ thống sử dụng AI (Gemini Vision) để phân tích ảnh, trích xuất mô tả sản phẩm, sau đó tìm kiếm sản phẩm.
+
+**Flow:** Image → AI Vision → Text Query → Product Search
+
+---
+
+### 13.1 Search Products by Image
+
+**Endpoint:** `POST /products/search-by-image`
+
+**Base URL:** `http://localhost:3000` (API Gateway)
+
+**Content-Type:** `application/json`
+
+```json
+{
+  "image": "<URL_hoặc_Base64_String>",
+  "limit": 20
+}
+```
+
+#### Parameters
+
+| Field | Type | Required | Description |
+|------|------|----------|-------------|
+| `image` | string | Yes | URL ảnh hoặc Base64 string (có thể có prefix `data:image/...;base64,`) |
+| `limit` | number | No | Số lượng sản phẩm tối đa (default: 20) |
+
+#### Supported Image Formats
+
+**1) URL ảnh**
+
+```json
+{
+  "image": "https://example.com/product.jpg",
+  "limit": 10
+}
+```
+
+**2) Base64 có prefix**
+
+```json
+{
+  "image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
+  "limit": 10
+}
+```
+
+**3) Base64 không prefix**
+
+```json
+{
+  "image": "/9j/4AAQSkZJRg...",
+  "limit": 10
+}
+```
+
+---
+
+### 13.2 Response
+
+#### Success Response (200)
+
+```json
+{
+  "success": true,
+  "queryUsed": "điện thoại iPhone 13 màu đỏ smartphone cao cấp Apple",
+  "keywords": ["iphone", "điện thoại", "đỏ", "smartphone", "apple"],
+  "products": [
+    {
+      "_id": "64a1b2c3d4e5f6g7h8i9j0k1",
+      "name": "iPhone 13 128GB - Đỏ",
+      "price": 18990000,
+      "images": ["https://..."],
+      "description": "...",
+      "stock": 50,
+      "ratingAvg": 4.5,
+      "reviewSummary": "..."
+    }
+  ],
+  "total": 1
+}
+```
+
+#### AI cannot extract query (200)
+
+```json
+{
+  "success": false,
+  "message": "Không thể phân tích ảnh. Vui lòng thử lại hoặc sử dụng tìm kiếm text.",
+  "queryUsed": null,
+  "keywords": [],
+  "products": []
+}
+```
+
+#### Image policy violation (200)
+
+```json
+{
+  "success": false,
+  "message": "Ảnh vi phạm chính sách nội dung. Vui lòng thử ảnh khác.",
+  "queryUsed": null,
+  "keywords": [],
+  "products": []
+}
+```
+
+#### Missing field (400)
+
+```json
+{
+  "statusCode": 400,
+  "message": "Thiếu trường \"image\"",
+  "error": "Bad Request"
+}
+```
+
+---
+
+### 13.3 Caching & Performance
+
+- API có cache trong **1 giờ** cho cùng 1 ảnh.
+- Lần search đầu: thường 2-3 giây (gọi AI).
+- Lần search tiếp theo (cùng ảnh): nhanh hơn do dùng cache.
+
+---
+
+### 13.4 Frontend Integration Example
+
+```javascript
+const handleImageUpload = async (file) => {
+  const reader = new FileReader();
+  reader.onloadend = async () => {
+    const response = await fetch('http://localhost:3000/products/search-by-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        image: reader.result,
+        limit: 20,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      console.log('Query used:', result.queryUsed);
+      console.log('Products found:', result.products);
+    } else {
+      console.error('Error:', result.message);
+    }
+  };
+
+  reader.readAsDataURL(file);
+};
 ```
 
 ---

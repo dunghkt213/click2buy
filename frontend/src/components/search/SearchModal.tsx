@@ -15,6 +15,8 @@ interface SearchModalProps {
   onClose: () => void;
   onAddToCart: (product: Product) => void;
   initialSearchQuery?: string; // Query tìm kiếm từ Header
+  initialSearchMode?: 'text' | 'image';
+  initialImageSearch?: string;
   // Header props
   cartItemsCount: number;
   unreadNotifications: number;
@@ -40,11 +42,13 @@ interface SearchModalProps {
   onAnimationComplete?: (id: string) => void; // THÊM: Callback khi animation complete
 }
 
-export function SearchModal({ 
-  isOpen, 
-  onClose, 
-  onAddToCart, 
+export function SearchModal({
+  isOpen,
+  onClose,
+  onAddToCart,
   initialSearchQuery = '',
+  initialSearchMode = 'text',
+  initialImageSearch = '',
   cartItemsCount,
   unreadNotifications,
   onCartClick,
@@ -70,6 +74,10 @@ export function SearchModal({
 }: SearchModalProps) {
   const [inputValue, setInputValue] = useState(''); // Giá trị tạm trong input
   const [searchQuery, setSearchQuery] = useState(''); // Giá trị thực tế để filter
+  const [searchMode, setSearchMode] = useState<'text' | 'image'>('text');
+  const [imageSearch, setImageSearch] = useState<string>('');
+  const [imageQueryUsed, setImageQueryUsed] = useState<string | null>(null);
+  const [imageKeywords, setImageKeywords] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     category: 'all',
     priceRange: [0, 50000000],
@@ -90,40 +98,76 @@ export function SearchModal({
     }
   }, [isOpen, initialSearchQuery]);
 
+  useEffect(() => {
+    if (isOpen) {
+      setSearchMode(initialSearchMode);
+      setImageSearch(initialSearchMode === 'image' ? initialImageSearch : '');
+    }
+  }, [isOpen, initialSearchMode, initialImageSearch]);
+
   // Load products từ API khi search query thay đổi
   useEffect(() => {
     if (isOpen) {
       loadProducts();
     }
-  }, [isOpen, searchQuery, filters]);
+  }, [isOpen, searchQuery, filters, searchMode, imageSearch]);
 
   const loadProducts = async () => {
     try {
       setLoading(true);
-      console.log('🔍 [SearchModal] Bắt đầu tìm kiếm với keyword:', searchQuery);
-      console.log('🔍 [SearchModal] Filters:', filters);
-      
-      const searchParams = {
-        keyword: searchQuery || undefined,
-        category: filters.category !== 'all' ? filters.category : undefined,
-        minPrice: filters.priceRange[0] > 0 ? filters.priceRange[0] : undefined,
-        maxPrice: filters.priceRange[1] < 50000000 ? filters.priceRange[1] : undefined,
-        rating: filters.rating > 0 ? filters.rating : undefined,
-      };
-      
-      console.log('🔍 [SearchModal] Gọi API search với params:', searchParams);
-      
-      const products = await productApi.search(searchParams);
-      
-      console.log('✅ [SearchModal] API search trả về:', products);
-      console.log('✅ [SearchModal] Số lượng sản phẩm:', products?.length || 0);
-      
-      setAllProducts(products);
-      
-      if (products && products.length > 0) {
-        console.log('✅ [SearchModal] Đã tải thành công', products.length, 'sản phẩm');
+
+      if (searchMode === 'image') {
+        if (!imageSearch) {
+          setAllProducts([]);
+          setImageQueryUsed(null);
+          setImageKeywords([]);
+          return;
+        }
+
+        const result = await productApi.searchByImage({ image: imageSearch, limit: 20 });
+
+        if (!result.success) {
+          setAllProducts([]);
+          setImageQueryUsed(null);
+          setImageKeywords([]);
+          toast.error(result.message || 'Không thể tìm kiếm bằng ảnh');
+          return;
+        }
+
+        setAllProducts(result.products);
+        setImageQueryUsed(result.queryUsed);
+        setImageKeywords(result.keywords);
+
+        if (result.queryUsed) {
+          setSearchQuery(result.queryUsed);
+          setInputValue(result.queryUsed);
+        }
       } else {
-        console.log('⚠️ [SearchModal] Không tìm thấy sản phẩm nào');
+        console.log('🔍 [SearchModal] Bắt đầu tìm kiếm với keyword:', searchQuery);
+        console.log('🔍 [SearchModal] Filters:', filters);
+
+        const searchParams = {
+          keyword: searchQuery || undefined,
+          category: filters.category !== 'all' ? filters.category : undefined,
+          minPrice: filters.priceRange[0] > 0 ? filters.priceRange[0] : undefined,
+          maxPrice: filters.priceRange[1] < 50000000 ? filters.priceRange[1] : undefined,
+          rating: filters.rating > 0 ? filters.rating : undefined,
+        };
+
+        console.log('🔍 [SearchModal] Gọi API search với params:', searchParams);
+
+        const products = await productApi.search(searchParams);
+
+        console.log('✅ [SearchModal] API search trả về:', products);
+        console.log('✅ [SearchModal] Số lượng sản phẩm:', products?.length || 0);
+
+        setAllProducts(products);
+
+        if (products && products.length > 0) {
+          console.log('✅ [SearchModal] Đã tải thành công', products.length, 'sản phẩm');
+        } else {
+          console.log('⚠️ [SearchModal] Không tìm thấy sản phẩm nào');
+        }
       }
     } catch (error: any) {
       console.error('❌ [SearchModal] Lỗi khi tìm kiếm:', error);
@@ -255,10 +299,10 @@ export function SearchModal({
   const filteredProducts = allProducts.filter(product => {
     // Brand filter
     const matchesBrand = filters.brands.length === 0 || filters.brands.includes(product.brand);
-    
+
     // Stock filter
     const matchesStock = !filters.inStock || product.inStock;
-    
+
     return matchesBrand && matchesStock;
   });
 
@@ -275,11 +319,13 @@ export function SearchModal({
     }
   };
 
+  const hasActiveSearch = searchMode === 'image' ? Boolean(imageSearch) : Boolean(searchQuery.trim());
+
   if (!isOpen) return null;
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
+      <Header
         cartItemsCount={cartItemsCount}
         unreadNotifications={unreadNotifications}
         onCartClick={onCartClick}
@@ -287,8 +333,8 @@ export function SearchModal({
         onFilterClick={() => setIsFilterOpen(true)}
         onPromotionClick={onPromotionClick}
         onSupportClick={onSupportClick}
-        onStoreClick={onStoreClick || (() => {})}
-        onLogoClick={onLogoClick || (() => {})}
+        onStoreClick={onStoreClick || (() => { })}
+        onLogoClick={onLogoClick || (() => { })}
         isLoggedIn={isLoggedIn}
         user={user}
         onLogin={onLogin}
@@ -303,7 +349,7 @@ export function SearchModal({
         totalPrice={totalPrice}
         cartIconRef={cartIconRef}
       />
-      
+
       <main className="pt-16">
         {/* Search Header Section */}
         <div className="border-b border-border bg-card/50 backdrop-blur-md py-6">
@@ -311,11 +357,22 @@ export function SearchModal({
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-2xl">
-                  {searchQuery.trim() ? `Kết quả tìm kiếm "${searchQuery}"` : 'Tìm kiếm sản phẩm'}
+                  {searchMode === 'image'
+                    ? imageQueryUsed
+                      ? `Kết quả tìm kiếm "${imageQueryUsed}"`
+                      : 'Tìm kiếm sản phẩm bằng hình ảnh'
+                    : searchQuery.trim()
+                      ? `Kết quả tìm kiếm "${searchQuery}"`
+                      : 'Tìm kiếm sản phẩm'}
                 </h1>
                 <p className="text-muted-foreground text-sm mt-1">
-                  {searchQuery.trim() ? `Tìm thấy ${filteredProducts.length} sản phẩm` : 'Nhập từ khóa vào ô tìm kiếm phía trên'}
+                  {hasActiveSearch ? `Tìm thấy ${filteredProducts.length} sản phẩm` : 'Nhập từ khóa vào ô tìm kiếm phía trên'}
                 </p>
+                {searchMode === 'image' && imageKeywords.length > 0 && (
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Keywords: {imageKeywords.join(', ')}
+                  </p>
+                )}
               </div>
               <Button
                 variant="outline"
@@ -332,15 +389,15 @@ export function SearchModal({
         {/* Products with Filter Sidebar */}
         <div className="container mx-auto px-4 py-8">
           <div className="flex gap-8">
-            <FilterSidebar 
+            <FilterSidebar
               isOpen={isFilterOpen}
               onClose={() => setIsFilterOpen(false)}
               filters={filters}
               onFiltersChange={setFilters}
             />
-            
+
             <div className="flex-1">
-              {!searchQuery.trim() ? (
+              {!hasActiveSearch ? (
                 <div className="text-center py-16">
                   <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
                   <h3 className="mb-2">Bắt đầu tìm kiếm</h3>
