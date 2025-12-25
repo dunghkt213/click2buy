@@ -2,11 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import cookieParser from 'cookie-parser';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
     
     const app = await NestFactory.create(AppModule);
 
+    // Tăng body size limit cho image search (Base64 có thể lớn)
+    // Mặc định: 100kb -> Tăng lên 10MB
+    app.use(bodyParser.json({ limit: '10mb' }));
+    app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
     
     app.use(cookieParser());
 
