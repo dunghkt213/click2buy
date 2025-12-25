@@ -4,12 +4,13 @@
  */
 import {
   Bell,
+  Camera,
   Menu,
   Search,
   ShoppingCart,
   Store
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // --- UI COMPONENTS ---
@@ -63,12 +64,12 @@ interface HeaderProps {
   onMyStoreClick?: () => void;
 }
 
-export function Header({ 
-  cartItemsCount, 
-  wishlistItemsCount = 0, 
+export function Header({
+  cartItemsCount,
+  wishlistItemsCount = 0,
   unreadNotifications,
-  onCartClick, 
-  onWishlistClick = () => {}, 
+  onCartClick,
+  onWishlistClick = () => { },
   onNotificationsClick,
   onFilterClick,
   onPromotionClick,
@@ -94,6 +95,54 @@ export function Header({
 }: HeaderProps) {
   const navigate = useNavigate();
   const [isCartPreviewOpen, setIsCartPreviewOpen] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const fileToCompressedDataUrl = async (file: File): Promise<string> => {
+    const loadImage = (blob: Blob) =>
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Không thể đọc ảnh'));
+        img.src = URL.createObjectURL(blob);
+      });
+
+    const img = await loadImage(file);
+    try {
+      const maxDim = 1024;
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const width = Math.max(1, Math.round(img.width * scale));
+      const height = Math.max(1, Math.round(img.height * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Không thể xử lý ảnh');
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const toDataUrl = (quality: number) => canvas.toDataURL('image/jpeg', quality);
+      const byteLength = (dataUrl: string) => {
+        const base64 = dataUrl.split(',')[1] || '';
+        return Math.floor((base64.length * 3) / 4);
+      };
+
+      let quality = 0.82;
+      let dataUrl = toDataUrl(quality);
+      const maxBytes = 1_600_000;
+
+      while (byteLength(dataUrl) > maxBytes && quality > 0.4) {
+        quality -= 0.08;
+        dataUrl = toDataUrl(quality);
+      }
+
+      return dataUrl;
+    } finally {
+      URL.revokeObjectURL(img.src);
+    }
+  };
 
   // Xử lý thay đổi ô tìm kiếm
   const handleSearchChange = (value: string) => {
@@ -129,14 +178,43 @@ export function Header({
     }
   };
 
+  const handlePickImageClick = () => {
+    imageInputRef.current?.click();
+  };
+
+  const handleImageSelected = async (file?: File) => {
+    if (!file) return;
+
+    // Basic client-side validation (5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('Ảnh phải nhỏ hơn 5MB');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn file ảnh hợp lệ');
+      return;
+    }
+
+    const base64DataUrl = await fileToCompressedDataUrl(file);
+
+    // Store in sessionStorage to avoid putting Base64 in URL
+    sessionStorage.setItem('c2b.imageSearch.image', base64DataUrl);
+    sessionStorage.setItem('c2b.imageSearch.fileName', file.name);
+    sessionStorage.setItem('c2b.imageSearch.mimeType', file.type);
+
+    navigate('/search?mode=image');
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 w-full bg-card/95 backdrop-blur-md border-b border-border z-50 will-change-transform transform-gpu">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          
+
           {/* --- LOGO & NAV --- */}
           <div className="flex items-center gap-8">
-            <button 
+            <button
               onClick={handleLogoClick}
               className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
             >
@@ -161,18 +239,28 @@ export function Header({
                 value={externalSearchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="pl-10 pr-4 bg-input-background border-0 rounded-full focus-visible:ring-1"
+                className="pl-10 pr-12 bg-input-background border-0 rounded-full focus-visible:ring-1"
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 rounded-full"
+                onClick={handlePickImageClick}
+                title="Tìm kiếm bằng hình ảnh"
+              >
+                <Camera className="w-4 h-4" />
+              </Button>
             </div>
           </div>
 
           {/* --- RIGHT ACTIONS --- */}
           <div className="flex items-center gap-2">
-            
+
             {/* Store Button */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="hidden md:flex relative min-w-[2.5rem]"
               onClick={() => {
                 if (!isLoggedIn) {
@@ -188,16 +276,16 @@ export function Header({
 
             {/* Notifications */}
             {isLoggedIn && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="hidden md:flex relative min-w-[2.5rem]"
                 onClick={onNotificationsClick}
               >
                 <Bell className="w-4 h-4" />
                 {unreadNotifications > 0 && (
-                  <Badge 
-                    variant="destructive" 
+                  <Badge
+                    variant="destructive"
                     className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs pointer-events-none"
                   >
                     {unreadNotifications > 99 ? '99+' : unreadNotifications}
@@ -207,30 +295,30 @@ export function Header({
             )}
 
             {/* Cart with Preview */}
-            <Popover 
-              open={isCartPreviewOpen} 
+            <Popover
+              open={isCartPreviewOpen}
               onOpenChange={setIsCartPreviewOpen}
               modal={false}
             >
               <PopoverTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="relative min-w-[2.5rem]"
                   onMouseEnter={() => {
                     if (cartItemsCount > 0) setIsCartPreviewOpen(true);
                   }}
                   onClick={(e: { preventDefault: () => void; }) => {
-                     e.preventDefault();
-                     setIsCartPreviewOpen(false);
-                     onCartClick();
+                    e.preventDefault();
+                    setIsCartPreviewOpen(false);
+                    onCartClick();
                   }}
                   ref={cartIconRef}
                 >
                   <ShoppingCart className="w-4 h-4" />
                   {cartItemsCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
+                    <Badge
+                      variant="destructive"
                       className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs pointer-events-none"
                     >
                       {cartItemsCount > 99 ? '99+' : cartItemsCount}
@@ -238,16 +326,16 @@ export function Header({
                   )}
                 </Button>
               </PopoverTrigger>
-              
-              <PopoverContent 
-                className="w-80 max-w-[320px] p-0 z-50 shadow-lg overflow-hidden" 
+
+              <PopoverContent
+                className="w-80 max-w-[320px] p-0 z-50 shadow-lg overflow-hidden"
                 align="end"
                 sideOffset={4}
                 onMouseEnter={() => setIsCartPreviewOpen(true)}
                 onMouseLeave={() => setIsCartPreviewOpen(false)}
               >
-                <CartPreview 
-                  items={cartItems || []} 
+                <CartPreview
+                  items={cartItems || []}
                   totalPrice={totalPrice || 0}
                   onViewCart={() => {
                     setIsCartPreviewOpen(false);
@@ -271,9 +359,9 @@ export function Header({
             />
 
             {/* Mobile Menu Button */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="lg:hidden ml-2"
               onClick={onFilterClick}
             >
@@ -291,10 +379,33 @@ export function Header({
               value={externalSearchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="pl-10 pr-4 bg-input-background border-0 rounded-full"
+              className="pl-10 pr-12 bg-input-background border-0 rounded-full"
             />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 rounded-full"
+              onClick={handlePickImageClick}
+              title="Tìm kiếm bằng hình ảnh"
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
           </div>
         </div>
+
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            // allow selecting the same file again
+            e.target.value = '';
+            void handleImageSelected(file);
+          }}
+        />
       </div>
     </header>
   );

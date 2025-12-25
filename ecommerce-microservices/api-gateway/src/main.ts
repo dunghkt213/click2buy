@@ -1,23 +1,29 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import cookieParser from 'cookie-parser';
 import * as bodyParser from 'body-parser';
+import { json, urlencoded } from 'express';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
-    
-    const app = await NestFactory.create(AppModule);
 
     // Tăng body size limit cho image search (Base64 có thể lớn)
     // Mặc định: 100kb -> Tăng lên 10MB
     app.use(bodyParser.json({ limit: '10mb' }));
     app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
     
+    const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+
+    app.use(json({ limit: '50mb' }));
+    app.use(urlencoded({ limit: '50mb', extended: true }));
+
+
     app.use(cookieParser());
 
     app.enableCors({
-        origin: ['http://localhost:5173'],  
-        credentials: true,                 
+        origin: ['http://localhost:5173'],
+        credentials: true,
     });
 
     app.connectMicroservice<MicroserviceOptions>({

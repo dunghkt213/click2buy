@@ -13,12 +13,14 @@ export function SearchPage() {
   const app = useAppContext();
   const [isOpen, setIsOpen] = useState(true);
   const searchQuery = searchParams.get('q') || '';
+  const mode = searchParams.get('mode') || 'text';
+  const imageSearchDataUrl = mode === 'image' ? sessionStorage.getItem('c2b.imageSearch.image') || '' : '';
 
   useEffect(() => {
     setIsOpen(true);
     // Reload lại khi search query thay đổi
     console.log('🔄 [SearchPage] Search query thay đổi:', searchQuery);
-  }, [searchQuery]);
+  }, [searchQuery, mode]);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -31,6 +33,8 @@ export function SearchPage() {
       onClose={handleClose}
       onAddToCart={app.addToCart}
       initialSearchQuery={searchQuery}
+      initialSearchMode={mode === 'image' ? 'image' : 'text'}
+      initialImageSearch={imageSearchDataUrl}
       cartItemsCount={app.getTotalItems()}
       unreadNotifications={app.notifications.getUnreadCount()}
       onCartClick={() => navigate('/cart')}
