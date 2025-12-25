@@ -20,7 +20,19 @@ export function SearchPage() {
     setIsOpen(true);
     // Reload lại khi search query thay đổi
     console.log('🔄 [SearchPage] Search query thay đổi:', searchQuery);
-  }, [searchQuery, mode]);
+    
+    // Cleanup sessionStorage sau khi đã load image
+    // Delay 1s để đảm bảo SearchModal đã mount và đọc xong dữ liệu
+    if (mode === 'image' && imageSearchDataUrl) {
+      const timer = setTimeout(() => {
+        sessionStorage.removeItem('c2b.imageSearch.image');
+        sessionStorage.removeItem('c2b.imageSearch.fileName');
+        sessionStorage.removeItem('c2b.imageSearch.mimeType');
+        console.log('🧹 [SearchPage] Đã cleanup image search sessionStorage');
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchQuery, mode, imageSearchDataUrl]);
 
   const handleClose = () => {
     setIsOpen(false);
