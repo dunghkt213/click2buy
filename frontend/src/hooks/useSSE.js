@@ -4,6 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '../apis/client/baseUrl';
 export function useSSE({ userId, isLoggedIn, onQRCreated, onPaymentSuccess, onQRExpired, }) {
     const [isConnected, setIsConnected] = useState(false);
     const eventSourceRef = useRef(null);
@@ -20,7 +21,7 @@ export function useSSE({ userId, isLoggedIn, onQRCreated, onPaymentSuccess, onQR
         const connectSSE = () => {
             try {
                 console.log('SSE: Creating EventSource with credentials');
-                const eventSource = new EventSource('http://localhost:3000/sse/payments', {
+                const eventSource = new EventSource(`${API_BASE_URL}/sse/payments`, {
                     withCredentials: true
                 });
                 eventSource.onopen = () => {

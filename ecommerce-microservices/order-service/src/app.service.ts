@@ -261,7 +261,7 @@ async getAllOrderForUser(userId: string, status?: string) {
       },
       {
         $set: {
-          status: 'PAYMENT_FAILED',
+          status: 'CANCELLED',
           paymentId: dto.paymentId,
           paymentMethod: dto.paymentMethod,
         },
@@ -275,7 +275,7 @@ async getAllOrderForUser(userId: string, status?: string) {
     return {
       success: true,
       updatedCount: result.modifiedCount,
-      status: 'PAYMENT_FAILED',
+      status: 'CANCELLED',
     };
   }
 

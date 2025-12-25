@@ -253,7 +253,7 @@ console.log("Product in gateway: ", product);
         this.logger.warn(
           `[Duplicate Check] CHẶN! Seller: ${sellerId}, Text: ${textSimilarity}%/${textThreshold}%, Image: ${imageSimilarity}%/${imageThreshold}%, ProductId: ${duplicateProductId}`
         );
-        
+        this.kafka.emit('product.duplicate_detected', {userId: sellerId});
         throw new BadRequestException(
           `Sản phẩm bị trùng với sản phẩm đã tồn tại (text: ${textSimilarity}%, image: ${imageSimilarity}%). Vui lòng tạo sản phẩm khác biệt hơn.`
         );

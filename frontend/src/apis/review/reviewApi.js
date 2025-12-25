@@ -41,6 +41,11 @@ export const reviewApi = {
         body: JSON.stringify(dto),
         requireAuth: true,
     }),
+    sellerReply: (id, dto) => request(`/reviews/Seller/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+        requireAuth: true,
+    }),
     /**
      * Xóa review
      */

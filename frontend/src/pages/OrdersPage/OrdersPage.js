@@ -61,7 +61,6 @@ export function OrdersPage() {
     // --- 1. STATE & LOGIC ---
     const [selectedTab, setSelectedTab] = useState("pending");
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedOrder, setSelectedOrder] = useState(null);
     const [allOrders, setAllOrders] = useState([]); // Store all orders for counting
     // ReviewModal removed - now using ReviewPage
     // Map frontend status to backend status
@@ -208,9 +207,31 @@ export function OrdersPage() {
     const handleViewDetail = (order) => {
         navigate(`/orders/${order.id}`);
     };
-    const handleReview = (orderId) => {
-        // Navigate to review page instead of opening modal
-        navigate(`/review/${orderId}`);
+    const handleReview = (orderId, productId) => {
+        const url = productId
+            ? `/review/${orderId}?productId=${encodeURIComponent(productId)}`
+            : `/review/${orderId}`;
+        navigate(url);
+    };
+    const handleReorderItem = (item) => {
+        const productId = item?.productId || item?.id;
+        if (!productId)
+            return;
+        app.addToCart({
+            id: productId,
+            name: item.name,
+            price: item.price,
+            image: item.image,
+            category: 'electronics',
+            rating: 4.5,
+            reviews: 100,
+            description: item.name,
+            brand: 'Brand',
+            inStock: true,
+            quantity: item.quantity,
+            variant: item.variant,
+        });
+        toast.success('Đã thêm sản phẩm vào giỏ hàng');
     };
     const handleCancelOrder = async (orderId, orderStatus) => {
         try {
@@ -298,7 +319,13 @@ export function OrdersPage() {
                                         label: order.status,
                                         color: "bg-gray-100",
                                     };
-                                    return (_jsxs(Card, { className: "overflow-hidden hover:shadow-md transition-shadow", children: [_jsxs("div", { className: "flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-muted/30 border-b gap-3", children: [_jsx("div", { className: "flex items-center gap-4", children: _jsxs("div", { children: [_jsxs("div", { className: "flex items-center gap-2 mb-1", children: [_jsx(Package, { className: "w-4 h-4 text-muted-foreground" }), _jsx("span", { className: "font-mono text-sm font-medium", children: order.orderNumber })] }), _jsxs("p", { className: "text-xs text-muted-foreground", children: ["\u0110\u1EB7t ng\u00E0y", " ", new Date(order.createdAt).toLocaleDateString("vi-VN")] })] }) }), order.status !== "confirmed" && order.status !== "pending" && (_jsx(Badge, { variant: "outline", className: `${statusInfo.color} w-fit`, children: statusInfo.label }))] }), _jsxs("div", { className: "p-4 cursor-pointer", onClick: () => handleViewDetail(order), children: [_jsxs("div", { className: "space-y-3", children: [order.items.slice(0, 2).map((item) => (_jsxs("div", { className: "flex gap-3", children: [_jsx("div", { className: "w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0 border", children: _jsx(ImageWithFallback, { src: item.image, alt: item.name, className: "w-full h-full object-cover" }) }), _jsxs("div", { className: "flex-1 min-w-0", children: [_jsx("p", { className: "font-medium line-clamp-2 text-sm", children: item.name }), item.variant && (_jsx("p", { className: "text-xs text-muted-foreground mt-1", children: item.variant })), _jsxs("div", { className: "flex items-center justify-between mt-2", children: [_jsxs("span", { className: "text-sm text-muted-foreground", children: ["x", item.quantity] }), _jsx("span", { className: "font-semibold text-sm text-primary", children: formatPrice(item.price) })] })] })] }, item.id))), order.items.length > 2 && (_jsxs("p", { className: "text-sm text-muted-foreground text-center py-1 bg-muted/20 rounded", children: ["+ ", order.items.length - 2, " s\u1EA3n ph\u1EA9m kh\u00E1c"] }))] }), order.expiresAt && order.status === "pending" && (_jsx("div", { className: "mt-4 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800", children: _jsxs("p", { className: "text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2", children: [_jsx(Clock, { className: "w-4 h-4" }), " H\u1EBFt h\u1EA1n thanh to\u00E1n:", " ", new Date(order.expiresAt).toLocaleString("vi-VN", {
+                                    return (_jsxs(Card, { className: "overflow-hidden hover:shadow-md transition-shadow", children: [_jsxs("div", { className: "flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-muted/30 border-b gap-3", children: [_jsx("div", { className: "flex items-center gap-4", children: _jsxs("div", { children: [_jsxs("div", { className: "flex items-center gap-2 mb-1", children: [_jsx(Package, { className: "w-4 h-4 text-muted-foreground" }), _jsx("span", { className: "font-mono text-sm font-medium", children: order.orderNumber })] }), _jsxs("p", { className: "text-xs text-muted-foreground", children: ["\u0110\u1EB7t ng\u00E0y", " ", new Date(order.createdAt).toLocaleDateString("vi-VN")] })] }) }), order.status !== "confirmed" && order.status !== "pending" && (_jsx(Badge, { variant: "outline", className: `${statusInfo.color} w-fit`, children: statusInfo.label }))] }), _jsxs("div", { className: "p-4 cursor-pointer", onClick: () => handleViewDetail(order), children: [_jsxs("div", { className: "space-y-3", children: [(order.status === 'completed' ? order.items : order.items.slice(0, 2)).map((item) => (_jsxs("div", { className: "flex gap-3", children: [_jsx("div", { className: "w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0 border", children: _jsx(ImageWithFallback, { src: item.image, alt: item.name, className: "w-full h-full object-cover" }) }), _jsxs("div", { className: "flex-1 min-w-0", children: [_jsx("p", { className: "font-medium line-clamp-2 text-sm", children: item.name }), item.variant && (_jsx("p", { className: "text-xs text-muted-foreground mt-1", children: item.variant })), _jsxs("div", { className: "flex items-center justify-between mt-2", children: [_jsxs("span", { className: "text-sm text-muted-foreground", children: ["x", item.quantity] }), _jsx("span", { className: "font-semibold text-sm text-primary", children: formatPrice(item.price) })] }), order.status === 'completed' && (_jsxs("div", { className: "flex items-center justify-end gap-2 mt-2", children: [_jsxs(Button, { variant: "outline", size: "sm", onClick: (e) => {
+                                                                                            e.stopPropagation();
+                                                                                            handleReview(order.id, item.productId || item.id);
+                                                                                        }, className: "gap-2", children: [_jsx(Star, { className: "w-4 h-4" }), " \u0110\u00E1nh gi\u00E1"] }), _jsx(Button, { variant: "outline", size: "sm", onClick: (e) => {
+                                                                                            e.stopPropagation();
+                                                                                            handleReorderItem(item);
+                                                                                        }, children: "Mua l\u1EA1i" })] }))] })] }, item.id))), order.status !== 'completed' && order.items.length > 2 && (_jsxs("p", { className: "text-sm text-muted-foreground text-center py-1 bg-muted/20 rounded", children: ["+ ", order.items.length - 2, " s\u1EA3n ph\u1EA9m kh\u00E1c"] }))] }), order.expiresAt && order.status === "pending" && (_jsx("div", { className: "mt-4 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800", children: _jsxs("p", { className: "text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2", children: [_jsx(Clock, { className: "w-4 h-4" }), " H\u1EBFt h\u1EA1n thanh to\u00E1n:", " ", new Date(order.expiresAt).toLocaleString("vi-VN", {
                                                                     day: "2-digit",
                                                                     month: "2-digit",
                                                                     year: "numeric",
@@ -326,13 +353,7 @@ export function OrdersPage() {
                                                                     if (confirm("Bạn đã nhận được hàng?")) {
                                                                         await handleMarkAsReceived(order.id);
                                                                     }
-                                                                }, children: "\u0110\u00E3 nh\u1EADn" })), order.status === "completed" && (_jsxs(_Fragment, { children: [_jsxs(Button, { variant: "outline", size: "sm", onClick: (e) => {
-                                                                            e.stopPropagation();
-                                                                            handleReview(order.id);
-                                                                        }, className: "gap-2", children: [_jsx(Star, { className: "w-4 h-4" }), " \u0110\u00E1nh gi\u00E1"] }), _jsx(Button, { variant: "outline", size: "sm", onClick: (e) => {
-                                                                            e.stopPropagation();
-                                                                            app.handleReorder(order.id);
-                                                                        }, children: "Mua l\u1EA1i" })] })), (order.status === "cancelled" ||
+                                                                }, children: "\u0110\u00E3 nh\u1EADn" })), order.status === "completed" && null, (order.status === "cancelled" ||
                                                                 order.status === "refund") && (_jsx(Button, { variant: "outline", size: "sm", onClick: (e) => {
                                                                     e.stopPropagation();
                                                                     app.handleReorder(order.id);

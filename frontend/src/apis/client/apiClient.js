@@ -1,6 +1,6 @@
-import { authApi } from '../auth/authApi';
 import { authStorage } from '../auth';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+import { authApi } from '../auth/authApi';
+import { API_BASE_URL } from './baseUrl';
 // Lock để tránh multiple refresh calls đồng thời
 let isRefreshing = false;
 let refreshPromise = null;
@@ -235,4 +235,4 @@ async function requestFormData(path, formDataFactory, requireAuth = true, retryC
     }
     return (payload?.data ?? payload);
 }
-export { API_BASE_URL, request, requestFormData, refreshAccessToken };
+export { API_BASE_URL, refreshAccessToken, request, requestFormData };

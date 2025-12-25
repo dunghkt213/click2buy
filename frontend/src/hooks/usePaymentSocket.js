@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '../apis/client/baseUrl';
 export function usePaymentSocket({ isLoggedIn, onQRCreated, onPaymentSuccess, onQRExpired, }) {
     const socketRef = useRef(null);
     const callbacksRef = useRef({
@@ -24,7 +25,7 @@ export function usePaymentSocket({ isLoggedIn, onQRCreated, onPaymentSuccess, on
         // ❗ ĐÃ CÓ SOCKET → KHÔNG TẠO LẠI
         if (socketRef.current)
             return;
-        const socket = io('http://localhost:3000', {
+        const socket = io(API_BASE_URL, {
             withCredentials: true,
             transports: ['websocket'],
         });

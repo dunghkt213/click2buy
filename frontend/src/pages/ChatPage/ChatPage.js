@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { mediaApi } from '../../apis/media/mediaApi';
+import { productApi } from '../../apis/product';
 import { userApi } from '../../apis/user';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { useChat } from '../../hooks/useChat';
@@ -27,6 +28,24 @@ export function ChatPage() {
     const [searchParams] = useSearchParams();
     const app = useAppContext();
     const userId = app.user?.id || null;
+    const chatSelectedProductKey = 'chat:selectedProductId';
+    const chatSelectedProductSentKey = 'chat:selectedProductIdSent';
+    const [selectedProductId, setSelectedProductId] = useState(null);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [loadingSelectedProduct, setLoadingSelectedProduct] = useState(false);
+    const clearSelectedProductContext = useCallback(() => {
+        sessionStorage.removeItem(chatSelectedProductKey);
+        setSelectedProductId(null);
+        setSelectedProduct(null);
+    }, []);
+    const [productMessageCache, setProductMessageCache] = useState({});
+    const requestedProductMessageIdsRef = useRef(new Set());
+    const parseProductIdFromMessage = useCallback((content) => {
+        if (!content || typeof content !== 'string')
+            return null;
+        const match = content.trim().match(/^ProductID:([A-Za-z0-9_-]+)$/);
+        return match?.[1] || null;
+    }, []);
     const [message, setMessage] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [currentReceiverId, setCurrentReceiverId] = useState(null);
@@ -37,6 +56,41 @@ export function ChatPage() {
     const [uploadingImage, setUploadingImage] = useState(false);
     const messagesEndRef = useRef(null);
     const prevConversationIdRef = useRef(null);
+    useEffect(() => {
+        const storedId = sessionStorage.getItem(chatSelectedProductKey);
+        setSelectedProductId(storedId);
+    }, []);
+    useEffect(() => {
+        if (!selectedProductId) {
+            setSelectedProduct(null);
+            return;
+        }
+        let cancelled = false;
+        setLoadingSelectedProduct(true);
+        productApi
+            .getById(selectedProductId)
+            .then((p) => {
+            if (cancelled)
+                return;
+            setSelectedProduct(p);
+        })
+            .catch(() => {
+            if (cancelled)
+                return;
+            sessionStorage.removeItem(chatSelectedProductKey);
+            sessionStorage.removeItem(chatSelectedProductSentKey);
+            setSelectedProductId(null);
+            setSelectedProduct(null);
+        })
+            .finally(() => {
+            if (cancelled)
+                return;
+            setLoadingSelectedProduct(false);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedProductId]);
     // Use chat hook
     const { messages, conversations, currentConversationId, setCurrentConversationId, isConnected, isTyping, loading, sendMessage, startConversation, loadMessages, markAsRead, sendTyping, } = useChat({ userId, autoConnect: true });
     // Function to open chat with a specific user - opens immediately
@@ -363,6 +417,43 @@ export function ChatPage() {
     }, [currentReceiverId, selectedConversation, userInfoCache]);
     // Use virtual conversation if no selected conversation but we have receiverId
     const activeConversation = selectedConversation || virtualConversation;
+    useEffect(() => {
+        if (!activeConversation)
+            return;
+        const ids = new Set();
+        for (const m of activeConversation.messages || []) {
+            const id = parseProductIdFromMessage(m?.content);
+            if (id)
+                ids.add(id);
+        }
+        ids.forEach((id) => {
+            if (requestedProductMessageIdsRef.current.has(id))
+                return;
+            requestedProductMessageIdsRef.current.add(id);
+            setProductMessageCache((prev) => {
+                if (prev[id])
+                    return prev;
+                return {
+                    ...prev,
+                    [id]: { status: 'loading' },
+                };
+            });
+            productApi
+                .getById(id)
+                .then((p) => {
+                setProductMessageCache((prev) => ({
+                    ...prev,
+                    [id]: { status: 'loaded', product: p },
+                }));
+            })
+                .catch(() => {
+                setProductMessageCache((prev) => ({
+                    ...prev,
+                    [id]: { status: 'error' },
+                }));
+            });
+        });
+    }, [activeConversation, parseProductIdFromMessage]);
     // Debug: Log active conversation messages (only in development, and only when conversation actually changes)
     useEffect(() => {
         if (process.env.NODE_ENV === 'development' && activeConversation) {
@@ -411,23 +502,41 @@ export function ChatPage() {
         });
         // Small delay to ensure conversation is fully set up
         const timeoutId = setTimeout(() => {
-            // Re-validate conversationId after timeout
-            const finalConversationId = currentConversationId?.trim();
-            if (finalConversationId && finalConversationId !== '') {
-                console.log('📤 Executing auto-send with conversationId:', finalConversationId);
-                sendMessage(pendingMessage.content, pendingMessage.receiverId, finalConversationId);
-                setPendingMessage(null);
-            }
-            else {
-                console.error('❌ ConversationId became invalid during timeout:', {
-                    currentConversationId,
-                    finalConversationId,
-                });
-                setPendingMessage(null); // Clear pending to avoid infinite loop
-            }
+            void (async () => {
+                // Re-validate conversationId after timeout
+                const finalConversationId = currentConversationId?.trim();
+                if (finalConversationId && finalConversationId !== '') {
+                    console.log('📤 Executing auto-send with conversationId:', finalConversationId);
+                    if (selectedProductId && sessionStorage.getItem(chatSelectedProductSentKey) !== '1') {
+                        sendMessage(`ProductID:${selectedProductId}`, pendingMessage.receiverId, finalConversationId);
+                        sessionStorage.setItem(chatSelectedProductSentKey, '1');
+                        clearSelectedProductContext();
+                        await new Promise((resolve) => setTimeout(resolve, 150));
+                    }
+                    sendMessage(pendingMessage.content, pendingMessage.receiverId, finalConversationId);
+                    setPendingMessage(null);
+                }
+                else {
+                    console.error('❌ ConversationId became invalid during timeout:', {
+                        currentConversationId,
+                        finalConversationId,
+                    });
+                    setPendingMessage(null); // Clear pending to avoid infinite loop
+                }
+            })();
         }, 500); // Increased delay to ensure conversation is fully set up
         return () => clearTimeout(timeoutId);
-    }, [currentConversationId, pendingMessage, sendMessage]);
+    }, [currentConversationId, pendingMessage, sendMessage, selectedProductId, clearSelectedProductContext]);
+    const sendSelectedProductIdTagIfNeeded = useCallback((receiverId, conversationId) => {
+        if (!selectedProductId)
+            return false;
+        if (sessionStorage.getItem(chatSelectedProductSentKey) === '1')
+            return false;
+        sendMessage(`ProductID:${selectedProductId}`, receiverId, conversationId);
+        sessionStorage.setItem(chatSelectedProductSentKey, '1');
+        clearSelectedProductContext();
+        return true;
+    }, [selectedProductId, sendMessage, clearSelectedProductContext]);
     const handleSendMessage = async (imageUrl) => {
         const content = imageUrl || message.trim();
         if (!content) {
@@ -474,7 +583,7 @@ export function ChatPage() {
         }
         // conversationId is REQUIRED by backend
         if (!conversationId) {
-            console.error('❌ Cannot send message: conversationId is missing', {
+            console.error(' Cannot send message: conversationId is missing', {
                 currentConversationId,
                 activeConversation,
                 receiverId,
@@ -482,7 +591,7 @@ export function ChatPage() {
             toast.error('Vui lòng đợi cuộc trò chuyện được tạo');
             return;
         }
-        console.log('📤 Sending message from UI:', {
+        console.log(' Sending message from UI:', {
             content,
             receiverId,
             conversationId,
@@ -491,6 +600,10 @@ export function ChatPage() {
             isImage: !!imageUrl,
         });
         try {
+            const didSendTag = sendSelectedProductIdTagIfNeeded(receiverId, conversationId);
+            if (didSendTag) {
+                await new Promise((resolve) => setTimeout(resolve, 150));
+            }
             // Send message with image URL if provided
             // Note: Backend expects content field, we'll send image URL as content
             // and type will be set by backend based on content or we need to handle it
@@ -753,7 +866,13 @@ export function ChatPage() {
     if (!app.isLoggedIn) {
         return (_jsx("div", { className: "flex items-center justify-center h-screen", children: _jsxs("div", { className: "text-center", children: [_jsx("p", { className: "text-lg mb-4", children: "Vui l\u00F2ng \u0111\u0103ng nh\u1EADp \u0111\u1EC3 s\u1EED d\u1EE5ng chat" }), _jsx("button", { onClick: () => app.handleLogin(), className: "px-4 py-2 bg-primary text-primary-foreground rounded-md", children: "\u0110\u0103ng nh\u1EADp" })] }) }));
     }
-    return (_jsxs("div", { className: "flex h-screen bg-background", children: [_jsxs("div", { className: "w-[380px] border-r border-border flex flex-col bg-white", children: [_jsxs("div", { className: "p-4 border-b border-border flex items-center gap-3 bg-white", children: [_jsx("button", { onClick: () => navigate(-1), className: "p-2 hover:bg-accent rounded-md transition-colors flex-shrink-0", children: _jsx(ArrowLeft, { className: "h-5 w-5" }) }), _jsx("h2", { className: "text-lg font-semibold flex-1", children: "Tin nh\u1EAFn" })] }), _jsx("div", { className: "p-3 border-b border-border bg-white", children: _jsxs("div", { className: "relative", children: [_jsx(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" }), _jsx("input", { type: "text", value: searchQuery, onChange: (e) => setSearchQuery(e.target.value), placeholder: "T\u00ECm ki\u1EBFm shop...", className: "w-full rounded-lg bg-accent/50 pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background transition-colors" })] }) }), _jsx("div", { className: "flex-1 overflow-y-auto", children: loading && filteredConversations.length === 0 ? (_jsx("div", { className: "flex items-center justify-center h-full", children: _jsx(Loader2, { className: "w-6 h-6 animate-spin text-muted-foreground" }) })) : filteredConversations.length === 0 ? (_jsxs("div", { className: "flex flex-col items-center justify-center h-full p-4 text-center", children: [_jsx(MessageCircle, { className: "w-12 h-12 text-muted-foreground mb-2" }), _jsx("p", { className: "text-sm text-muted-foreground", children: "Ch\u01B0a c\u00F3 cu\u1ED9c tr\u00F2 chuy\u1EC7n n\u00E0o" })] })) : (filteredConversations.map((conv) => {
+    return (_jsxs("div", { className: "flex h-screen bg-background", children: [_jsxs("div", { className: "w-[380px] border-r border-border flex flex-col bg-white", children: [_jsxs("div", { className: "p-4 border-b border-border flex items-center gap-3 bg-white", children: [_jsx("button", { onClick: () => {
+                                    sessionStorage.removeItem(chatSelectedProductKey);
+                                    sessionStorage.removeItem(chatSelectedProductSentKey);
+                                    setSelectedProductId(null);
+                                    setSelectedProduct(null);
+                                    navigate(-1);
+                                }, className: "p-2 hover:bg-accent rounded-md transition-colors flex-shrink-0", children: _jsx(ArrowLeft, { className: "h-5 w-5" }) }), _jsx("h2", { className: "text-lg font-semibold flex-1", children: "Tin nh\u1EAFn" })] }), _jsx("div", { className: "p-3 border-b border-border bg-white", children: _jsxs("div", { className: "relative", children: [_jsx(Search, { className: "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" }), _jsx("input", { type: "text", value: searchQuery, onChange: (e) => setSearchQuery(e.target.value), placeholder: "T\u00ECm ki\u1EBFm shop...", className: "w-full rounded-lg bg-accent/50 pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background transition-colors" })] }) }), _jsx("div", { className: "flex-1 overflow-y-auto", children: loading && filteredConversations.length === 0 ? (_jsx("div", { className: "flex items-center justify-center h-full", children: _jsx(Loader2, { className: "w-6 h-6 animate-spin text-muted-foreground" }) })) : filteredConversations.length === 0 ? (_jsxs("div", { className: "flex flex-col items-center justify-center h-full p-4 text-center", children: [_jsx(MessageCircle, { className: "w-12 h-12 text-muted-foreground mb-2" }), _jsx("p", { className: "text-sm text-muted-foreground", children: "Ch\u01B0a c\u00F3 cu\u1ED9c tr\u00F2 chuy\u1EC7n n\u00E0o" })] })) : (filteredConversations.map((conv) => {
                             // Only render conversations with valid IDs
                             if (!conv.id) {
                                 console.warn('Conversation without ID:', conv);
@@ -784,6 +903,18 @@ export function ChatPage() {
                                     const isUser = msg.senderId === userId;
                                     const senderInfo = userInfoCache[msg.senderId];
                                     return (_jsxs("div", { className: `flex gap-3 items-end ${isUser ? 'flex-row-reverse' : 'flex-row'}`, children: [!isUser && (_jsx(ImageWithFallback, { src: senderInfo?.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=User', alt: senderInfo?.name || 'Người dùng', className: "h-9 w-9 rounded-full flex-shrink-0 object-cover border border-border" })), _jsxs("div", { className: `flex flex-col gap-1.5 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`, children: [(() => {
+                                                        const productIdFromTag = parseProductIdFromMessage(msg.content);
+                                                        if (productIdFromTag) {
+                                                            const entry = productMessageCache[productIdFromTag];
+                                                            const bubbleBaseClass = `rounded-2xl overflow-hidden border border-border shadow-sm bg-white ${isUser ? 'rounded-br-sm' : 'rounded-bl-sm'}`;
+                                                            if (!entry || entry.status === 'loading') {
+                                                                return (_jsx("div", { className: bubbleBaseClass, children: _jsxs("div", { className: "flex items-center gap-3 p-3", children: [_jsx("div", { className: "h-12 w-12 rounded-md border border-border bg-background flex items-center justify-center", children: _jsx(Loader2, { className: "h-4 w-4 animate-spin text-muted-foreground" }) }), _jsx("div", { className: "min-w-0", children: _jsx("p", { className: "text-sm text-muted-foreground", children: "\u0110ang t\u1EA3i s\u1EA3n ph\u1EA9m..." }) })] }) }));
+                                                            }
+                                                            if (entry.status === 'error' || !entry.product) {
+                                                                return (_jsx("div", { className: bubbleBaseClass, children: _jsxs("div", { className: "flex items-center gap-3 p-3", children: [_jsx("div", { className: "h-12 w-12 rounded-md border border-border bg-background flex items-center justify-center", children: _jsx("span", { className: "text-xs text-muted-foreground", children: "N/A" }) }), _jsx("div", { className: "min-w-0", children: _jsx("p", { className: "text-sm text-muted-foreground", children: "Kh\u00F4ng th\u1EC3 t\u1EA3i s\u1EA3n ph\u1EA9m" }) })] }) }));
+                                                            }
+                                                            return (_jsx("button", { onClick: () => navigate(`/product/${productIdFromTag}`), className: `${bubbleBaseClass} text-left hover:shadow-md transition-shadow`, type: "button", children: _jsxs("div", { className: "flex items-center gap-3 p-3", children: [_jsx("div", { className: "h-12 w-12 flex-shrink-0 rounded-md border border-border bg-background overflow-hidden", children: _jsx(ImageWithFallback, { src: entry.product.image, alt: entry.product.name, className: "h-12 w-12 object-cover", loading: "lazy" }) }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("p", { className: "text-xs text-muted-foreground", children: "S\u1EA3n ph\u1EA9m" }), _jsx("p", { className: "text-sm font-medium truncate", children: entry.product.name })] })] }) }));
+                                                        }
                                                         // Check for images array first (multiple images in one message)
                                                         const messageImages = msg.images;
                                                         const hasImagesArray = Array.isArray(messageImages) && messageImages.length > 0;
@@ -843,17 +974,17 @@ export function ChatPage() {
                                                         // Fallback: if content is empty or only image URL, show nothing or placeholder
                                                         return null;
                                                     })(), msg.timestamp && (_jsx("span", { className: "text-xs text-muted-foreground px-1.5", children: formatMessageTime(msg.timestamp) }))] })] }, msg.id));
-                                }), isTyping[currentReceiverId || ''] && (_jsxs("div", { className: "flex gap-3 items-end", children: [_jsx("div", { className: "h-9 w-9 rounded-full bg-muted flex-shrink-0 border border-border" }), _jsx("div", { className: "bg-white rounded-2xl rounded-bl-sm border border-border px-4 py-3 shadow-sm", children: _jsxs("div", { className: "flex gap-1.5", children: [_jsx("span", { className: "w-2 h-2 bg-muted-foreground rounded-full animate-bounce", style: { animationDelay: '0ms' } }), _jsx("span", { className: "w-2 h-2 bg-muted-foreground rounded-full animate-bounce", style: { animationDelay: '150ms' } }), _jsx("span", { className: "w-2 h-2 bg-muted-foreground rounded-full animate-bounce", style: { animationDelay: '300ms' } })] }) })] })), _jsx("div", { ref: messagesEndRef })] })) }), _jsx("div", { className: "border-t border-border p-4 bg-white shadow-lg", children: _jsxs("div", { className: "flex items-center gap-3", children: [_jsx("input", { ref: fileInputRef, type: "file", accept: "image/*", onChange: handleImageSelect, className: "hidden" }), _jsx("button", { onClick: handleImageButtonClick, disabled: uploadingImage || !isConnected || !currentReceiverId, className: "p-2.5 hover:bg-accent rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center", title: "G\u1EEDi h\u00ECnh \u1EA3nh", children: uploadingImage ? (_jsx(Loader2, { className: "h-5 w-5 text-muted-foreground animate-spin" })) : (_jsx(ImageIcon, { className: "h-5 w-5 text-muted-foreground" })) }), _jsx("div", { className: "flex-1 relative flex items-center", children: _jsx("textarea", { value: message, onChange: (e) => {
-                                            setMessage(e.target.value);
-                                            handleTyping(true);
-                                        }, onFocus: () => handleTyping(true), onBlur: () => handleTyping(false), onKeyDown: (e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleSendMessage();
-                                                handleTyping(false);
-                                            }
-                                        }, placeholder: "Nh\u1EADp tin nh\u1EAFn...", rows: 1, className: "w-full rounded-lg border border-border px-4 py-2.5 resize-none outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 bg-background text-sm min-h-[44px] max-h-[120px] flex items-center", style: {
-                                            maxHeight: '120px',
-                                            lineHeight: '1.5',
-                                        }, disabled: !isConnected || !currentReceiverId }) }), _jsx("button", { onClick: () => handleSendMessage(), disabled: !message.trim() || !isConnected || uploadingImage || !currentReceiverId, className: "p-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-md hover:shadow-lg flex items-center justify-center h-[44px] w-[44px]", children: _jsx(Send, { className: "h-5 w-5" }) })] }) })] })) : (_jsx("div", { className: "flex-1 flex items-center justify-center bg-gradient-to-b from-background to-muted/20", children: _jsxs("div", { className: "text-center", children: [_jsx(MessageCircle, { className: "w-20 h-20 text-muted-foreground mx-auto mb-4 opacity-50" }), _jsx("p", { className: "text-lg font-medium text-muted-foreground", children: "Ch\u1ECDn m\u1ED9t cu\u1ED9c tr\u00F2 chuy\u1EC7n \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u" }), _jsx("p", { className: "text-sm text-muted-foreground mt-2", children: "Ho\u1EB7c t\u00ECm ki\u1EBFm shop \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u tr\u00F2 chuy\u1EC7n" })] }) }))] }));
+                                }), isTyping[currentReceiverId || ''] && (_jsxs("div", { className: "flex gap-3 items-end", children: [_jsx("div", { className: "h-9 w-9 rounded-full bg-muted flex-shrink-0 border border-border" }), _jsx("div", { className: "bg-white rounded-2xl rounded-bl-sm border border-border px-4 py-3 shadow-sm", children: _jsxs("div", { className: "flex gap-1.5", children: [_jsx("span", { className: "w-2 h-2 bg-muted-foreground rounded-full animate-bounce", style: { animationDelay: '0ms' } }), _jsx("span", { className: "w-2 h-2 bg-muted-foreground rounded-full animate-bounce", style: { animationDelay: '150ms' } }), _jsx("span", { className: "w-2 h-2 bg-muted-foreground rounded-full animate-bounce", style: { animationDelay: '300ms' } })] }) })] })), _jsx("div", { ref: messagesEndRef })] })) }), _jsxs("div", { className: "border-t border-border p-4 bg-white shadow-lg", children: [selectedProductId ? (_jsxs("div", { className: "mb-3 flex items-center gap-3 rounded-lg border border-border bg-accent/30 p-3", children: [_jsx("div", { className: "h-12 w-12 flex-shrink-0 rounded-md border border-border bg-background overflow-hidden", children: loadingSelectedProduct || !selectedProduct ? (_jsx("div", { className: "h-full w-full flex items-center justify-center", children: _jsx(Loader2, { className: "h-4 w-4 animate-spin text-muted-foreground" }) })) : (_jsx(ImageWithFallback, { src: selectedProduct.image, alt: selectedProduct.name, className: "h-12 w-12 object-cover", loading: "lazy" })) }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("p", { className: "text-xs text-muted-foreground", children: "S\u1EA3n ph\u1EA9m" }), _jsx("p", { className: "text-sm font-medium truncate", children: selectedProduct?.name || '' })] })] })) : null, _jsxs("div", { className: "flex items-center gap-3", children: [_jsx("input", { ref: fileInputRef, type: "file", accept: "image/*", onChange: handleImageSelect, className: "hidden" }), _jsx("button", { onClick: handleImageButtonClick, disabled: uploadingImage || !isConnected || !currentReceiverId, className: "p-2.5 hover:bg-accent rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center", title: "G\u1EEDi h\u00ECnh \u1EA3nh", children: uploadingImage ? (_jsx(Loader2, { className: "h-5 w-5 text-muted-foreground animate-spin" })) : (_jsx(ImageIcon, { className: "h-5 w-5 text-muted-foreground" })) }), _jsx("div", { className: "flex-1 relative flex items-center", children: _jsx("textarea", { value: message, onChange: (e) => {
+                                                setMessage(e.target.value);
+                                                handleTyping(true);
+                                            }, onFocus: () => handleTyping(true), onBlur: () => handleTyping(false), onKeyDown: (e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    handleSendMessage();
+                                                    handleTyping(false);
+                                                }
+                                            }, placeholder: "Nh\u1EADp tin nh\u1EAFn...", rows: 1, className: "w-full rounded-lg border border-border px-4 py-2.5 resize-none outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 bg-background text-sm min-h-[44px] max-h-[120px] flex items-center", style: {
+                                                maxHeight: '120px',
+                                                lineHeight: '1.5',
+                                            }, disabled: !isConnected || !currentReceiverId }) }), _jsx("button", { onClick: () => handleSendMessage(), disabled: !message.trim() || !isConnected || uploadingImage || !currentReceiverId, className: "p-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-md hover:shadow-lg flex items-center justify-center h-[44px] w-[44px]", children: _jsx(Send, { className: "h-5 w-5" }) })] })] })] })) : (_jsx("div", { className: "flex-1 flex items-center justify-center bg-gradient-to-b from-background to-muted/20", children: _jsxs("div", { className: "text-center", children: [_jsx(MessageCircle, { className: "w-20 h-20 text-muted-foreground mx-auto mb-4 opacity-50" }), _jsx("p", { className: "text-lg font-medium text-muted-foreground", children: "Ch\u1ECDn m\u1ED9t cu\u1ED9c tr\u00F2 chuy\u1EC7n \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u" }), _jsx("p", { className: "text-sm text-muted-foreground mt-2", children: "Ho\u1EB7c t\u00ECm ki\u1EBFm shop \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u tr\u00F2 chuy\u1EC7n" })] }) }))] }));
 }

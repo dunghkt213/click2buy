@@ -49,7 +49,7 @@ export class NotificationController {
   @EventPattern('order.confirmed')
   async handleOrderConfirmed(@Payload() payload: any) {
     this.logger.log(`📨 Creating notification for user ${payload.userId}`);
-    const data = {userId: payload.userId, title: 'Đơn hàn đã được xác nhận', content: `Đơn hàng đã được xác nhận và sẽ được giao cho bên vận chuyển`, type: 'ORDER', metadata: {orderId: payload.orderId}};
+    const data = {userId: payload.userId, title: 'Đơn hàng đã được xác nhận', content: `Đơn hàng đã được xác nhận và sẽ được giao cho bên vận chuyển`, type: 'ORDER', metadata: {orderId: payload.orderId}};
     const result = await this.service.create(data);
 
     if (result.success && result.data) {
@@ -66,7 +66,28 @@ export class NotificationController {
       this.logger.error(`❌ Failed to create notification: ${result.error}`);
     }
   }
-   
+
+     @EventPattern('product.duplicate_detected')
+  async handleProductDuplicateDetected(@Payload() payload: any) {
+    this.logger.log(`📨 Creating notification for user ${payload.userId}`);
+    const data = {userId: payload.userId, title: 'Sản phẩm bị trùng', content: `Sản phẩm này đã có sãn trong cửa hàng của bạn, nếu có thắc mắc vui lòng liên hệ tổng đài 19001099`, type: 'ORDER'};
+    const result = await this.service.create(data);
+
+    if (result.success && result.data) {
+      this.logger.log(`✅ Notification saved: ${result.data._id}`);
+
+      // 🔥 RẤT QUAN TRỌNG: EMIT "noti.created" ĐỂ GATEWAY PUSH REALTIME
+           this.kafkaClient.emit('noti.created', {
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        type: data.type,
+      });
+    } else {
+      this.logger.error(`❌ Failed to create notification: ${result.error}`);
+    }
+  }
+
     @EventPattern('review.sellerReplied')
   async handleReviewSellerReplied(@Payload() payload: any) {
     this.logger.log(`📨 Creating notification for user ${payload.userId}`);

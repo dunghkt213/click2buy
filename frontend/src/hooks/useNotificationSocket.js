@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '../apis/client/baseUrl';
 export function useNotificationSocket({ userId, isLoggedIn, onNotification, onNotificationsList, onUnreadCount, onMarkedRead, }) {
     const socketRef = useRef(null);
     const callbacksRef = useRef({
@@ -32,7 +33,7 @@ export function useNotificationSocket({ userId, isLoggedIn, onNotification, onNo
         // ❗ ĐÃ CÓ SOCKET → KHÔNG TẠO LẠI
         if (socketRef.current)
             return;
-        const socket = io('http://localhost:3000/notification', {
+        const socket = io(`${API_BASE_URL}/notification`, {
             withCredentials: true,
             transports: ['websocket'],
             query: {

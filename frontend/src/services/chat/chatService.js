@@ -3,7 +3,7 @@
  */
 import { io } from 'socket.io-client';
 import { authStorage } from '../../apis/auth';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+import { API_BASE_URL } from '../../apis/client/baseUrl';
 class ChatService {
     constructor() {
         this.socket = null;

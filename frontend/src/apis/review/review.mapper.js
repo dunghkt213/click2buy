@@ -16,6 +16,7 @@ export function mapReviewResponse(data) {
         updatedAt: data.updatedAt,
         helpful: data.helpful || 0,
         isVerifiedPurchase: data.isVerifiedPurchase,
+        replyBySeller: data.replyBySeller,
         user: data.user ? {
             name: data.user.name,
             username: data.user.username,
