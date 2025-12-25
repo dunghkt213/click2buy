@@ -53,6 +53,9 @@ export function AddProductPage() {
   // State cho uploaded images
   const [uploadedImages, setUploadedImages] = useState<Array<{ url: string; loading?: boolean }>>([]);
   const [uploading, setUploading] = useState(false);
+  
+  // State cho submit loading
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Kiểm tra quyền truy cập
   useEffect(() => {
@@ -132,6 +135,9 @@ export function AddProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prevent double submit
+    if (isSubmitting) return;
+
     // Validate required fields
     if (!formData.name || !formData.price || !formData.stock || !formData.brand) {
       toast.error('Vui lòng điền đầy đủ các trường bắt buộc (*)');
@@ -178,6 +184,7 @@ export function AddProductPage() {
     };
 
     try {
+      setIsSubmitting(true);
       console.log('📦 [AddProductPage] Submitting product data:', productData);
       await app.store.handleAddProduct(productData);
       toast.success('Thêm sản phẩm thành công!');
@@ -185,6 +192,8 @@ export function AddProductPage() {
     } catch (error) {
       console.error('❌ [AddProductPage] Error adding product:', error);
       toast.error('Có lỗi xảy ra khi thêm sản phẩm');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -768,9 +777,18 @@ export function AddProductPage() {
           >
             Hủy
           </Button>
-          <Button type="submit" className="min-w-[120px]">
-            <Save className="w-4 h-4 mr-2" />
-            Lưu sản phẩm
+          <Button type="submit" className="min-w-[120px]" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                Đang lưu...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Lưu sản phẩm
+              </>
+            )}
           </Button>
         </div>
       </form>
